@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"github.com/khinshankhan/listo/config"
+	"github.com/khinshankhan/listo/controller"
 	"log"
 )
 
@@ -25,7 +25,5 @@ func loadConfiguration() *config.Config {
 func main() {
 	loadedCfg := loadConfiguration()
 
-	fmt.Println("Loaded configuration:")
-	fmt.Printf("\tBuildDate: %v\n", loadedCfg.Meta.BuildDate)
-	fmt.Printf("\tCommitHash: %v\n", loadedCfg.Meta.CommitHash)
+	controller.Handle(loadedCfg)
 }
