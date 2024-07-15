@@ -4,7 +4,7 @@ import (
 	"fmt"
 	fiber "github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/khinshankhan/listo/config"
+	"github.com/khinshankhan/listo/internal/config"
 	"log"
 )
 

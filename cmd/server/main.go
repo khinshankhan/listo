@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/khinshankhan/listo/config"
-	"github.com/khinshankhan/listo/controller"
+	"github.com/khinshankhan/listo/internal/config"
+	"github.com/khinshankhan/listo/internal/controller"
 	"log"
 )
 
