@@ -2,10 +2,12 @@ package controller
 
 import (
 	"fmt"
+
 	fiber "github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/khinshankhan/listo/internal/config"
-	"log"
+	"github.com/khinshankhan/listo/internal/services/log"
+	"go.uber.org/zap"
 )
 
 const (
@@ -31,7 +33,8 @@ func CreateRouter() *fiber.App {
 					return c.Status(404).SendString("not found")
 				}
 			}
-			log.Printf("[ErrorHandler] %s\n", err.Error())
+
+			log.Error("Handler didn't work", zap.String("context", "ErrorHandler"), zap.Error(err))
 			return fiber.DefaultErrorHandler(c, err)
 		},
 	})
@@ -49,5 +52,5 @@ func Handle(loadedCfg *config.Config) {
 	// TODO: use env variables + only do this for local dev server
 	// TODO: use prod url when in prod, maybe get url from config too
 	app.Use(cors.New(cors.Config{AllowOrigins: "http://localhost:3000"}))
-	log.Fatal(app.Listen(fmt.Sprintf(":%d", Port)))
+	log.DPanic("Something went terribly wrong", zap.String("context", "Handle"), zap.Error(app.Listen(fmt.Sprintf(":%d", Port))))
 }

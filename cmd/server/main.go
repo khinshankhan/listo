@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/khinshankhan/listo/internal/config"
 	"github.com/khinshankhan/listo/internal/controller"
-	"log"
+	"github.com/khinshankhan/listo/internal/services/log"
 )
 
 // Version and BuildData get replaced during build with the commit hash and time of build
@@ -16,7 +18,7 @@ var (
 func loadConfiguration() *config.Config {
 	loadedCfg, err := config.Load(CommitHash, BuildDate)
 	if err != nil {
-		log.Fatalf("[setup][LoadConfig] %s\n", err.Error())
+		log.Fatal(fmt.Sprintf("[setup][LoadConfig] %s\n", err.Error()))
 	}
 
 	return loadedCfg
