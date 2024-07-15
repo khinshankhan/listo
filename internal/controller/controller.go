@@ -45,9 +45,11 @@ func CreateRouter() *fiber.App {
 		},
 	})
 
-	// Prevent API calls from being handled by the catchall
-	app.Get("/api/*", BlackHole)
 	app.Get("/api/v1/meta", MetaHandler)
+
+	// Prevent API calls from being handled by the catchall
+	// NOTE: this needs to be after valid routes
+	app.Get("*", BlackHole)
 
 	return app
 }
