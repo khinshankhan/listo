@@ -34,7 +34,11 @@ func CreateRouter() *fiber.App {
 				}
 			}
 
-			log.Error("Handler didn't work", zap.String("context", "ErrorHandler"), zap.Error(err))
+			log.Error(
+				"Handler didn't work",
+				zap.String("context", "ErrorHandler"),
+				zap.Error(err),
+			)
 			return fiber.DefaultErrorHandler(c, err)
 		},
 	})
@@ -52,5 +56,9 @@ func Handle(loadedCfg *config.Config) {
 	// TODO: use env variables + only do this for local dev server
 	// TODO: use prod url when in prod, maybe get url from config too
 	app.Use(cors.New(cors.Config{AllowOrigins: "http://localhost:3000"}))
-	log.DPanic("Something went terribly wrong", zap.String("context", "Handle"), zap.Error(app.Listen(fmt.Sprintf(":%d", Port))))
+	log.DPanic(
+		"Something went terribly wrong",
+		zap.String("context", "Handle"),
+		zap.Error(app.Listen(fmt.Sprintf(":%d", Port))),
+	)
 }
