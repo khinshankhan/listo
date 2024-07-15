@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/khinshankhan/listo/internal/config"
 	"github.com/khinshankhan/listo/internal/controller"
-	"github.com/khinshankhan/listo/internal/services/log"
 	"go.uber.org/zap"
 )
 
@@ -17,7 +16,7 @@ var (
 func loadConfiguration() *config.Config {
 	loadedCfg, err := config.Load(CommitHash, BuildDate)
 	if err != nil {
-		log.Fatal(
+		zap.L().Fatal(
 			"Config is broken",
 			zap.String("context", "loadConfiguration"),
 			zap.Error(err),

@@ -6,7 +6,6 @@ import (
 	fiber "github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/khinshankhan/listo/internal/config"
-	"github.com/khinshankhan/listo/internal/services/log"
 	"go.uber.org/zap"
 )
 
@@ -31,10 +30,13 @@ func CreateRouter() *fiber.App {
 				switch err.Error() {
 				case "Method Not Allowed":
 					return c.Status(404).SendString("not found")
+				default:
+					fmt.Println("hi")
+					fmt.Println(err.Error())
 				}
 			}
 
-			log.Error(
+			zap.L().Error(
 				"Handler didn't work",
 				zap.String("context", "ErrorHandler"),
 				zap.Error(err),
@@ -58,7 +60,7 @@ func Handle(loadedCfg *config.Config) {
 	// TODO: use env variables + only do this for local dev server
 	// TODO: use prod url when in prod, maybe get url from config too
 	app.Use(cors.New(cors.Config{AllowOrigins: "http://localhost:3000"}))
-	log.DPanic(
+	zap.L().DPanic(
 		"Something went terribly wrong",
 		zap.String("context", "Handle"),
 		zap.Error(app.Listen(fmt.Sprintf(":%d", Port))),
