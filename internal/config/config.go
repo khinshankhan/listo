@@ -1,14 +1,5 @@
 package config
 
-import (
-	"go.uber.org/zap"
-)
-
-func init() {
-	logger := zap.Must(zap.NewProduction())
-	zap.ReplaceGlobals(logger)
-}
-
 // MetaConfig is the automatically filled meta information about the config
 type MetaConfig struct {
 	CommitHash string

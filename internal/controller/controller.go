@@ -6,6 +6,7 @@ import (
 	fiber "github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/khinshankhan/listo/internal/config"
+	"github.com/khinshankhan/listo/internal/service/log"
 	"go.uber.org/zap"
 )
 
@@ -23,6 +24,8 @@ type FiberFunc = func(c *fiber.Ctx) error
 
 // CreateRouter creates the router for the http server
 func CreateRouter() *fiber.App {
+	logger := log.NewLogger()
+
 	app := fiber.New(fiber.Config{
 		ProxyHeader: "Cf-Connecting-Ip",
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
@@ -36,9 +39,8 @@ func CreateRouter() *fiber.App {
 				}
 			}
 
-			zap.L().Error(
+			logger.Error(
 				"Handler didn't work",
-				zap.String("context", "ErrorHandler"),
 				zap.Error(err),
 			)
 			return fiber.DefaultErrorHandler(c, err)
@@ -56,15 +58,15 @@ func CreateRouter() *fiber.App {
 
 // Handle creates the router and the server before starting the server
 func Handle(loadedCfg *config.Config) {
+	logger := log.NewLogger()
 	cfg = loadedCfg
 
 	app := CreateRouter()
 	// TODO: use env variables + only do this for local dev server
 	// TODO: use prod url when in prod, maybe get url from config too
 	app.Use(cors.New(cors.Config{AllowOrigins: "http://localhost:3000"}))
-	zap.L().DPanic(
+	logger.DPanic(
 		"Something went terribly wrong",
-		zap.String("context", "Handle"),
 		zap.Error(app.Listen(fmt.Sprintf(":%d", Port))),
 	)
 }
