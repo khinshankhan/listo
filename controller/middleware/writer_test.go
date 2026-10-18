@@ -53,7 +53,8 @@ func TestWrappersPreserveCapabilities(t *testing.T) {
 	defer log.SetOutput(os.Stderr)
 
 	wrapped := map[string]func(http.Handler) http.Handler{
-		"Recover": Recover,
+		"Recover":   Recover,
+		"BlackHole": BlackHole(nil, "/api"),
 	}
 
 	for name, mw := range wrapped {
@@ -72,8 +73,16 @@ func TestWrappersPreserveCapabilities(t *testing.T) {
 				ctrlErr = http.NewResponseController(w).SetWriteDeadline(time.Time{})
 			})
 
+			// BlackHole only wraps a *ServeMux
+			var h http.Handler = inner
+			if name == "BlackHole" {
+				m := http.NewServeMux()
+				m.Handle("GET /api/x", inner)
+				h = m
+			}
+
 			fw := newFullWriter()
-			mw(inner).ServeHTTP(fw, httptest.NewRequest("GET", "/", nil))
+			mw(h).ServeHTTP(fw, httptest.NewRequest("GET", "/api/x", nil))
 
 			if !gotFlusher || !gotHijacker || !gotPusher || !gotReaderFrom {
 				t.Errorf("dropped interfaces: Flusher=%v Hijacker=%v Pusher=%v ReaderFrom=%v",
