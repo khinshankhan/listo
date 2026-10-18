@@ -1,0 +1,244 @@
+/* listo tokens, on quicksilver's 12-step scale. Use the accent or semantic
+ names, never a ramp, so accents can be rebound. */
+
+@theme static {
+  /* cream: accent-theme-surface */
+  --color-cream-1: #f8f6ef;
+  --color-cream-2: #f2efe4;
+  --color-cream-3: #eae6d9;
+  --color-cream-4: #e7e2d4;
+  --color-cream-5: #dbd5c4;
+  --color-cream-6: #9c9881;
+  --color-cream-7: #6a6b60;
+  --color-cream-8: #55564d;
+  --color-cream-9: #42443c;
+  --color-cream-10: #32342d;
+  --color-cream-11: #252621;
+  --color-cream-12: #1c1d19;
+  --color-cream-a1: #f8f6ef01;
+  --color-cream-a2: #7961050c;
+  --color-cream-a3: #634c0518;
+  --color-cream-a4: #6346021d;
+  --color-cream-a5: #573f012e;
+  --color-cream-a6: #312b0176;
+  --color-cream-a7: #0b0e0199;
+  --color-cream-a8: #080a00ad;
+  --color-cream-a9: #050800bf;
+  --color-cream-a10: #040700cf;
+  --color-cream-a11: #030500dc;
+  --color-cream-a12: #020300e4;
+
+  /* moss: accent-theme-default */
+  --color-moss-1: #f9fbf8;
+  --color-moss-2: #f2f6ef;
+  --color-moss-3: #e2e9dc;
+  --color-moss-4: #d5dfce;
+  --color-moss-5: #ccd9c4;
+  --color-moss-6: #c3d2bb;
+  --color-moss-7: #a4bf9b;
+  --color-moss-8: #79a970;
+  --color-moss-9: #3f6b3a;
+  --color-moss-10: #345a30;
+  --color-moss-11: #2e502a;
+  --color-moss-12: #1b281a;
+  --color-moss-a1: #f9fbf801;
+  --color-moss-a2: #467c120a;
+  --color-moss-a3: #2f5d021d;
+  --color-moss-a4: #2859052c;
+  --color-moss-a5: #255a0236;
+  --color-moss-a6: #1e55013f;
+  --color-moss-a7: #175c0160;
+  --color-moss-a8: #1066008c;
+  --color-moss-a9: #063f00c3;
+  --color-moss-a10: #053400ce;
+  --color-moss-a11: #052d00d4;
+  --color-moss-a12: #010f00e4;
+
+  /* spring: accent-theme-success */
+  --color-spring-1: #f8fcfb;
+  --color-spring-2: #eef6f5;
+  --color-spring-3: #dbeae7;
+  --color-spring-4: #cce0dc;
+  --color-spring-5: #c3dad6;
+  --color-spring-6: #b9d4ce;
+  --color-spring-7: #99c2ba;
+  --color-spring-8: #6bada0;
+  --color-spring-9: #376f63;
+  --color-spring-10: #2d5d53;
+  --color-spring-11: #28534a;
+  --color-spring-12: #192926;
+  --color-spring-a1: #f8fcfb01;
+  --color-spring-a2: #1071700b;
+  --color-spring-a3: #0263511e;
+  --color-spring-a4: #04614f2e;
+  --color-spring-a5: #025e4f37;
+  --color-spring-a6: #015f4a41;
+  --color-spring-a7: #01655262;
+  --color-spring-a8: #00715b91;
+  --color-spring-a9: #014738c7;
+  --color-spring-a10: #003a2ed1;
+  --color-spring-a11: #003328d6;
+  --color-spring-a12: #00110ee5;
+
+  /* sky: accent-theme-info */
+  --color-sky-1: #f8fbfc;
+  --color-sky-2: #eef4f7;
+  --color-sky-3: #dae5eb;
+  --color-sky-4: #cbdae2;
+  --color-sky-5: #c1d3dc;
+  --color-sky-6: #b7ccd6;
+  --color-sky-7: #95b5c6;
+  --color-sky-8: #6699b3;
+  --color-sky-9: #325e74;
+  --color-sky-10: #294f61;
+  --color-sky-11: #244657;
+  --color-sky-12: #17242b;
+  --color-sky-a1: #f8fbfc01;
+  --color-sky-a2: #1059880b;
+  --color-sky-a3: #0146701f;
+  --color-sky-a4: #04486f2f;
+  --color-sky-a5: #02486d39;
+  --color-sky-a6: #01486b43;
+  --color-sky-a7: #014c7566;
+  --color-sky-a8: #00548096;
+  --color-sky-a9: #013752cc;
+  --color-sky-a10: #002d42d5;
+  --color-sky-a11: #00273bda;
+  --color-sky-a12: #000e15e7;
+
+  /* clay: accent-theme-critical */
+  --color-clay-1: #fcf9f8;
+  --color-clay-2: #f7f0ee;
+  --color-clay-3: #ecded9;
+  --color-clay-4: #e2d0ca;
+  --color-clay-5: #ddc7c0;
+  --color-clay-6: #d7beb6;
+  --color-clay-7: #c7a094;
+  --color-clay-8: #b57764;
+  --color-clay-9: #754030;
+  --color-clay-10: #633528;
+  --color-clay-11: #582f22;
+  --color-clay-12: #2b1c17;
+  --color-clay-a1: #fcf9f801;
+  --color-clay-a2: #8828100b;
+  --color-clay-a3: #7d220120;
+  --color-clay-a4: #721f0430;
+  --color-clay-a5: #741d023a;
+  --color-clay-a6: #711c0044;
+  --color-clay-a7: #791d0067;
+  --color-clay-a8: #851f0098;
+  --color-clay-a9: #551400ce;
+  --color-clay-a10: #460f00d6;
+  --color-clay-a11: #3e0f00dc;
+  --color-clay-a12: #150500e7;
+
+  /* honey: accent-theme-warning */
+  --color-honey-1: #fdfbf7;
+  --color-honey-2: #f8f4ec;
+  --color-honey-3: #eee5d7;
+  --color-honey-4: #e5dac7;
+  --color-honey-5: #e0d3bd;
+  --color-honey-6: #dbccb2;
+  --color-honey-7: #cdb68e;
+  --color-honey-8: #be9a5a;
+  --color-honey-9: #7e5e28;
+  --color-honey-10: #6a4f20;
+  --color-honey-11: #5e461c;
+  --color-honey-12: #2e2514;
+  --color-honey-a1: #fdfbf701;
+  --color-honey-a2: #93660d0c;
+  --color-honey-a3: #89510021;
+  --color-honey-a4: #83530232;
+  --color-honey-a5: #8251013c;
+  --color-honey-a6: #85550348;
+  --color-honey-a7: #8d5a016d;
+  --color-honey-a8: #9a6200a2;
+  --color-honey-a9: #664000d6;
+  --color-honey-a10: #543500de;
+  --color-honey-a11: #4a2f00e2;
+  --color-honey-a12: #1b1200ea;
+
+  /* ember: accent-theme-danger */
+  --color-ember-1: #fdf7f7;
+  --color-ember-2: #f9edec;
+  --color-ember-3: #efd7d6;
+  --color-ember-4: #e7c8c5;
+  --color-ember-5: #e3bdbb;
+  --color-ember-6: #ddb3b0;
+  --color-ember-7: #d08f8a;
+  --color-ember-8: #c45c54;
+  --color-ember-9: #832923;
+  --color-ember-10: #6e221c;
+  --color-ember-11: #621d18;
+  --color-ember-12: #2f1513;
+  --color-ember-a1: #fdf7f701;
+  --color-ember-a2: #a8230d0c;
+  --color-ember-a3: #94070022;
+  --color-ember-a4: #91110234;
+  --color-ember-a5: #9208003e;
+  --color-ember-a6: #8f0d024a;
+  --color-ember-a7: #970c0171;
+  --color-ember-a8: #a60c00a8;
+  --color-ember-a9: #6f0700db;
+  --color-ember-a10: #5c0700e2;
+  --color-ember-a11: #510500e6;
+  --color-ember-a12: #1d0200eb;
+
+  /* the accent indirection, pinned to moss */
+  --color-accent-1: var(--color-moss-1);
+  --color-accent-2: var(--color-moss-2);
+  --color-accent-3: var(--color-moss-3);
+  --color-accent-4: var(--color-moss-4);
+  --color-accent-5: var(--color-moss-5);
+  --color-accent-6: var(--color-moss-6);
+  --color-accent-7: var(--color-moss-7);
+  --color-accent-8: var(--color-moss-8);
+  --color-accent-9: var(--color-moss-9);
+  --color-accent-10: var(--color-moss-10);
+  --color-accent-11: var(--color-moss-11);
+  --color-accent-12: var(--color-moss-12);
+  --color-accent-a1: var(--color-moss-a1);
+  --color-accent-a2: var(--color-moss-a2);
+  --color-accent-a3: var(--color-moss-a3);
+  --color-accent-a4: var(--color-moss-a4);
+  --color-accent-a5: var(--color-moss-a5);
+  --color-accent-a6: var(--color-moss-a6);
+  --color-accent-a7: var(--color-moss-a7);
+  --color-accent-a8: var(--color-moss-a8);
+  --color-accent-a9: var(--color-moss-a9);
+  --color-accent-a10: var(--color-moss-a10);
+  --color-accent-a11: var(--color-moss-a11);
+  --color-accent-a12: var(--color-moss-a12);
+
+  --color-background-1: var(--color-cream-2); /* page ground */
+  --color-background-2: var(--color-cream-1); /* raised panel; the reading surface */
+  --color-foreground-strong: var(--color-cream-12); /* headings, row titles */
+  --color-foreground: var(--color-cream-11); /* body copy */
+  --color-foreground-muted: var(--color-cream-7); /* deks, captions, metadata */
+  --color-foreground-subtle: var(--color-cream-6); /* labels, inactive tabs. large text only */
+  --color-border-subtle: var(--color-cream-4); /* dividers inside a raised surface */
+  --color-border: var(--color-cream-5); /* borders on the ground */
+  --color-placeholder: var(--color-cream-4); /* cover-art stand-in */
+  --color-stark-contrast: #1c1d19; /* focus ring */
+
+  --font-heading: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --text-11: 11px;
+  --text-12: 12px;
+  --text-13: 13px;
+  --text-14: 14px;
+  --text-15: 15px;
+  --text-16: 16px;
+  --text-18: 18px;
+  --text-20: 20px;
+  --text-24: 24px;
+  --text-32: 32px;
+  --text-44: 44px;
+
+  --tracking-tight: -0.03em;
+  --tracking-snug: -0.01em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.09em;
+}
