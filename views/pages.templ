@@ -1,0 +1,25 @@
+package views
+
+// Hello is one island on a plain page.
+templ Hello(name string) {
+	<p class="font-mono text-12 tracking-wide text-foreground-muted uppercase">greeting</p>
+	<h1 class="mt-2 font-heading text-44 font-semibold tracking-tight text-foreground-strong">hello { name }</h1>
+	<section class="mt-8" aria-label="wave">
+		@Island("wave", WaveProps{Name: name}, "idle") {
+			@waveFrame("0 waves")
+		}
+	</section>
+}
+
+// waveFrame matches the wave island's first render.
+templ waveFrame(count string) {
+	<div class="flex h-10 items-center gap-4">
+		<span class="inline-flex h-10 items-center rounded-md bg-accent-4 px-4 text-14 font-semibold text-accent-12 opacity-60">wave</span>
+		<span class="font-mono text-14 text-foreground-muted">{ count }</span>
+	</div>
+}
+
+templ NotFound() {
+	<h1 class="font-heading text-32 font-semibold tracking-tight text-foreground-strong">not found</h1>
+	<p class="mt-2"><a class="text-accent-9 underline" href="/">back home</a></p>
+}

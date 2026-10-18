@@ -1,0 +1,17 @@
+package views
+
+// Island marks a region a React island takes over. Its children are the
+// fallback, so they should look like the island's first render.
+//
+//	load: "" mounts right away, "idle" when idle, "visible" near the viewport.
+templ Island(name string, props any, load string) {
+	<div
+		data-island={ name }
+		data-props={ templ.JSONString(props) }
+		if load != "" {
+			data-load={ load }
+		}
+	>
+		{ children... }
+	</div>
+}
