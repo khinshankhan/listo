@@ -1,1 +1,7 @@
 bin
+
+# generated; dist/.gitkeep stays so the embed compiles on a fresh clone
+*_templ.go
+web/node_modules/
+web/dist/*
+!web/dist/.gitkeep
