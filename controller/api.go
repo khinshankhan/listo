@@ -1,0 +1,12 @@
+package controller
+
+import (
+	"net/http"
+
+	"github.com/khinshankhan/listo/controller/handler"
+)
+
+// apiRoutes is the JSON API, everything under /api.
+func apiRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/meta", handler.MetaHandler)
+}

@@ -85,6 +85,7 @@ func (s *httpServer) run(ctx context.Context) error {
 func routes(bundle *web.Bundle, pages *handler.Pages) *http.ServeMux {
 	mux := http.NewServeMux()
 
+	apiRoutes(mux)
 	mux.Handle("GET /assets/", handler.Assets(bundle.Files))
 	pageRoutes(mux, pages)
 

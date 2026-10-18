@@ -31,6 +31,7 @@ func TestRoutes(t *testing.T) {
 		{"there has no subpaths", "/there/x", http.StatusNotFound, []string{"back home"}},
 		{"hashed asset", "/assets/app-abc.css", http.StatusOK, []string{"body{}"}},
 		{"missing asset", "/assets/gone.js", http.StatusNotFound, nil},
+		{"meta", "/api/meta", http.StatusOK, []string{`"module":`, `"version":`, `"systemTime":"`}},
 		{"unrouted api is the blackhole, not a page", "/api/nope", http.StatusNotFound, []string{"DATA NOT FOUND"}},
 	}
 
