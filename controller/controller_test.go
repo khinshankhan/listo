@@ -16,7 +16,7 @@ func TestRoutes(t *testing.T) {
 		Files: fstest.MapFS{"assets/app-abc.css": {Data: []byte("body{}")}},
 		Tags:  web.Tags{CSS: []string{"/assets/app-abc.css"}, Script: "/assets/islands-abc.js"},
 	}
-	srv := httptest.NewServer(routes(bundle))
+	srv := httptest.NewServer(newHTTPServer("", bundle).srv.Handler)
 	t.Cleanup(srv.Close)
 
 	cases := []struct {
@@ -31,6 +31,7 @@ func TestRoutes(t *testing.T) {
 		{"there has no subpaths", "/there/x", http.StatusNotFound, []string{"back home"}},
 		{"hashed asset", "/assets/app-abc.css", http.StatusOK, []string{"body{}"}},
 		{"missing asset", "/assets/gone.js", http.StatusNotFound, nil},
+		{"unrouted api is the blackhole, not a page", "/api/nope", http.StatusNotFound, []string{"DATA NOT FOUND"}},
 	}
 
 	for _, tc := range cases {

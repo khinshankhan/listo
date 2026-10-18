@@ -32,15 +32,19 @@ type httpServer struct {
 }
 
 func newHTTPServer(addr string, bundle *web.Bundle) *httpServer {
+	pages := handler.NewPages(bundle.Tags)
+
 	// first listed is outermost
-	handler := middleware.Chain(
+	// NOTE: BlackHole wraps the mux directly, it reads the mux's routes
+	root := middleware.Chain(
 		middleware.Recover,
-	)(routes(bundle))
+		middleware.BlackHole(http.HandlerFunc(pages.NotFound), "/api"),
+	)(routes(bundle, pages))
 
 	return &httpServer{
 		srv: &http.Server{
 			Addr:    addr,
-			Handler: handler,
+			Handler: root,
 		},
 	}
 }
@@ -77,17 +81,12 @@ func (s *httpServer) run(ctx context.Context) error {
 	}
 }
 
-func routes(bundle *web.Bundle) *http.ServeMux {
+// routes wires up each router; anything unrouted falls to the blackhole.
+func routes(bundle *web.Bundle, pages *handler.Pages) *http.ServeMux {
 	mux := http.NewServeMux()
-	pages := handler.NewPages(bundle.Tags)
 
 	mux.Handle("GET /assets/", handler.Assets(bundle.Files))
-
-	mux.HandleFunc("GET /{$}", pages.Home)
-	mux.HandleFunc("GET /there", pages.There)
-
-	// anything else is a real 404, not a catch-all shell
-	mux.HandleFunc("/", pages.NotFound)
+	pageRoutes(mux, pages)
 
 	return mux
 }
