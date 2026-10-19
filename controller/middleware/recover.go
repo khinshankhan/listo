@@ -9,8 +9,8 @@ import (
 	"github.com/khinshankhan/logstox/fields"
 )
 
-// Recover turns a panic into a 500, unless the response already started, in
-// which case it's cut off.
+// Recover turns a panic into a 500, or aborts the response if it already
+// started so a short body can't pass for a complete one.
 func Recover(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rw := &recorder{wrapper: wrapper{ResponseWriter: w}}
@@ -28,9 +28,11 @@ func Recover(next http.Handler) http.Handler {
 					fields.Any("panic", err),
 					fields.String("stack", string(debug.Stack())))
 
-				if !rw.wroteHeader {
-					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				if rw.wroteHeader {
+					// net/http drops the connection and doesn't log it again
+					panic(http.ErrAbortHandler)
 				}
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			}
 		}()
 

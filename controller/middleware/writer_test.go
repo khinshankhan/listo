@@ -152,7 +152,7 @@ func (b bareWriter) WriteHeader(code int) {
 	b.rec.WriteHeader(code)
 }
 
-// once a response has started a panic just cuts it off
+// once a response has started, a panic has to abort it
 func TestRecoverAfterResponseStarted(t *testing.T) {
 	log.SetOutput(io.Discard)
 	defer log.SetOutput(os.Stderr)
@@ -165,7 +165,7 @@ func TestRecoverAfterResponseStarted(t *testing.T) {
 			w.Write([]byte("partial"))
 		}},
 		{"after Flush", func(w http.ResponseWriter) {
-			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("partial"))
 			http.NewResponseController(w).Flush()
 		}},
 		{"after ReadFrom", func(w http.ResponseWriter) {
@@ -175,17 +175,24 @@ func TestRecoverAfterResponseStarted(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fw := newFullWriter()
-			Recover(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			srv := httptest.NewServer(Recover(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				tt.start(w)
 				panic("boom")
-			})).ServeHTTP(fw, httptest.NewRequest("GET", "/", nil))
+			})))
+			t.Cleanup(srv.Close)
 
-			if fw.Code != http.StatusOK {
-				t.Errorf("status = %d, want 200 (already sent)", fw.Code)
+			res, err := http.Get(srv.URL)
+			if err != nil {
+				return // cut off before the status line: aborted
 			}
-			if strings.Contains(fw.Body.String(), "Internal Server Error") {
-				t.Errorf("appended an error to a started response: %q", fw.Body.String())
+			defer res.Body.Close()
+
+			body, err := io.ReadAll(res.Body)
+			if err == nil {
+				t.Errorf("got a complete %d %q, want the response cut off", res.StatusCode, body)
+			}
+			if strings.Contains(string(body), "Internal Server Error") {
+				t.Errorf("appended an error to a started response: %q", body)
 			}
 		})
 	}
