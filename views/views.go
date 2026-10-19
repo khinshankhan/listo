@@ -24,7 +24,7 @@ type Entry struct {
 	Facts     []Fact
 	Relations []Related
 	Groups    []GroupRef
-	Links     []Link
+	Links     []SiteLink
 }
 
 // Fact is one row of an entry's facts card: "episodes", "24".
@@ -57,7 +57,7 @@ type Group struct {
 	Titles               []Title
 	Relations            []Related
 	Groups               []GroupRef
-	Links                []Link
+	Links                []SiteLink
 }
 
 // Positioned reports whether any member has a position.
@@ -102,8 +102,8 @@ type Step struct {
 	Title, Href, Units, Necessity, Note string
 }
 
-// Link is a jump-out link to another site's page for the same work.
-type Link struct {
+// SiteLink is a jump-out link to another site's page for the same work.
+type SiteLink struct {
 	Site, Href, ID string
 }
 

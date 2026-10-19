@@ -1,0 +1,20 @@
+/* ported from quicksilver's tw-grand-links.css (www at 26b6b71) */
+@utility show-underline {
+  background-position: 0 100%;
+}
+
+@utility subtle-underline {
+  background-size: 100% 0.0625em;
+}
+
+@utility drastic-underline {
+  background-size: 100% 0.078125em;
+}
+
+@utility link-hide {
+  background-size: 0% 0.05em;
+}
+
+@utility link-show {
+  background-size: 100% 0.05em;
+}

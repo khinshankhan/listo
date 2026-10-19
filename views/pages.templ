@@ -363,7 +363,7 @@ templ titlesPanel(titles []Title) {
 	}
 }
 
-templ linksPanel(links []Link) {
+templ linksPanel(links []SiteLink) {
 	if len(links) > 0 {
 		@panel("elsewhere") {
 			for _, l := range links {

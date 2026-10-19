@@ -1,0 +1,42 @@
+package views
+
+// Link is every <a> on the site. External links open in a new tab with an
+// icon; file links get a download icon.
+templ Link(p LinkProps) {
+	<a
+		href={ p.Href }
+		class={ linkClass(p.Variant, p.Monochrome), p.Class }
+		if ResolveLinkKind(p.Href) == LinkExternal {
+			target="_blank"
+			rel="noopener noreferrer external"
+		}
+		if p.Label != "" {
+			aria-label={ p.Label }
+		}
+	>
+		{ children... }
+		if !p.NoIcon {
+			@linkIcon(p.Href)
+		}
+	</a>
+}
+
+// linkIcon trails external and file links. The text is hidden rather than an
+// aria-label, which screen readers handle better.
+templ linkIcon(href string) {
+	if ResolveLinkKind(href) == LinkExternal {
+		<svg class="mb-0 ml-0.5 inline size-3 align-top" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+			<path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"></path>
+			<path d="m21 3-9 9"></path>
+			<path d="M15 3h6v6"></path>
+		</svg>
+		<span class="sr-only"> (external link)</span>
+	} else if IsFileLink(href) {
+		<svg class="mb-0 ml-0.5 inline size-3 align-middle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+			<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+			<polyline points="7 10 12 15 17 10"></polyline>
+			<line x1="12" x2="12" y1="15" y2="3"></line>
+		</svg>
+		<span class="sr-only"> (file link)</span>
+	}
+}

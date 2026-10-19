@@ -102,7 +102,7 @@ type nodeParts struct {
 	titles             []views.Title
 	relations          []views.Related
 	groups             []views.GroupRef
-	links              []views.Link
+	links              []views.SiteLink
 }
 
 func (p *Pages) nodeParts(ctx context.Context, id uuid.UUID, country string) (nodeParts, error) {
@@ -159,7 +159,7 @@ func (p *Pages) nodeParts(ctx context.Context, id uuid.UUID, country string) (no
 		return parts, fmt.Errorf("links: %w", err)
 	}
 	for _, l := range links {
-		parts.links = append(parts.links, views.Link{Site: l.Site, Href: l.Url, ID: l.ExternalID})
+		parts.links = append(parts.links, views.SiteLink{Site: l.Site, Href: l.Url, ID: l.ExternalID})
 	}
 
 	return parts, nil
