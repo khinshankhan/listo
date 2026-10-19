@@ -171,15 +171,15 @@ templ relationsPanel(relations []Related) {
 	if len(relations) > 0 {
 		@panel("relations") {
 			for _, r := range relations {
-				<li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
-					<span class="w-36 shrink-0 font-mono text-11 tracking-wide text-foreground-muted uppercase">{ r.Reading }</span>
+				<li class="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-4">
+					<span class="font-mono text-11 tracking-wide text-foreground-muted uppercase sm:w-36 sm:shrink-0">{ r.Reading }</span>
 					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ r.Href }>{ r.Title }</a>
 					if r.Anchor != "" {
 						<span class="font-mono text-13 text-foreground-muted">{ r.Anchor }</span>
 					}
-					<span class="ml-auto font-mono text-13 text-foreground-muted">{ r.Meta }</span>
+					<span class="font-mono text-13 text-foreground-muted sm:ml-auto">{ r.Meta }</span>
 					if r.Note != "" {
-						<p class="basis-full pl-40 text-14 text-foreground-muted">{ r.Note }</p>
+						<p class="text-14 text-foreground-muted sm:basis-full sm:pl-40">{ r.Note }</p>
 					}
 				</li>
 			}
@@ -191,8 +191,8 @@ templ titlesPanel(titles []Title) {
 	if len(titles) > 0 {
 		@panel("titles") {
 			for _, t := range titles {
-				<li class="flex items-baseline gap-4 px-4 py-3">
-					<span class="w-36 shrink-0 font-mono text-11 tracking-wide text-foreground-muted uppercase">{ t.Kind }</span>
+				<li class="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-baseline sm:gap-4">
+					<span class="font-mono text-11 tracking-wide text-foreground-muted uppercase sm:w-36 sm:shrink-0">{ t.Kind }</span>
 					<span class="text-foreground-strong">{ t.Title }</span>
 				</li>
 			}
