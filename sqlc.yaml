@@ -1,0 +1,44 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    # seed/ stays out, its helpers aren't for the app
+    schema: "schema"
+    # Annotated SQL queries used to generate the type-safe Querier interface.
+    queries: "queries"
+    gen:
+      go:
+        out: "data/sqlcgen"
+        package: "sqlcgen"
+        sql_package: "pgx/v5"
+        # Generate a Querier interface for dependency injection and tests.
+        emit_interface: true
+        # Return an empty slice instead of nil from :many queries with no rows.
+        emit_empty_slices: true
+        # Map nullable values to pointers. SQL NULL becomes nil.
+        emit_pointers_for_null_types: true
+        # Plain Go types over pgtype wrappers where the mapping is exact.
+        overrides:
+          - db_type: "uuid"
+            go_type: "github.com/google/uuid.UUID"
+          - db_type: "uuid"
+            nullable: true
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
+              pointer: true
+          - db_type: "pg_catalog.timestamptz"
+            go_type: "time.Time"
+          - db_type: "pg_catalog.timestamptz"
+            nullable: true
+            go_type:
+              import: "time"
+              type: "Time"
+              pointer: true
+          - db_type: "date"
+            go_type: "time.Time"
+          - db_type: "date"
+            nullable: true
+            go_type:
+              import: "time"
+              type: "Time"
+              pointer: true

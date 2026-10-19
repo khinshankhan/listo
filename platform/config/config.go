@@ -11,6 +11,10 @@ const (
 	// EnvAddr is the address the HTTP server listens on.
 	EnvAddr = "LISTO_ADDR"
 
+	// EnvDatabaseURL is the Postgres connection string. Unset, libpq's PG*
+	// variables apply.
+	EnvDatabaseURL = "LISTO_DATABASE_URL"
+
 	// EnvLog is "json" for JSON logs, anything else for console.
 	EnvLog = "LISTO_LOG"
 
@@ -27,6 +31,11 @@ func Addr() string {
 		return v
 	}
 	return DefaultAddr
+}
+
+// DatabaseURL returns the configured connection string, which may be empty.
+func DatabaseURL() string {
+	return strings.TrimSpace(os.Getenv(EnvDatabaseURL))
 }
 
 // JSONLogs reports whether logs should be JSON.

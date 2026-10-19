@@ -116,6 +116,16 @@ db-down: need-pg
 psql: db-up
 	@psql
 
+# regenerate the typed query layer from schema/ + queries/
+.PHONY: sqlc
+sqlc: | need-pg
+	sqlc generate
+
+# fails instead of rewriting, so CI catches stale generated code
+.PHONY: sqlc-check
+sqlc-check: | need-pg
+	sqlc diff
+
 # extra flags and a package selector for the test targets, eg
 #   make test GOTESTFLAGS=-v
 #   make test GOTESTFLAGS='-run TestFoo -v'
@@ -123,18 +133,19 @@ psql: db-up
 GOTESTFLAGS ?=
 PKG ?= ./...
 
-# -race by default, which needs cgo, hence the local CGO_ENABLED override
+# -race by default, which needs cgo, hence the local CGO_ENABLED override.
+# data/ tests need the dev database loaded once (make db-reset)
 .PHONY: test
-test: generate
+test: generate db-up
 	CGO_ENABLED=1 go test -race $(GOTESTFLAGS) $(PKG)
 
 # no race detector, for a quick inner loop or a cgo-less environment
 .PHONY: test-quick
-test-quick: generate
+test-quick: generate db-up
 	go test $(GOTESTFLAGS) $(PKG)
 
 .PHONY: check
-check: fmt-check vet test
+check: fmt-check vet sqlc-check test
 
 .PHONY: fmt
 fmt:
