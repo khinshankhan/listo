@@ -1,5 +1,6 @@
 -- listo schema. No migrations until there's data to keep: make db-reset
--- rebuilds from this and seed/.
+-- rebuilds from this and seed/. data/constraints_test.go tries one bad write
+-- per rule.
 --
 -- catalog is shared, tracking is per user; catalog never references tracking.
 
