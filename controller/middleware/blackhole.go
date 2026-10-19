@@ -41,7 +41,7 @@ func BlackHole(fallback http.Handler, prefixes ...string) Middleware {
 				return
 			}
 
-			bw := &blackHoleWriter{wrapper: wrapper{ResponseWriter: w}}
+			bw := &blackHoleWriter{ResponseWriter: w}
 			next.ServeHTTP(bw, r)
 
 			if !bw.swallowed {
@@ -72,9 +72,13 @@ func covered(prefixes []string, path string) bool {
 
 // blackHoleWriter swallows the mux's 404 so a replacement can be written.
 type blackHoleWriter struct {
-	wrapper
+	http.ResponseWriter
 	swallowed   bool
 	wroteHeader bool
+}
+
+func (w *blackHoleWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
 }
 
 func (w *blackHoleWriter) WriteHeader(code int) {

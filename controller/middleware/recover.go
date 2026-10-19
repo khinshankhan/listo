@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"io"
 	"net/http"
 	"runtime/debug"
 
@@ -13,7 +12,7 @@ import (
 // started so a short body can't pass for a complete one.
 func Recover(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw := &recorder{wrapper: wrapper{ResponseWriter: w}}
+		rw := &recorder{ResponseWriter: w}
 
 		defer func() {
 			if err := recover(); err != nil {
@@ -40,10 +39,15 @@ func Recover(next http.Handler) http.Handler {
 	})
 }
 
-// recorder tracks whether the status line has been sent.
+// recorder tracks whether the status line has been sent. Everything else
+// goes through Unwrap for http.ResponseController.
 type recorder struct {
-	wrapper
+	http.ResponseWriter
 	wroteHeader bool
+}
+
+func (w *recorder) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
 }
 
 func (w *recorder) WriteHeader(code int) {
@@ -56,13 +60,9 @@ func (w *recorder) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
-// ReadFrom and Flush bypass Write, so both mark the response as started.
-func (w *recorder) ReadFrom(r io.Reader) (int64, error) {
+// FlushError is what http.ResponseController calls. A flush sends the status
+// line.
+func (w *recorder) FlushError() error {
 	w.wroteHeader = true
-	return w.wrapper.ReadFrom(r)
-}
-
-func (w *recorder) Flush() {
-	w.wroteHeader = true
-	w.wrapper.Flush()
+	return http.NewResponseController(w.ResponseWriter).Flush()
 }
