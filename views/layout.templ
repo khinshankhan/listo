@@ -25,6 +25,10 @@ templ Layout(head Head, tags web.Tags, chrome Chrome) {
 				<link rel="canonical" href={ head.Canonical }/>
 				<meta property="og:url" content={ head.Canonical }/>
 			}
+			// fonts first, so they're fetching before the stylesheet asks
+			for _, href := range tags.Fonts {
+				<link rel="preload" href={ href } as="font" type="font/woff2" crossorigin/>
+			}
 			for _, href := range tags.CSS {
 				<link rel="stylesheet" href={ href }/>
 			}
