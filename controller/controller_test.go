@@ -3,9 +3,11 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -56,15 +58,16 @@ func TestRoutes(t *testing.T) {
 			}
 			defer res.Body.Close()
 
-			body, err := io.ReadAll(res.Body)
+			raw, err := io.ReadAll(res.Body)
 			if err != nil {
 				t.Fatal(err)
 			}
+			body := plainLinks(string(raw))
 			if res.StatusCode != tc.status {
 				t.Errorf("status = %d, want %d", res.StatusCode, tc.status)
 			}
 			for _, w := range tc.want {
-				if !strings.Contains(string(body), w) {
+				if !strings.Contains(body, w) {
 					t.Errorf("body missing %q", w)
 				}
 			}
@@ -123,8 +126,8 @@ func TestCatalogPages(t *testing.T) {
 			want: []string{`href="/entries/6/steins-gate-vn">Steins;Gate</a>`, "visual novel · 2009",
 				`href="/entries/11/steins-gate-0-anime">Steins;Gate 0</a>`, "branches off episode 23"}},
 		{name: "groups, nearest first, linked", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
-			want: []string{`#1</span> in <a class="hover:text-accent-9" href="/groups/3/steins-gate-main">Main timeline</a>`,
-				`part of</span> <a class="hover:text-accent-9" href="/groups/2/steins-gate">Steins;Gate</a>`}},
+			want: []string{`#1</span> in <a href="/groups/3/steins-gate-main">Main timeline</a>`,
+				`part of</span> <a href="/groups/2/steins-gate">Steins;Gate</a>`}},
 		{name: "a group's id under /entries moves to its page", path: "/entries/2/steins-gate", status: http.StatusMovedPermanently,
 			location: "/groups/2/steins-gate"},
 		{name: "group", path: "/groups/2/steins-gate", status: http.StatusOK,
@@ -180,10 +183,11 @@ func TestCatalogPages(t *testing.T) {
 			}
 			defer res.Body.Close()
 
-			body, err := io.ReadAll(res.Body)
+			raw, err := io.ReadAll(res.Body)
 			if err != nil {
 				t.Fatal(err)
 			}
+			body := plainLinks(string(raw))
 			if res.StatusCode != tc.status {
 				t.Errorf("status = %d, want %d", res.StatusCode, tc.status)
 			}
@@ -191,17 +195,17 @@ func TestCatalogPages(t *testing.T) {
 				t.Errorf("Location = %q, want %q", got, tc.location)
 			}
 			for _, w := range tc.want {
-				if !strings.Contains(string(body), w) {
+				if !strings.Contains(body, w) {
 					t.Errorf("body missing %q", w)
 				}
 			}
 			for _, w := range tc.dontWant {
-				if strings.Contains(string(body), w) {
+				if strings.Contains(body, w) {
 					t.Errorf("body has %q", w)
 				}
 			}
 			for _, w := range tc.once {
-				if n := strings.Count(string(body), w); n != 1 {
+				if n := strings.Count(body, w); n != 1 {
 					t.Errorf("body has %q %d times, want once", w, n)
 				}
 			}
@@ -259,20 +263,21 @@ func TestFrontPages(t *testing.T) {
 			}
 			defer res.Body.Close()
 
-			body, err := io.ReadAll(res.Body)
+			raw, err := io.ReadAll(res.Body)
 			if err != nil {
 				t.Fatal(err)
 			}
+			body := plainLinks(string(raw))
 			if res.StatusCode != tc.status {
 				t.Errorf("status = %d, want %d", res.StatusCode, tc.status)
 			}
 			for _, w := range tc.want {
-				if !strings.Contains(string(body), w) {
+				if !strings.Contains(body, w) {
 					t.Errorf("body missing %q", w)
 				}
 			}
 			for _, w := range tc.dontWant {
-				if strings.Contains(string(body), w) {
+				if strings.Contains(body, w) {
 					t.Errorf("body has %q", w)
 				}
 			}
@@ -495,4 +500,22 @@ func (fakeCatalog) NodeTags(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeTags
 		return nil, nil
 	}
 	return []sqlcgen.NodeTagsRow{{Kind: "genre", Name: "sci-fi"}, {Kind: "genre", Name: "thriller"}}, nil
+}
+
+var (
+	anchorTag = regexp.MustCompile(`<a href="([^"]*)"([^>]*)>`)
+	linkIcon  = regexp.MustCompile(`<svg class="mb-0[^"]*"[^>]*>.*?</svg>\s*<span class="sr-only"> \((external|file) link\)</span>`)
+)
+
+// plainLinks reduces anchors to their href (and aria-current) and drops link
+// icons, so page tests check where links go rather than their classes.
+func plainLinks(body string) string {
+	body = linkIcon.ReplaceAllString(body, "")
+	return anchorTag.ReplaceAllStringFunc(body, func(tag string) string {
+		m := anchorTag.FindStringSubmatch(tag)
+		if strings.Contains(m[2], `aria-current="page"`) {
+			return fmt.Sprintf(`<a href="%s" aria-current="page">`, m[1])
+		}
+		return fmt.Sprintf(`<a href="%s">`, m[1])
+	})
 }

@@ -15,7 +15,9 @@ templ HomePage(h Home) {
 		@panel("start somewhere") {
 			for _, g := range h.Groups {
 				<li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
-					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ g.Href }>{ g.Name }</a>
+					@Link(LinkProps{Href: g.Href, Variant: LinkNone, Class: "font-semibold text-foreground-strong"}) {
+						{ g.Name }
+					}
 					<span class="ml-auto font-mono text-13 text-foreground-muted">{ g.Kind } &middot; { count(g.Entries, "entry", "entries") }</span>
 				</li>
 			}
@@ -42,7 +44,9 @@ templ SearchPage(s Search) {
 			@panel("results") {
 				for _, res := range s.Results {
 					<li class="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-4">
-						<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ res.Href }>{ res.Title }</a>
+						@Link(LinkProps{Href: res.Href, Variant: LinkNone, Class: "font-semibold text-foreground-strong"}) {
+							{ res.Title }
+						}
 						if res.Matched != "" {
 							<span class="text-14 text-foreground-muted">as { res.Matched }</span>
 						}
@@ -64,7 +68,9 @@ templ BrowsePage(b Browse) {
 		@panel("entries") {
 			for _, e := range b.Entries {
 				<li class="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-baseline sm:gap-4">
-					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ e.Href }>{ e.Title }</a>
+					@Link(LinkProps{Href: e.Href, Variant: LinkNone, Class: "font-semibold text-foreground-strong"}) {
+						{ e.Title }
+					}
 					<span class="font-mono text-13 text-foreground-muted sm:ml-auto">{ e.Meta }</span>
 				</li>
 			}
@@ -94,22 +100,14 @@ templ mediumNav(media []MediumLink) {
 	if len(media) > 1 {
 		<nav class="mt-8 flex flex-wrap gap-2" aria-label="browse by medium">
 			for _, m := range media {
-				<a
-					href={ m.Href }
-					if m.Active {
-						aria-current="page"
-					}
-					class={ "rounded-md border px-3 py-1.5 text-14",
-						templ.KV("border-accent-7 bg-accent-3 text-accent-12", m.Active),
-						templ.KV("border-border text-foreground hover:border-accent-7", !m.Active) }
-				>
+				@Link(LinkProps{Href: m.Href, Variant: LinkNone, Monochrome: true, Current: m.Active, Class: pillClass(m.Active)}) {
 					if m.Label == "" {
 						all
 					} else {
 						{ m.Label }
 					}
 					<span class="font-mono text-12 text-foreground-muted">{ fmt.Sprint(m.Count) }</span>
-				</a>
+				}
 			}
 		</nav>
 	}
@@ -117,16 +115,24 @@ templ mediumNav(media []MediumLink) {
 
 templ NotFound() {
 	<h1 class="font-heading text-32 font-semibold tracking-tight text-foreground-strong">not found</h1>
-	<p class="mt-2"><a class="text-accent-9 underline" href="/">back home</a></p>
+	<p class="mt-2">
+		@Link(LinkProps{Href: "/"}) {
+			back home
+		}
+	</p>
 }
 
 // EntryPage is all HTML, for crawlers and link previews.
 templ EntryPage(e Entry) {
 	<div class="flex flex-col gap-6">
 		<nav class="flex items-center gap-[7px]" aria-label="breadcrumb">
-			<a class="font-mono text-11 leading-[14px] tracking-wide text-foreground-subtle uppercase hover:text-accent-9" href="/entries">catalog</a>
+			@Link(LinkProps{Href: "/entries", Variant: LinkNav, Class: breadcrumbClass}) {
+				catalog
+			}
 			<span class="text-12 leading-4 text-border" aria-hidden="true">/</span>
-			<a class="font-mono text-11 leading-[14px] tracking-wide text-foreground-subtle uppercase hover:text-accent-9" href={ e.MediumHref }>{ e.Medium }</a>
+			@Link(LinkProps{Href: e.MediumHref, Variant: LinkNav, Class: breadcrumbClass}) {
+				{ e.Medium }
+			}
 		</nav>
 		<article class="flex flex-col gap-9 md:flex-row">
 			// the rail follows the body on phones
@@ -137,7 +143,9 @@ templ EntryPage(e Entry) {
 					<ul class="flex flex-col rounded-[10px] border border-border bg-background-2" aria-label="elsewhere">
 						for i, l := range e.Links {
 							<li class={ "flex justify-between gap-3 px-[13px] py-[9px]", templ.KV("border-t border-border-subtle", i > 0) }>
-								<a class="text-12 leading-4 text-accent-11 hover:text-accent-9" href={ l.Href }>{ l.Site }</a>
+								@Link(LinkProps{Href: l.Href, Class: "text-12 leading-4 text-accent-11"}) {
+									{ l.Site }
+								}
 								<span class="font-mono text-11 leading-4 text-foreground-muted">{ l.ID }</span>
 							</li>
 						}
@@ -206,7 +214,9 @@ templ relationCard(r Related) {
 	<li class="flex items-center gap-[13px] rounded-[10px] border border-border bg-background-2 p-[14px]">
 		<span class="h-[52px] w-[37px] shrink-0 rounded-sm bg-placeholder" aria-hidden="true"></span>
 		<div class="flex min-w-0 flex-col gap-[3px]">
-			<a class="text-14 leading-[18px] font-semibold text-foreground-strong hover:text-accent-9" href={ r.Href }>{ r.Title }</a>
+			@Link(LinkProps{Href: r.Href, Variant: LinkNone, Class: "text-14 leading-[18px] font-semibold text-foreground-strong"}) {
+				{ r.Title }
+			}
 			<span class="text-12 leading-4 text-foreground-muted">{ r.Meta }</span>
 			<span class="pt-[2px] font-mono text-[10px] leading-3 tracking-[0.04em] text-foreground-subtle uppercase">{ r.Reading }</span>
 			if r.Anchor != "" {
@@ -270,7 +280,9 @@ templ GroupPage(g Group) {
 					if g.Positioned() {
 						<span class="w-12 shrink-0 font-mono text-13 text-foreground-muted">{ m.Position }</span>
 					}
-					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ m.Href }>{ m.Title }</a>
+					@Link(LinkProps{Href: m.Href, Variant: LinkNone, Class: "font-semibold text-foreground-strong"}) {
+						{ m.Title }
+					}
 					<span class="ml-auto font-mono text-13 text-foreground-muted">{ m.Meta }</span>
 				</li>
 			}
@@ -287,7 +299,9 @@ templ steps(steps []Step) {
 		for _, st := range steps {
 			<li>
 				<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ st.Href }>{ st.Title }</a>
+					@Link(LinkProps{Href: st.Href, Variant: LinkNone, Class: "font-semibold text-foreground-strong"}) {
+						{ st.Title }
+					}
 					if st.Units != "" {
 						<span class="font-mono text-13 text-foreground-muted">{ st.Units }</span>
 					}
@@ -324,7 +338,9 @@ templ partOf(groups []GroupRef) {
 				} else {
 					<span class="text-foreground-muted">part of</span>
 				}
-				<a class="hover:text-accent-9" href={ g.Href }>{ g.Name }</a>
+				@Link(LinkProps{Href: g.Href}) {
+					{ g.Name }
+				}
 			}
 		</p>
 	}
@@ -336,7 +352,9 @@ templ relationsPanel(relations []Related) {
 			for _, r := range relations {
 				<li class="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-4">
 					<span class="font-mono text-11 tracking-wide text-foreground-muted uppercase sm:w-36 sm:shrink-0">{ r.Reading }</span>
-					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ r.Href }>{ r.Title }</a>
+					@Link(LinkProps{Href: r.Href, Variant: LinkNone, Class: "font-semibold text-foreground-strong"}) {
+						{ r.Title }
+					}
 					if r.Anchor != "" {
 						<span class="font-mono text-13 text-foreground-muted">{ r.Anchor }</span>
 					}
@@ -368,7 +386,9 @@ templ linksPanel(links []SiteLink) {
 		@panel("elsewhere") {
 			for _, l := range links {
 				<li class="flex items-baseline gap-4 px-4 py-3">
-					<a class="text-accent-9 underline-offset-2 hover:underline" href={ l.Href }>{ l.Site }</a>
+					@Link(LinkProps{Href: l.Href}) {
+						{ l.Site }
+					}
 					<span class="ml-auto font-mono text-13 text-foreground-muted">{ l.ID }</span>
 				</li>
 			}

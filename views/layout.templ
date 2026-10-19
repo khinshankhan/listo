@@ -58,7 +58,9 @@ templ topBar(query string) {
 		</div>
 		<div class="flex flex-1 items-center justify-between gap-[22px] py-[14px] pr-4 sm:px-10">
 			<div class="flex flex-1 items-center gap-[22px]">
-				<a href="/entries" class="text-14 leading-[18px] font-semibold text-accent-11 hover:text-accent-9">browse</a>
+				@Link(LinkProps{Href: "/entries", Variant: LinkNav, Class: "text-14 leading-[18px] font-semibold text-accent-11"}) {
+					browse
+				}
 				<form
 					action="/search"
 					method="get"
@@ -121,14 +123,7 @@ templ sideSection(title string) {
 }
 
 templ sideLink(href, label string, n int, active bool) {
-	<a
-		href={ href }
-		if active {
-			aria-current="page"
-		}
-		class={ "flex items-center gap-[11px] rounded-lg px-2.5 py-[9px]",
-			templ.KV("bg-accent-3", active), templ.KV("hover:bg-background-1", !active) }
-	>
+	@Link(LinkProps{Href: href, Variant: LinkNone, Monochrome: true, Current: active, Class: sideLinkClass(active)}) {
 		<span
 			class={ "flex-1 text-14 leading-[18px] tracking-snug",
 			templ.KV("font-semibold text-accent-11", active), templ.KV("font-medium text-foreground-strong", !active) }
@@ -137,12 +132,12 @@ templ sideLink(href, label string, n int, active bool) {
 			class={ "shrink-0 font-mono text-11 leading-[14px]",
 			templ.KV("text-accent-11", active), templ.KV("text-foreground-muted", !active) }
 		>{ fmt.Sprint(n) }</span>
-	</a>
+	}
 }
 
 // Wordmark is `listo.`, its full stop in the accent.
 templ Wordmark() {
-	<a href="/" class="font-heading text-[21px] leading-[26px] font-extrabold tracking-[-0.045em] text-foreground-strong">
+	@Link(LinkProps{Href: "/", Variant: LinkNone, Monochrome: true, Class: "font-heading text-[21px] leading-[26px] font-extrabold tracking-[-0.045em] text-foreground-strong"}) {
 		listo<span class="text-accent-9">.</span>
-	</a>
+	}
 }
