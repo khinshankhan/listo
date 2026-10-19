@@ -10,6 +10,7 @@ import (
 	"github.com/khinshankhan/listo/controller/handler"
 	"github.com/khinshankhan/listo/controller/middleware"
 	"github.com/khinshankhan/listo/data"
+	"github.com/khinshankhan/listo/data/sqlcgen"
 	"github.com/khinshankhan/listo/platform/config"
 	"github.com/khinshankhan/listo/platform/logx"
 	"github.com/khinshankhan/listo/web"
@@ -32,16 +33,16 @@ func RunHTTPServer(ctx context.Context) error {
 	}
 	defer db.Close()
 
-	return newHTTPServer(config.Addr(), bundle, db).run(ctx)
+	return newHTTPServer(config.Addr(), bundle, db, sqlcgen.New(db)).run(ctx)
 }
 
 type httpServer struct {
 	srv *http.Server
 }
 
-func newHTTPServer(addr string, bundle *web.Bundle, db handler.Pinger) *httpServer {
+func newHTTPServer(addr string, bundle *web.Bundle, db handler.Pinger, entries handler.EntryFinder) *httpServer {
 	api := handler.NewAPI(db)
-	pages := handler.NewPages(bundle.Tags)
+	pages := handler.NewPages(bundle.Tags, entries)
 
 	// first listed is outermost
 	// NOTE: BlackHole wraps the mux directly, it reads the mux's routes
