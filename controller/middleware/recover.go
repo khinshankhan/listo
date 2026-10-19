@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 	"runtime/debug"
 
@@ -61,8 +62,11 @@ func (w *recorder) Write(b []byte) (int, error) {
 }
 
 // FlushError is what http.ResponseController calls. A flush sends the status
-// line.
+// line, unless the writer can't flush.
 func (w *recorder) FlushError() error {
-	w.wroteHeader = true
-	return http.NewResponseController(w.ResponseWriter).Flush()
+	err := http.NewResponseController(w.ResponseWriter).Flush()
+	if !errors.Is(err, http.ErrNotSupported) {
+		w.wroteHeader = true
+	}
+	return err
 }

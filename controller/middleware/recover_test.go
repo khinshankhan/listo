@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -101,5 +102,32 @@ func TestRecoverAfterResponseStarted(t *testing.T) {
 				t.Errorf("appended an error to a started response: %q", body)
 			}
 		})
+	}
+}
+
+// an unsupported flush sends nothing, so a panic still gets a 500
+func TestRecoverAfterUnsupportedFlush(t *testing.T) {
+	log.SetOutput(io.Discard)
+	defer log.SetOutput(os.Stderr)
+
+	rec := httptest.NewRecorder()
+	var flushErr error
+	func() {
+		defer func() {
+			if err := recover(); err != nil {
+				t.Errorf("panic escaped Recover: %v", err)
+			}
+		}()
+		Recover(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			flushErr = http.NewResponseController(w).Flush()
+			panic("boom")
+		})).ServeHTTP(bareWriter{rec}, httptest.NewRequest("GET", "/", nil))
+	}()
+
+	if !errors.Is(flushErr, http.ErrNotSupported) {
+		t.Fatalf("Flush: err = %v, want ErrNotSupported", flushErr)
+	}
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want 500", rec.Code)
 	}
 }
