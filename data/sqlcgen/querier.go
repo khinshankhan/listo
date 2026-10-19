@@ -14,6 +14,13 @@ type Querier interface {
 	// An entry by public id, with its medium and format labels. The caller
 	// checks the slug.
 	EntryByPublicID(ctx context.Context, publicID int64) (EntryByPublicIDRow, error)
+	GroupByPublicID(ctx context.Context, publicID int64) (GroupByPublicIDRow, error)
+	// A group's direct members: subgroups first, then entries in release order.
+	GroupMembers(ctx context.Context, groupID uuid.UUID) ([]GroupMembersRow, error)
+	// A group's orderings, one row per step.
+	GroupOrderings(ctx context.Context, groupID uuid.UUID) ([]GroupOrderingsRow, error)
+	// A node's type, to redirect an id used under the wrong path.
+	NodeByPublicID(ctx context.Context, publicID int64) (NodeByPublicIDRow, error)
 	// Every group a node is in, nearest first, with a cycle guard.
 	NodeGroups(ctx context.Context, memberID uuid.UUID) ([]NodeGroupsRow, error)
 	// Jump-out links: only ids are stored, URLs come from the id_source vocabulary.
