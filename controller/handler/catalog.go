@@ -132,8 +132,8 @@ func (p *Pages) Entries(w http.ResponseWriter, r *http.Request) {
 	if filter != nil {
 		head.Canonical = "/entries?medium=" + url.QueryEscape(medium)
 	}
-	// with no filter, medium is "" and "everything" is the active link
-	chrome, err := p.chrome(r, &medium, "")
+	// reuse the links rather than counting again
+	chrome, err := p.chromeWith(r, media, "")
 	if err != nil {
 		p.serverError(w, r, err)
 		return
@@ -169,6 +169,11 @@ func (p *Pages) chrome(r *http.Request, medium *string, query string) (views.Chr
 	if err != nil {
 		return views.Chrome{}, err
 	}
+	return p.chromeWith(r, media, query)
+}
+
+// chromeWith is chrome for a page that already has its medium links.
+func (p *Pages) chromeWith(r *http.Request, media []views.MediumLink, query string) (views.Chrome, error) {
 	groups, err := p.catalog.TopGroups(r.Context())
 	if err != nil {
 		return views.Chrome{}, fmt.Errorf("top groups: %w", err)
