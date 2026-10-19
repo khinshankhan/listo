@@ -47,7 +47,12 @@ func (p *Pages) Group(w http.ResponseWriter, r *http.Request) {
 		Description: fmt.Sprintf("%s, %s %s on listo.", g.Name, article(g.Kind), g.Kind),
 		Canonical:   canonical,
 	}
-	p.render(w, r, http.StatusOK, head, views.GroupPage(v))
+	chrome, err := p.chrome(r, nil, "")
+	if err != nil {
+		p.serverError(w, r, err)
+		return
+	}
+	p.render(w, r, http.StatusOK, head, chrome, views.GroupPage(v))
 }
 
 func (p *Pages) groupView(ctx context.Context, g sqlcgen.GroupByPublicIDRow) (views.Group, error) {

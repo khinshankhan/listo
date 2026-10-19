@@ -26,11 +26,16 @@ templ HomePage(h Home) {
 
 // SearchPage is a GET form and its results.
 templ SearchPage(s Search) {
-	<h1 class="font-heading text-32 font-semibold tracking-tight text-foreground-strong">search</h1>
-	<div class="mt-6">
-		@searchForm(s.Query)
-	</div>
-	if s.Searched {
+	<h1 class="font-heading text-32 font-semibold tracking-tight text-foreground-strong">
+		if s.Query != "" {
+			{ s.Query }
+		} else {
+			search
+		}
+	</h1>
+	if !s.Searched {
+		<p class="mt-2 text-14 text-foreground-muted">search every title an entry or franchise goes by, in any language, from the box above.</p>
+	} else {
 		if len(s.Results) == 0 {
 			<p class="mt-8 text-foreground-muted">nothing matches &ldquo;{ s.Query }&rdquo; yet.</p>
 		} else {
@@ -52,7 +57,9 @@ templ SearchPage(s Search) {
 // BrowsePage is every entry, or one medium's.
 templ BrowsePage(b Browse) {
 	<h1 class="font-heading text-32 font-semibold tracking-tight text-foreground-strong">browse</h1>
-	@mediumNav(b.Media)
+	<div class="lg:hidden">
+		@mediumNav(b.Media)
+	</div>
 	if len(b.Entries) > 0 {
 		@panel("entries") {
 			for _, e := range b.Entries {

@@ -27,7 +27,7 @@ func (p *Pages) Home(w http.ResponseWriter, r *http.Request) {
 		p.serverError(w, r, err)
 		return
 	}
-	media, err := p.mediumLinks(r, "")
+	media, err := p.mediumLinks(r, nil)
 	if err != nil {
 		p.serverError(w, r, err)
 		return
@@ -44,7 +44,8 @@ func (p *Pages) Home(w http.ResponseWriter, r *http.Request) {
 	}
 
 	head := views.Head{Title: "listo", Description: "The 1 list for all your content: anime, manga, games, books and more."}
-	p.render(w, r, http.StatusOK, head, views.HomePage(v))
+	// the home page is top bar only: its body is the catalog
+	p.render(w, r, http.StatusOK, head, views.Chrome{}, views.HomePage(v))
 }
 
 // Search serves /search?q=, fuzzy over every title in the local catalog.
@@ -84,7 +85,12 @@ func (p *Pages) Search(w http.ResponseWriter, r *http.Request) {
 	}
 	// results pages stay out of search engines
 	head := views.Head{Title: title, Description: "Search listo's catalog.", NoIndex: true}
-	p.render(w, r, http.StatusOK, head, views.SearchPage(v))
+	chrome, err := p.chrome(r, nil, q)
+	if err != nil {
+		p.serverError(w, r, err)
+		return
+	}
+	p.render(w, r, http.StatusOK, head, chrome, views.SearchPage(v))
 }
 
 // Entries lists every entry, or one medium's with ?medium=. An unknown or
@@ -92,7 +98,7 @@ func (p *Pages) Search(w http.ResponseWriter, r *http.Request) {
 func (p *Pages) Entries(w http.ResponseWriter, r *http.Request) {
 	medium := r.URL.Query().Get("medium")
 
-	media, err := p.mediumLinks(r, medium)
+	media, err := p.mediumLinks(r, &medium)
 	if err != nil {
 		p.serverError(w, r, err)
 		return
@@ -128,17 +134,24 @@ func (p *Pages) Entries(w http.ResponseWriter, r *http.Request) {
 	if filter != nil {
 		head.Canonical = "/entries?medium=" + url.QueryEscape(medium)
 	}
-	p.render(w, r, http.StatusOK, head, views.BrowsePage(v))
+	// with no filter, medium is "" and "everything" is the active link
+	chrome, err := p.chrome(r, &medium, "")
+	if err != nil {
+		p.serverError(w, r, err)
+		return
+	}
+	p.render(w, r, http.StatusOK, head, chrome, views.BrowsePage(v))
 }
 
-// mediumLinks is "all" plus a link per medium with entries.
-func (p *Pages) mediumLinks(r *http.Request, active string) ([]views.MediumLink, error) {
+// mediumLinks is "all" plus a link per medium with entries. active marks one:
+// nil none, "" all.
+func (p *Pages) mediumLinks(r *http.Request, active *string) ([]views.MediumLink, error) {
 	counts, err := p.catalog.MediumCounts(r.Context())
 	if err != nil {
 		return nil, fmt.Errorf("medium counts: %w", err)
 	}
 
-	all := views.MediumLink{Href: "/entries", Active: active == ""}
+	all := views.MediumLink{Href: "/entries", Active: active != nil && *active == ""}
 	links := []views.MediumLink{all}
 	for _, c := range counts {
 		links[0].Count += int(c.Entries)
@@ -146,8 +159,31 @@ func (p *Pages) mediumLinks(r *http.Request, active string) ([]views.MediumLink,
 			Label:  c.Label,
 			Href:   "/entries?medium=" + url.QueryEscape(c.Medium),
 			Count:  int(c.Entries),
-			Active: c.Medium == active,
+			Active: active != nil && c.Medium == *active,
 		})
 	}
 	return links, nil
+}
+
+// chrome is the sidebar and top bar for a catalog page.
+func (p *Pages) chrome(r *http.Request, medium *string, query string) (views.Chrome, error) {
+	media, err := p.mediumLinks(r, medium)
+	if err != nil {
+		return views.Chrome{}, err
+	}
+	groups, err := p.catalog.TopGroups(r.Context())
+	if err != nil {
+		return views.Chrome{}, fmt.Errorf("top groups: %w", err)
+	}
+
+	side := &views.Sidebar{Media: media}
+	for _, g := range groups {
+		side.Franchises = append(side.Franchises, views.GroupCard{
+			Name:    g.Name,
+			Kind:    g.Kind,
+			Href:    GroupPath(g.PublicID, g.Slug),
+			Entries: int(g.Entries),
+		})
+	}
+	return views.Chrome{Query: query, Sidebar: side}, nil
 }

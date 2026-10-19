@@ -50,7 +50,12 @@ func (p *Pages) Entry(w http.ResponseWriter, r *http.Request) {
 		Description: describe(v),
 		Canonical:   canonical,
 	}
-	p.render(w, r, http.StatusOK, head, views.EntryPage(v))
+	chrome, err := p.chrome(r, &e.Medium, "")
+	if err != nil {
+		p.serverError(w, r, err)
+		return
+	}
+	p.render(w, r, http.StatusOK, head, chrome, views.EntryPage(v))
 }
 
 // entryView gathers everything the page shows into display form.

@@ -1,9 +1,13 @@
 package views
 
-import "github.com/khinshankhan/listo/web"
+import (
+	"fmt"
 
-// Layout is the page shell.
-templ Layout(head Head, tags web.Tags) {
+	"github.com/khinshankhan/listo/web"
+)
+
+// Layout is the page shell: top bar, and the sidebar when there is one.
+templ Layout(head Head, tags web.Tags, chrome Chrome) {
 	<!DOCTYPE html>
 	<html lang="en">
 		<head>
@@ -29,24 +33,116 @@ templ Layout(head Head, tags web.Tags) {
 				<link rel="modulepreload" href={ href }/>
 			}
 		</head>
-		<body class="min-h-screen bg-background-1 font-body text-foreground">
-			<header class="border-b border-border bg-background-2">
-				<nav class="mx-auto flex max-w-5xl items-center gap-6 px-6 py-4">
-					@Wordmark()
-					<a href="/entries" class="text-14 text-foreground-muted hover:text-accent-9">browse</a>
-					<a href="/search" class="text-14 text-foreground-muted hover:text-accent-9">search</a>
-				</nav>
-			</header>
-			<main class="mx-auto max-w-5xl px-6 py-12">
-				{ children... }
-			</main>
+		<body class="flex min-h-screen flex-col bg-background-1 font-body text-foreground antialiased">
+			@topBar(chrome.Query)
+			<div class="flex flex-1">
+				if chrome.Sidebar != nil {
+					@sidebar(*chrome.Sidebar)
+				}
+				<main class="min-w-0 flex-1 px-4 pt-9 pb-12 sm:px-10">
+					<div class={ "max-w-content", templ.KV("mx-auto", chrome.Sidebar == nil) }>
+						{ children... }
+					</div>
+				</main>
+			</div>
 		</body>
 	</html>
 }
 
+// topBar is the wordmark corner, browse and search. The corner matches the
+// sidebar's width.
+templ topBar(query string) {
+	<header class="flex shrink-0 border-b border-border bg-background-2">
+		<div class="flex shrink-0 items-center px-4 sm:w-sidebar sm:border-r sm:border-border sm:px-7">
+			@Wordmark()
+		</div>
+		<div class="flex flex-1 items-center justify-between gap-[22px] py-[14px] pr-4 sm:px-10">
+			<div class="flex flex-1 items-center gap-[22px]">
+				<a href="/entries" class="text-14 leading-[18px] font-semibold text-accent-11 hover:text-accent-9">browse</a>
+				<form
+					action="/search"
+					method="get"
+					role="search"
+					class="flex max-w-[420px] min-w-0 flex-1 items-center gap-[9px] rounded-lg border border-border bg-background-1 px-3 py-2 focus-within:outline-2 focus-within:outline-stark-contrast"
+				>
+					<svg width="15" height="15" viewBox="0 0 18 18" class="shrink-0" aria-hidden="true">
+						<circle cx="8.2" cy="8.2" r="5.4" fill="none" stroke="var(--color-foreground-subtle)" stroke-width="1.5"></circle>
+						<path d="M12.3 12.3l3 3" fill="none" stroke="var(--color-foreground-subtle)" stroke-width="1.5" stroke-linecap="round"></path>
+					</svg>
+					<label for="site-search" class="sr-only">search the catalog</label>
+					<input
+						id="site-search"
+						name="q"
+						type="search"
+						value={ query }
+						placeholder="search the catalog"
+						class="min-w-0 flex-1 bg-transparent text-13 leading-4 text-foreground-strong outline-none placeholder:text-foreground-subtle"
+					/>
+					<kbd class="hidden rounded-sm border border-border px-[5px] py-px font-mono text-11 leading-[14px] text-foreground-subtle sm:inline-block" title="press / to search">/</kbd>
+				</form>
+			</div>
+			<div class="hidden shrink-0 items-center gap-[7px] md:flex">
+				<span class="text-14 leading-[18px] font-medium text-foreground-subtle">API</span>
+				<span class="font-mono text-[10px] leading-[14px] tracking-[0.04em] text-foreground-subtle">SOON</span>
+			</div>
+		</div>
+	</header>
+}
+
+// sidebar is the catalog nav, hidden on small screens.
+templ sidebar(s Sidebar) {
+	<aside class="hidden w-sidebar shrink-0 flex-col border-r border-border bg-background-2 px-5 py-6 lg:flex">
+		<nav class="flex flex-col gap-7" aria-label="catalog">
+			@sideSection("catalog") {
+				for _, m := range s.Media {
+					if m.Label == "" {
+						@sideLink(m.Href, "everything", m.Count, m.Active)
+					} else {
+						@sideLink(m.Href, m.Label, m.Count, m.Active)
+					}
+				}
+			}
+			if len(s.Franchises) > 0 {
+				@sideSection("franchises") {
+					for _, f := range s.Franchises {
+						@sideLink(f.Href, f.Name, f.Entries, false)
+					}
+				}
+			}
+		</nav>
+	</aside>
+}
+
+templ sideSection(title string) {
+	<div class="flex flex-col gap-0.5">
+		<p class="pb-2 pl-2.5 font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">{ title }</p>
+		{ children... }
+	</div>
+}
+
+templ sideLink(href, label string, n int, active bool) {
+	<a
+		href={ templ.SafeURL(href) }
+		if active {
+			aria-current="page"
+		}
+		class={ "flex items-center gap-[11px] rounded-lg px-2.5 py-[9px]",
+			templ.KV("bg-accent-3", active), templ.KV("hover:bg-background-1", !active) }
+	>
+		<span
+			class={ "flex-1 text-14 leading-[18px] tracking-snug",
+			templ.KV("font-semibold text-accent-11", active), templ.KV("font-medium text-foreground-strong", !active) }
+		>{ label }</span>
+		<span
+			class={ "shrink-0 font-mono text-11 leading-[14px]",
+			templ.KV("text-accent-11", active), templ.KV("text-foreground-muted", !active) }
+		>{ fmt.Sprint(n) }</span>
+	</a>
+}
+
 // Wordmark is `listo.`, its full stop in the accent.
 templ Wordmark() {
-	<a href="/" class="mr-auto font-heading text-24 font-extrabold tracking-[-0.045em] text-foreground-strong">
+	<a href="/" class="font-heading text-[21px] leading-[26px] font-extrabold tracking-[-0.045em] text-foreground-strong">
 		listo<span class="text-accent-9">.</span>
 	</a>
 }

@@ -37,6 +37,7 @@ func TestRoutes(t *testing.T) {
 	}{
 		{"home", up, "/", http.StatusOK, []string{"the 1 list for all your content", "/assets/islands-abc.js"}},
 		{"the demo page is gone", up, "/there", http.StatusNotFound, []string{"back home"}},
+		{"every page has the top bar", up, "/nope", http.StatusNotFound, []string{`role="search"`, `id="site-search"`}},
 		{"unknown path is a real 404", up, "/nope", http.StatusNotFound, []string{"back home"}},
 		{"there has no subpaths", up, "/there/x", http.StatusNotFound, []string{"back home"}},
 		{"hashed asset", up, "/assets/app-abc.css", http.StatusOK, []string{"body{}"}},
@@ -208,9 +209,12 @@ func TestFrontPages(t *testing.T) {
 			want: []string{`<form action="/search" method="get" role="search"`,
 				`href="/groups/2/steins-gate">Steins;Gate</a>`, "franchise &middot; 14 entries",
 				`href="/entries?medium=anime"`, `href="/entries"`},
-			dontWant: []string{"data-island", "noindex"}},
-		{name: "empty search is just the form", path: "/search", status: http.StatusOK,
-			want: []string{`name="q"`, `<meta name="robots" content="noindex">`}, dontWant: []string{">results</h2>"}},
+			// home is top bar only
+			dontWant: []string{"data-island", "noindex", `aria-label="catalog"`}},
+		{name: "empty search points at the box", path: "/search", status: http.StatusOK,
+			want: []string{`id="site-search" name="q"`, `<meta name="robots" content="noindex">`, `aria-label="catalog"`},
+			// no medium is current while searching
+			dontWant: []string{">results</h2>", `aria-current`}},
 		{name: "search finds groups and entries", path: "/search?q=steins", status: http.StatusOK,
 			want: []string{`value="steins"`, ">results</h2>", `href="/groups/2/steins-gate">Steins;Gate</a>`,
 				`href="/entries/7/steins-gate-anime">Steins;Gate</a>`, "anime · 2011", ">franchise</span>"}},
@@ -222,11 +226,11 @@ func TestFrontPages(t *testing.T) {
 			want: []string{"&lt;script&gt;"}, dontWant: []string{`value="<script>`, "&ldquo;<script>"}},
 		{name: "search error is a 500", path: "/search?q=boom", status: http.StatusInternalServerError},
 		{name: "browse everything", path: "/entries", status: http.StatusOK,
-			want: []string{`href="/entries/7/steins-gate-anime">Steins;Gate</a>`, `href="/entries/6/steins-gate-vn">Steins;Gate</a>`,
+			want: []string{`href="/entries" aria-current="page"`, ">everything</span>", `href="/entries/7/steins-gate-anime">Steins;Gate</a>`, `href="/entries/6/steins-gate-vn">Steins;Gate</a>`,
 				`<link rel="canonical" href="/entries">`}},
 		{name: "browse one medium", path: "/entries?medium=anime", status: http.StatusOK,
 			want: []string{`href="/entries/7/steins-gate-anime">Steins;Gate</a>`,
-				`<link rel="canonical" href="/entries?medium=anime">`, `aria-current="page"`},
+				`<link rel="canonical" href="/entries?medium=anime">`, `href="/entries?medium=anime" aria-current="page"`},
 			dontWant: []string{"/entries/6/steins-gate-vn"}},
 		{name: "unknown medium", path: "/entries?medium=pottery", status: http.StatusNotFound, want: []string{"back home"}},
 	}

@@ -23,16 +23,17 @@ func NewPages(tags web.Tags, catalog Catalog) *Pages {
 
 func (p *Pages) NotFound(w http.ResponseWriter, r *http.Request) {
 	head := views.Head{Title: "not found | listo", Description: "There is no page here."}
-	p.render(w, r, http.StatusNotFound, head, views.NotFound())
+	// top bar only: a 404 shouldn't cost database reads
+	p.render(w, r, http.StatusNotFound, head, views.Chrome{}, views.NotFound())
 }
 
 // render writes a page. Pages are the same for everyone, so they're cacheable.
-func (p *Pages) render(w http.ResponseWriter, r *http.Request, status int, head views.Head, body templ.Component) {
+func (p *Pages) render(w http.ResponseWriter, r *http.Request, status int, head views.Head, chrome views.Chrome, body templ.Component) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "public, max-age=60")
 	w.WriteHeader(status)
 
-	if err := views.Layout(head, p.tags).Render(templ.WithChildren(r.Context(), body), w); err != nil {
+	if err := views.Layout(head, p.tags, chrome).Render(templ.WithChildren(r.Context(), body), w); err != nil {
 		logx.Default().Named("render").Error("rendering page",
 			fields.String("path", r.URL.Path),
 			fields.Error(err))

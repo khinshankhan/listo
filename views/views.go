@@ -96,6 +96,19 @@ type Link struct {
 	Site, Href, ID string
 }
 
+// Chrome is the page shell. A nil Sidebar means top bar only.
+type Chrome struct {
+	// Query fills the top bar's search box, on a results page.
+	Query   string
+	Sidebar *Sidebar
+}
+
+// Sidebar is the catalog nav: media, then franchises.
+type Sidebar struct {
+	Media      []MediumLink
+	Franchises []GroupCard
+}
+
 // Home is the front page: search, and where browsing starts.
 type Home struct {
 	Groups []GroupCard

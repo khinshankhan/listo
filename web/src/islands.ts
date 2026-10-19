@@ -3,6 +3,7 @@
 //
 // NOTE: import only types from mount, or React lands in this chunk.
 import type { Mount } from "./mount";
+import "./shortcuts";
 
 type Loader = () => Promise<Mount>;
 
