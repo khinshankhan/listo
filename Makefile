@@ -73,6 +73,40 @@ templ:
 serve: listo
 	./bin/listo serve
 
+# DATABASE
+#
+# Postgres 18 from the flake (`direnv allow` or `nix develop`), as a cluster
+# under var/pg on a unix socket only, so it can't collide with anything.
+# Not secrets; .envrc sets the same.
+export PGDATA := $(CURDIR)/var/pg
+export PGHOST := $(PGDATA)
+export PGDATABASE := listo
+
+# fail early with a hint, rather than "pg_ctl: command not found"
+.PHONY: need-pg
+need-pg:
+	@command -v pg_ctl >/dev/null || { echo "no postgres on PATH: run direnv allow, or nix develop"; exit 1; }
+
+$(PGDATA)/PG_VERSION: | need-pg
+	initdb --auth=trust --encoding=UTF8 --locale=C.UTF-8 --no-instructions >/dev/null
+
+# start the cluster if needed and make sure the database exists.
+# NOTE: -X skips ~/.psqlrc, whose output (eg \timing) would break the check
+.PHONY: db-up
+db-up: $(PGDATA)/PG_VERSION
+	@pg_ctl status >/dev/null || pg_ctl start --wait --log=$(PGDATA)/server.log \
+		-o "-k $(PGDATA) -c listen_addresses=''"
+	@psql -X -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '$(PGDATABASE)'" | grep -qx 1 \
+		|| createdb $(PGDATABASE)
+
+.PHONY: db-down
+db-down: need-pg
+	@pg_ctl status >/dev/null && pg_ctl stop --wait || echo "not running"
+
+.PHONY: psql
+psql: db-up
+	@psql
+
 # extra flags and a package selector for the test targets, eg
 #   make test GOTESTFLAGS=-v
 #   make test GOTESTFLAGS='-run TestFoo -v'

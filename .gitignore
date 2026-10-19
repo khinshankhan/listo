@@ -1,5 +1,11 @@
 bin
 
+# local postgres cluster
+var/
+
+# direnv
+.direnv/
+
 # generated; dist/.gitkeep stays so the embed compiles on a fresh clone
 *_templ.go
 web/node_modules/
