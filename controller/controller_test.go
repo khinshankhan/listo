@@ -93,6 +93,7 @@ func TestEntryPage(t *testing.T) {
 		status   int
 		location string
 		want     []string
+		dontWant []string
 	}{
 		{name: "canonical", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
 			want: []string{"Steins;Gate", "Apr 2011 &middot; 24 episodes",
@@ -108,8 +109,28 @@ func TestEntryPage(t *testing.T) {
 		{name: "relations link to their entries", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
 			want: []string{`href="/entries/6/steins-gate-vn">Steins;Gate</a>`, "visual novel · 2009",
 				`href="/entries/11/steins-gate-0-anime">Steins;Gate 0</a>`, "branches off episode 23"}},
-		{name: "groups, nearest first", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
-			want: []string{"#1</span> in Main timeline", `part of</span> Steins;Gate`}},
+		{name: "groups, nearest first, linked", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
+			want: []string{`#1</span> in <a class="hover:text-accent-9" href="/groups/3/steins-gate-main">Main timeline</a>`,
+				`part of</span> <a class="hover:text-accent-9" href="/groups/2/steins-gate">Steins;Gate</a>`}},
+		{name: "a group's id under /entries moves to its page", path: "/entries/2/steins-gate", status: http.StatusMovedPermanently,
+			location: "/groups/2/steins-gate"},
+		{name: "group", path: "/groups/2/steins-gate", status: http.StatusOK,
+			dontWant: []string{"w-12 shrink-0"},
+			want: []string{`uppercase">franchise`, "Steins;Gate</h1>", `href="/groups/3/steins-gate-main">Main timeline</a>`, ">continuity</span>",
+				`<link rel="canonical" href="/groups/2/steins-gate">`, `content="Steins;Gate, a franchise on listo."`}},
+		{name: "a continuity shows its standing", path: "/groups/3/steins-gate-main", status: http.StatusOK,
+			want: []string{"w-12 shrink-0", "continuity &middot; primary", `href="/entries/7/steins-gate-anime">Steins;Gate</a>`, "anime · 2011"}},
+		{name: "an ordering, step by step", path: "/groups/2/steins-gate", status: http.StatusOK,
+			want: []string{">recommended order</h2>", "first-timer order", "Watch the series, then the branch",
+				">01</span>", "Ep. 1 to Ep. 22", ">02</span>", ">23β</span>", ">or</span>", ">optional</span>", "epilogue"}},
+		{name: "group wrong slug redirects", path: "/groups/2/sg?x=1", status: http.StatusMovedPermanently,
+			location: "/groups/2/steins-gate?x=1"},
+		{name: "group missing slug redirects", path: "/groups/3", status: http.StatusMovedPermanently,
+			location: "/groups/3/steins-gate-main"},
+		{name: "an entry's id under /groups moves to its page", path: "/groups/7", status: http.StatusMovedPermanently,
+			location: "/entries/7/steins-gate-anime"},
+		{name: "unknown group", path: "/groups/999/x", status: http.StatusNotFound, want: []string{"back home"}},
+		{name: "group database error is a 500", path: "/groups/500/x", status: http.StatusInternalServerError},
 		{name: "every title and the links out", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
 			want: []string{">synonym</span>", "S;G", `href="https://anilist.co/anime/9253"`, ">9253</span>"}},
 		{name: "a failed secondary read is a 500, not a half page", path: "/entries/501/broken",
@@ -149,6 +170,11 @@ func TestEntryPage(t *testing.T) {
 					t.Errorf("body missing %q", w)
 				}
 			}
+			for _, w := range tc.dontWant {
+				if strings.Contains(string(body), w) {
+					t.Errorf("body has %q", w)
+				}
+			}
 		})
 	}
 }
@@ -158,9 +184,12 @@ func TestEntryPage(t *testing.T) {
 type fakeCatalog struct{}
 
 var (
-	sgAnime = uuid.MustParse("01a151f2-0000-7000-8000-000000000007")
-	sgMovie = uuid.MustParse("01a151f2-0000-7000-8000-000000000008")
-	broken  = uuid.MustParse("01a151f2-0000-7000-8000-000000000501")
+	sgFranchise = uuid.MustParse("01a151f2-0000-7000-8000-000000000002")
+	sgMain      = uuid.MustParse("01a151f2-0000-7000-8000-000000000003")
+	sgOrder     = uuid.MustParse("01a151f2-0000-7000-8000-00000000f001")
+	sgAnime     = uuid.MustParse("01a151f2-0000-7000-8000-000000000007")
+	sgMovie     = uuid.MustParse("01a151f2-0000-7000-8000-000000000008")
+	broken      = uuid.MustParse("01a151f2-0000-7000-8000-000000000501")
 )
 
 func (fakeCatalog) EntryByPublicID(_ context.Context, id int64) (sqlcgen.EntryByPublicIDRow, error) {
@@ -189,6 +218,70 @@ func (fakeCatalog) EntryByPublicID(_ context.Context, id int64) (sqlcgen.EntryBy
 	default:
 		return sqlcgen.EntryByPublicIDRow{}, pgx.ErrNoRows
 	}
+}
+
+func (fakeCatalog) NodeByPublicID(_ context.Context, id int64) (sqlcgen.NodeByPublicIDRow, error) {
+	nodes := map[int64]sqlcgen.NodeByPublicIDRow{
+		2: {PublicID: 2, Slug: "steins-gate", Type: "group"},
+		3: {PublicID: 3, Slug: "steins-gate-main", Type: "group"},
+		7: {PublicID: 7, Slug: "steins-gate-anime", Type: "entry"},
+		8: {PublicID: 8, Slug: "steins-gate-movie", Type: "entry"},
+	}
+	if n, ok := nodes[id]; ok {
+		return n, nil
+	}
+	return sqlcgen.NodeByPublicIDRow{}, pgx.ErrNoRows
+}
+
+func (fakeCatalog) GroupByPublicID(_ context.Context, id int64) (sqlcgen.GroupByPublicIDRow, error) {
+	primary := "primary"
+	switch id {
+	case 2:
+		return sqlcgen.GroupByPublicIDRow{ID: sgFranchise, PublicID: 2, Slug: "steins-gate", Kind: "franchise", Name: "Steins;Gate"}, nil
+	case 3:
+		return sqlcgen.GroupByPublicIDRow{ID: sgMain, PublicID: 3, Slug: "steins-gate-main", Kind: "continuity",
+			Name: "Main timeline", Standing: &primary}, nil
+	case 500:
+		return sqlcgen.GroupByPublicIDRow{}, errors.New("connection reset")
+	}
+	return sqlcgen.GroupByPublicIDRow{}, pgx.ErrNoRows
+}
+
+func (fakeCatalog) GroupMembers(_ context.Context, id uuid.UUID) ([]sqlcgen.GroupMembersRow, error) {
+	continuity, anime, second := "continuity", "anime", "#2"
+	start := time.Date(2011, 4, 6, 0, 0, 0, 0, time.UTC)
+	switch id {
+	case sgFranchise:
+		return []sqlcgen.GroupMembersRow{
+			{PublicID: 3, Slug: "steins-gate-main", Type: "group", Title: "Main timeline", GroupKind: &continuity},
+		}, nil
+	case sgMain:
+		return []sqlcgen.GroupMembersRow{
+			{PublicID: 7, Slug: "steins-gate-anime", Type: "entry", Title: "Steins;Gate", MediumLabel: &anime, StartDate: &start,
+				PositionLabel: &second},
+		}, nil
+	}
+	return nil, nil
+}
+
+func (fakeCatalog) GroupOrderings(_ context.Context, id uuid.UUID) ([]sqlcgen.GroupOrderingsRow, error) {
+	if id != sgFranchise {
+		return nil, nil
+	}
+	ep1, ep22, beta := "Ep. 1", "Ep. 22", "23β"
+	rationale, note := "Watch the series, then the branch the sequel follows.", "epilogue"
+	step := func(pos, branch int32, publicID int64, slug, title string) sqlcgen.GroupOrderingsRow {
+		return sqlcgen.GroupOrderingsRow{OrderingID: sgOrder, Kind: "recommended", Name: "first-timer order",
+			Rationale: &rationale, Position: pos, Branch: branch, Step: 1, PublicID: publicID, Slug: slug,
+			Title: title, Necessity: "required"}
+	}
+	first := step(1, 1, 7, "steins-gate-anime", "Steins;Gate")
+	first.UnitFrom, first.UnitTo = &ep1, &ep22
+	second := step(2, 1, 7, "steins-gate-anime", "Steins;Gate")
+	second.UnitFrom, second.UnitTo = &beta, &beta
+	pick := step(2, 2, 8, "steins-gate-movie", "Steins;Gate: The Movie")
+	pick.Necessity, pick.Note = "optional", &note
+	return []sqlcgen.GroupOrderingsRow{first, second, pick}, nil
 }
 
 func (fakeCatalog) NodeTitles(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeTitlesRow, error) {

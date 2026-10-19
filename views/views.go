@@ -22,15 +22,52 @@ type Title struct {
 	Kind, Title string
 }
 
-// Related is one relation from this entry's side. Href is empty for groups,
-// which have no page yet.
+// Related is one relation from this node's side.
 type Related struct {
 	Reading, Title, Href, Meta, Note string
 }
 
-// GroupRef is a group the entry sits in, nearest first.
+// GroupRef is a group a node sits in, nearest first.
 type GroupRef struct {
-	Name, Position string
+	Name, Href, Position string
+}
+
+// Group is what a group page shows, already in display form.
+type Group struct {
+	Name, Kind, Standing string
+	Native, NativeLang   string
+	Members              []Member
+	Orderings            []Ordering
+	Titles               []Title
+	Relations            []Related
+	Groups               []GroupRef
+	Links                []Link
+}
+
+// Positioned reports whether any member has a position.
+func (g Group) Positioned() bool {
+	for _, m := range g.Members {
+		if m.Position != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// Member is one direct member of a group, an entry or a subgroup.
+type Member struct {
+	Position, Title, Href, Meta string
+}
+
+// Ordering is a curated path through a group. Names render as typed.
+type Ordering struct {
+	Kind, Name, Rationale string
+	Steps                 []Step
+}
+
+// Step is one row of an ordering, numbered on a position's first branch.
+type Step struct {
+	Number, Title, Href, Units, Necessity, Note string
 }
 
 // Link is a jump-out link to another site's page for the same work.

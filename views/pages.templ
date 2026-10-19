@@ -38,10 +38,7 @@ templ EntryPage(e Entry) {
 					&middot; { e.Country }
 				}
 			</p>
-			<h1 class="mt-2 font-heading text-44 leading-snug font-semibold tracking-tight text-foreground-strong">{ e.Title }</h1>
-			if e.Native != "" {
-				<p class="mt-1 text-18 text-foreground-muted" lang={ e.NativeLang }>{ e.Native }</p>
-			}
+			@heading(e.Title, e.Native, e.NativeLang)
 			if e.Released != "" || e.Units != "" {
 				<p class="mt-4 font-mono text-14 text-foreground-muted">
 					{ e.Released }
@@ -51,33 +48,103 @@ templ EntryPage(e Entry) {
 					{ e.Units }
 				</p>
 			}
-			if len(e.Groups) > 0 {
-				<p class="mt-2 text-14 text-foreground">
-					for i, g := range e.Groups {
-						if i > 0 {
-							<span class="text-foreground-subtle">&nbsp;/&nbsp;</span>
-						}
-						if g.Position != "" {
-							<span class="font-mono text-foreground-muted">{ g.Position }</span> in
-						} else {
-							<span class="text-foreground-muted">part of</span>
-						}
-						{ g.Name }
-					}
-				</p>
-			}
+			@partOf(e.Groups)
 		</div>
 	</article>
-	if len(e.Relations) > 0 {
+	@relationsPanel(e.Relations)
+	@titlesPanel(e.Titles)
+	@linksPanel(e.Links)
+}
+
+// GroupPage is a group's orderings and members.
+templ GroupPage(g Group) {
+	<header>
+		<p class="font-mono text-12 tracking-wide text-foreground-muted uppercase">
+			{ g.Kind }
+			if g.Standing != "" {
+				&middot; { g.Standing }
+			}
+		</p>
+		@heading(g.Name, g.Native, g.NativeLang)
+		@partOf(g.Groups)
+	</header>
+	for _, o := range g.Orderings {
+		@panel(o.Kind) {
+			<li class="px-4 py-3">
+				<p class="font-semibold text-foreground-strong">{ o.Name }</p>
+				if o.Rationale != "" {
+					<p class="mt-1 text-14 text-foreground-muted">{ o.Rationale }</p>
+				}
+			</li>
+			for _, st := range o.Steps {
+				<li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
+					<span class="w-8 shrink-0 font-mono text-13 text-foreground-muted">{ st.Number }</span>
+					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ templ.SafeURL(st.Href) }>{ st.Title }</a>
+					if st.Units != "" {
+						<span class="font-mono text-13 text-foreground-muted">{ st.Units }</span>
+					}
+					if st.Necessity != "" {
+						<span class="ml-auto font-mono text-11 tracking-wide text-foreground-muted uppercase">{ st.Necessity }</span>
+					}
+					if st.Note != "" {
+						<p class="basis-full pl-12 text-14 text-foreground-muted">{ st.Note }</p>
+					}
+				</li>
+			}
+		}
+	}
+	if len(g.Members) > 0 {
+		@panel("members") {
+			for _, m := range g.Members {
+				<li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
+					if g.Positioned() {
+						<span class="w-12 shrink-0 font-mono text-13 text-foreground-muted">{ m.Position }</span>
+					}
+					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ templ.SafeURL(m.Href) }>{ m.Title }</a>
+					<span class="ml-auto font-mono text-13 text-foreground-muted">{ m.Meta }</span>
+				</li>
+			}
+		}
+	}
+	@relationsPanel(g.Relations)
+	@titlesPanel(g.Titles)
+	@linksPanel(g.Links)
+}
+
+templ heading(title, native, nativeLang string) {
+	<h1 class="mt-2 font-heading text-44 leading-snug font-semibold tracking-tight text-foreground-strong">{ title }</h1>
+	if native != "" {
+		<p class="mt-1 text-18 text-foreground-muted" lang={ nativeLang }>{ native }</p>
+	}
+}
+
+// partOf is the groups a node sits in, nearest first: "#1 in Detective Conan
+// films / part of Detective Conan".
+templ partOf(groups []GroupRef) {
+	if len(groups) > 0 {
+		<p class="mt-2 text-14 text-foreground">
+			for i, g := range groups {
+				if i > 0 {
+					<span class="text-foreground-subtle">&nbsp;/&nbsp;</span>
+				}
+				if g.Position != "" {
+					<span class="font-mono text-foreground-muted">{ g.Position }</span> in
+				} else {
+					<span class="text-foreground-muted">part of</span>
+				}
+				<a class="hover:text-accent-9" href={ templ.SafeURL(g.Href) }>{ g.Name }</a>
+			}
+		</p>
+	}
+}
+
+templ relationsPanel(relations []Related) {
+	if len(relations) > 0 {
 		@panel("relations") {
-			for _, r := range e.Relations {
+			for _, r := range relations {
 				<li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
 					<span class="w-36 shrink-0 font-mono text-11 tracking-wide text-foreground-muted uppercase">{ r.Reading }</span>
-					if r.Href != "" {
-						<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ templ.SafeURL(r.Href) }>{ r.Title }</a>
-					} else {
-						<span class="font-semibold text-foreground-strong">{ r.Title }</span>
-					}
+					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ templ.SafeURL(r.Href) }>{ r.Title }</a>
 					<span class="ml-auto font-mono text-13 text-foreground-muted">{ r.Meta }</span>
 					if r.Note != "" {
 						<p class="basis-full pl-40 text-14 text-foreground-muted">{ r.Note }</p>
@@ -86,9 +153,12 @@ templ EntryPage(e Entry) {
 			}
 		}
 	}
-	if len(e.Titles) > 0 {
+}
+
+templ titlesPanel(titles []Title) {
+	if len(titles) > 0 {
 		@panel("titles") {
-			for _, t := range e.Titles {
+			for _, t := range titles {
 				<li class="flex items-baseline gap-4 px-4 py-3">
 					<span class="w-36 shrink-0 font-mono text-11 tracking-wide text-foreground-muted uppercase">{ t.Kind }</span>
 					<span class="text-foreground-strong">{ t.Title }</span>
@@ -96,9 +166,12 @@ templ EntryPage(e Entry) {
 			}
 		}
 	}
-	if len(e.Links) > 0 {
+}
+
+templ linksPanel(links []Link) {
+	if len(links) > 0 {
 		@panel("elsewhere") {
-			for _, l := range e.Links {
+			for _, l := range links {
 				<li class="flex items-baseline gap-4 px-4 py-3">
 					<a class="text-accent-9 underline-offset-2 hover:underline" href={ templ.SafeURL(l.Href) } rel="noopener">{ l.Site }</a>
 					<span class="ml-auto font-mono text-13 text-foreground-muted">{ l.ID }</span>
