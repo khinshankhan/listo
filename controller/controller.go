@@ -9,6 +9,7 @@ import (
 
 	"github.com/khinshankhan/listo/controller/handler"
 	"github.com/khinshankhan/listo/controller/middleware"
+	"github.com/khinshankhan/listo/data"
 	"github.com/khinshankhan/listo/platform/config"
 	"github.com/khinshankhan/listo/platform/logx"
 	"github.com/khinshankhan/listo/web"
@@ -24,14 +25,22 @@ func RunHTTPServer(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return newHTTPServer(config.Addr(), bundle).run(ctx)
+
+	db, err := data.Open(ctx, config.DatabaseURL())
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	return newHTTPServer(config.Addr(), bundle, db).run(ctx)
 }
 
 type httpServer struct {
 	srv *http.Server
 }
 
-func newHTTPServer(addr string, bundle *web.Bundle) *httpServer {
+func newHTTPServer(addr string, bundle *web.Bundle, db handler.Pinger) *httpServer {
+	api := handler.NewAPI(db)
 	pages := handler.NewPages(bundle.Tags)
 
 	// first listed is outermost
@@ -39,7 +48,7 @@ func newHTTPServer(addr string, bundle *web.Bundle) *httpServer {
 	root := middleware.Chain(
 		middleware.Recover,
 		middleware.BlackHole(http.HandlerFunc(pages.NotFound), "/api"),
-	)(routes(bundle, pages))
+	)(routes(bundle, api, pages))
 
 	return &httpServer{
 		srv: &http.Server{
@@ -82,10 +91,10 @@ func (s *httpServer) run(ctx context.Context) error {
 }
 
 // routes wires up each router; anything unrouted falls to the blackhole.
-func routes(bundle *web.Bundle, pages *handler.Pages) *http.ServeMux {
+func routes(bundle *web.Bundle, api *handler.API, pages *handler.Pages) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	apiRoutes(mux)
+	apiRoutes(mux, api)
 	mux.Handle("GET /assets/", handler.Assets(bundle.Files))
 	pageRoutes(mux, pages)
 
