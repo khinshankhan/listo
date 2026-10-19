@@ -27,6 +27,7 @@ type Catalog interface {
 	NodeLinks(ctx context.Context, nodeID uuid.UUID) ([]sqlcgen.NodeLinksRow, error)
 	NodeRelations(ctx context.Context, nodeID uuid.UUID) ([]sqlcgen.NodeRelationsRow, error)
 	NodeGroups(ctx context.Context, memberID uuid.UUID) ([]sqlcgen.NodeGroupsRow, error)
+	NodeTags(ctx context.Context, nodeID uuid.UUID) ([]sqlcgen.NodeTagsRow, error)
 	SearchNodes(ctx context.Context, arg sqlcgen.SearchNodesParams) ([]sqlcgen.SearchNodesRow, error)
 	TopGroups(ctx context.Context) ([]sqlcgen.TopGroupsRow, error)
 	MediumCounts(ctx context.Context) ([]sqlcgen.MediumCountsRow, error)
@@ -112,11 +113,14 @@ func (p *Pages) nodeParts(ctx context.Context, id uuid.UUID, country string) (no
 		return parts, fmt.Errorf("titles: %w", err)
 	}
 	for _, t := range titles {
-		parts.titles = append(parts.titles, views.Title{Kind: t.Kind, Title: t.Title})
-		if t.Kind == "native" && parts.native == "" {
-			parts.native = t.Title
-			parts.nativeLang = lang(t.Language, country)
+		title := views.Title{Kind: t.Kind, Title: t.Title}
+		if t.Kind == "native" {
+			title.Lang = lang(t.Language, country)
+			if parts.native == "" {
+				parts.native, parts.nativeLang = t.Title, title.Lang
+			}
 		}
+		parts.titles = append(parts.titles, title)
 	}
 
 	relations, err := p.catalog.NodeRelations(ctx, id)

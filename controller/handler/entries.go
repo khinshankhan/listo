@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -60,28 +61,85 @@ func (p *Pages) Entry(w http.ResponseWriter, r *http.Request) {
 
 // entryView gathers everything the page shows into display form.
 func (p *Pages) entryView(ctx context.Context, e sqlcgen.EntryByPublicIDRow) (views.Entry, error) {
-	v := views.Entry{Title: e.Title, Medium: e.MediumLabel}
+	v := views.Entry{
+		Title:      e.Title,
+		Medium:     e.MediumLabel,
+		MediumHref: "/entries?medium=" + url.QueryEscape(e.Medium),
+		Eyebrow:    []string{e.MediumLabel},
+	}
 	if e.FormatLabel != e.MediumLabel {
 		v.Format = e.FormatLabel
+		v.Eyebrow = append(v.Eyebrow, e.FormatLabel)
 	}
-	if e.Country != nil {
-		v.Country = *e.Country
+
+	v.Facts = append(v.Facts, views.Fact{Label: "format", Value: e.FormatLabel})
+	if e.UnitTotal != nil && e.UnitKind != "none" {
+		v.Facts = append(v.Facts, views.Fact{Label: e.UnitKind + "s", Value: fmt.Sprint(*e.UnitTotal)})
 	}
 	if e.StartDate != nil && e.StartPrecision != nil {
 		v.Year = e.StartDate.Format("2006")
-		v.Released = released(*e.StartDate, *e.StartPrecision)
+		v.Eyebrow = append(v.Eyebrow, when(e.Medium, e.Format, *e.StartDate, *e.StartPrecision))
+		v.Facts = append(v.Facts, views.Fact{Label: startLabel(e.Medium, e.Format), Value: released(*e.StartDate, *e.StartPrecision)})
 	}
-	if e.UnitTotal != nil && e.UnitKind != "none" {
-		v.Units = units(int(*e.UnitTotal), e.UnitKind)
+	country := deref(e.Country)
+	if country != "" {
+		v.Facts = append(v.Facts, views.Fact{Label: "country", Value: country})
 	}
 
-	parts, err := p.nodeParts(ctx, e.ID, v.Country)
+	parts, err := p.nodeParts(ctx, e.ID, country)
 	if err != nil {
 		return v, err
 	}
-	v.Native, v.NativeLang = parts.native, parts.nativeLang
-	v.Titles, v.Relations, v.Groups, v.Links = parts.titles, parts.relations, parts.groups, parts.links
+	// the heading already shows the display title
+	for _, t := range parts.titles {
+		if t.Title != e.Title {
+			v.Titles = append(v.Titles, t)
+		}
+	}
+	v.Relations, v.Groups, v.Links = parts.relations, parts.groups, parts.links
+
+	tags, err := p.catalog.NodeTags(ctx, e.ID)
+	if err != nil {
+		return v, fmt.Errorf("tags: %w", err)
+	}
+	for _, t := range tags {
+		v.Tags = append(v.Tags, t.Name)
+	}
 	return v, nil
+}
+
+// when is the eyebrow's date: the season for TV anime ("spring 2011"), else
+// the year.
+func when(medium, format string, start time.Time, precision string) string {
+	if medium == "anime" && format == "tv" && precision != "year" {
+		return season(start.Month()) + " " + start.Format("2006")
+	}
+	return start.Format("2006")
+}
+
+func season(m time.Month) string {
+	switch {
+	case m <= time.March:
+		return "winter"
+	case m <= time.June:
+		return "spring"
+	case m <= time.September:
+		return "summer"
+	}
+	return "fall"
+}
+
+// startLabel is "aired", "published" or "released", by medium and format.
+func startLabel(medium, format string) string {
+	switch {
+	case format == "movie":
+		return "released"
+	case medium == "anime" || medium == "tv":
+		return "aired"
+	case medium == "manga" || medium == "comic" || medium == "book":
+		return "published"
+	}
+	return "released"
 }
 
 // describe is the meta description: "Detective Conan, an anime from 1996."
@@ -143,14 +201,6 @@ func withYear(label string, start *time.Time) string {
 		return label
 	}
 	return label + " · " + start.Format("2006")
-}
-
-// units is "24 episodes", "1 volume".
-func units(n int, kind string) string {
-	if n == 1 {
-		return fmt.Sprintf("1 %s", kind)
-	}
-	return fmt.Sprintf("%d %ss", n, kind)
 }
 
 func deref(s *string) string {

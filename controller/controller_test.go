@@ -96,20 +96,29 @@ func TestCatalogPages(t *testing.T) {
 		location string
 		want     []string
 		dontWant []string
+		once     []string
 	}{
 		{name: "canonical", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
-			want: []string{"Steins;Gate", "Apr 2011 &middot; 24 episodes",
+			want: []string{"Steins;Gate</h1>",
 				`<link rel="canonical" href="/entries/7/steins-gate-anime">`,
 				`<meta name="description" content="Steins;Gate, an anime from 2011.">`}},
-		{name: "format that only repeats the medium is left out", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
-			want: []string{">anime &middot; JP</p>"}},
-		{name: "a film names its format and shows no units", path: "/entries/8/steins-gate-movie", status: http.StatusOK,
-			want: []string{"Load Region", "anime &middot; film &middot; JP", "Apr 20, 2013",
-				`content="Steins;Gate: The Movie - Load Region of Déjà Vu, an anime film from 2013."`}},
+		{name: "facts, with the start named for the medium", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
+			want: []string{">format</dt>", ">episodes</dt>", ">24</dd>", ">aired</dt>", ">Apr 2011</dd>", ">country</dt>", ">JP</dd>"}},
+		{name: "breadcrumb browses the medium", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
+			want: []string{`aria-label="breadcrumb"`, `href="/entries?medium=anime">anime</a>`}},
+		{name: "a tv anime's eyebrow has its season, and the format only when it adds something", path: "/entries/7/steins-gate-anime",
+			status: http.StatusOK, want: []string{`uppercase">spring 2011</span>`},
+			once: []string{`text-foreground-subtle uppercase">anime</span>`}},
+		{name: "tags", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
+			want: []string{`aria-label="tags"`, ">sci-fi</li>", ">thriller</li>"}},
+		{name: "a film names its format, is released, and shows no units", path: "/entries/8/steins-gate-movie", status: http.StatusOK,
+			want: []string{"Load Region", `uppercase">film</span>`, `uppercase">2013</span>`, ">released</dt>", ">Apr 20, 2013</dd>",
+				`content="Steins;Gate: The Movie - Load Region of Déjà Vu, an anime film from 2013."`},
+			dontWant: []string{">episodes</dt>", `aria-label="tags"`}},
 		{name: "a link out is never a script", path: "/entries/8/steins-gate-movie", status: http.StatusOK,
 			want: []string{">Bad</a>"}, dontWant: []string{`href="javascript:`}},
 		{name: "native title is tagged with its language", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
-			want: []string{`lang="ja">シュタインズ・ゲート</p>`}},
+			want: []string{`lang="ja">シュタインズ・ゲート</dd>`}},
 		{name: "relations link to their entries", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
 			want: []string{`href="/entries/6/steins-gate-vn">Steins;Gate</a>`, "visual novel · 2009",
 				`href="/entries/11/steins-gate-0-anime">Steins;Gate 0</a>`, "branches off episode 23"}},
@@ -146,7 +155,9 @@ func TestCatalogPages(t *testing.T) {
 		{name: "unknown group", path: "/groups/999/x", status: http.StatusNotFound, want: []string{"back home"}},
 		{name: "group database error is a 500", path: "/groups/500/x", status: http.StatusInternalServerError},
 		{name: "every title and the links out", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
-			want: []string{">synonym</span>", "S;G", `href="https://anilist.co/anime/9253"`, ">9253</span>"}},
+			want: []string{">synonym</dt>", ">S;G</dd>", `href="https://anilist.co/anime/9253"`, ">9253</span>"},
+			// the heading already shows the display title
+			dontWant: []string{">english</dt>"}},
 		{name: "a failed secondary read is a 500, not a half page", path: "/entries/501/broken",
 			status: http.StatusInternalServerError},
 		{name: "wrong slug redirects", path: "/entries/7/steins-gate", status: http.StatusMovedPermanently,
@@ -187,6 +198,11 @@ func TestCatalogPages(t *testing.T) {
 			for _, w := range tc.dontWant {
 				if strings.Contains(string(body), w) {
 					t.Errorf("body has %q", w)
+				}
+			}
+			for _, w := range tc.once {
+				if n := strings.Count(string(body), w); n != 1 {
+					t.Errorf("body has %q %d times, want once", w, n)
 				}
 			}
 		})
@@ -472,4 +488,11 @@ func (fakeCatalog) BrowseEntries(_ context.Context, medium *string) ([]sqlcgen.B
 		return all[:1], nil
 	}
 	return nil, nil
+}
+
+func (fakeCatalog) NodeTags(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeTagsRow, error) {
+	if id != sgAnime {
+		return nil, nil
+	}
+	return []sqlcgen.NodeTagsRow{{Kind: "genre", Name: "sci-fi"}, {Kind: "genre", Name: "thriller"}}, nil
 }

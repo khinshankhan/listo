@@ -13,17 +13,28 @@ type Head struct {
 // Entry is an entry page, in display form. Format is empty when it would
 // repeat the medium.
 type Entry struct {
-	Title, Medium, Format, Country, Year, Released, Units string
-	// Native is the first native title, shown under the heading.
-	Native, NativeLang string
-	Titles             []Title
-	Relations          []Related
-	Groups             []GroupRef
-	Links              []Link
+	Title, Medium, Format, Year string
+	// MediumHref browses the entry's medium, for the breadcrumb.
+	MediumHref string
+	// Eyebrow is the line over the title: medium, format, when.
+	Eyebrow []string
+	// Titles are every other title the entry goes by.
+	Titles    []Title
+	Tags      []string
+	Facts     []Fact
+	Relations []Related
+	Groups    []GroupRef
+	Links     []Link
 }
 
+// Fact is one row of an entry's facts card: "episodes", "24".
+type Fact struct {
+	Label, Value string
+}
+
+// Title is one of a node's titles. Lang is set when known.
 type Title struct {
-	Kind, Title string
+	Kind, Title, Lang string
 }
 
 // Related is one relation from this node's side. Anchor is where it attaches,
