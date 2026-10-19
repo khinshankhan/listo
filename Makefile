@@ -19,9 +19,6 @@ MAKEFLAGS += --no-builtin-rules
 # cgo free on every platform, so an accidental cgo dependency fails the build.
 # `test` turns it back on for itself since the race detector needs it.
 export CGO_ENABLED := 0
-# cgo free on every platform, so an accidental cgo dependency fails the build.
-# `test` turns it back on for itself since the race detector needs it.
-export CGO_ENABLED := 0
 
 # VARIABLES
 #
