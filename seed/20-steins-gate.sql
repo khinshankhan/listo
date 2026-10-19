@@ -2,28 +2,28 @@
 -- Facts are real where an external id is attached (checked against Wikidata
 -- on 2026-10-17).
 
-select catalog.add_group('science-adventure', 'universe', 'Science Adventure');
+select catalog.add_group('science-adventure', 'universe', 'Science Adventure', p_public_id => 1);
 select catalog.alias('science-adventure', 'native', '科学アドベンチャーシリーズ');
-select catalog.add_group('steins-gate', 'franchise', 'Steins;Gate');
-select catalog.add_group('steins-gate-main', 'continuity', 'Main timeline', 'primary');
-select catalog.add_group('steins-gate-zero', 'continuity', 'Divergence (0)', 'concluded');
-select catalog.add_group('robotics-notes', 'franchise', 'Robotics;Notes');
+select catalog.add_group('steins-gate', 'franchise', 'Steins;Gate', p_public_id => 2);
+select catalog.add_group('steins-gate-main', 'continuity', 'Main timeline', 'primary', p_public_id => 3);
+select catalog.add_group('steins-gate-zero', 'continuity', 'Divergence (0)', 'concluded', p_public_id => 4);
+select catalog.add_group('robotics-notes', 'franchise', 'Robotics;Notes', p_public_id => 5);
 select catalog.member('science-adventure', 'steins-gate', 'robotics-notes');
 select catalog.member('steins-gate', 'steins-gate-main', 'steins-gate-zero');
 
-select catalog.add_entry('steins-gate-vn', 'visual_novel', 'full', 'Steins;Gate', '2009', 'JP');
-select catalog.add_entry('steins-gate-anime', 'anime', 'tv', 'Steins;Gate', '2011-04', 'JP', 'episode', 24);
+select catalog.add_entry('steins-gate-vn', 'visual_novel', 'full', 'Steins;Gate', '2009', 'JP', p_public_id => 6);
+select catalog.add_entry('steins-gate-anime', 'anime', 'tv', 'Steins;Gate', '2011-04', 'JP', 'episode', 24, p_public_id => 7);
 select catalog.add_units('steins-gate-anime', 24);
 select catalog.add_special('steins-gate-anime', '23β');
 select catalog.alias('steins-gate-anime', 'native', 'シュタインズ・ゲート');
 select catalog.alias('steins-gate-anime', 'synonym', 'S;G');
-select catalog.add_entry('steins-gate-movie', 'anime', 'movie', 'Steins;Gate: The Movie - Load Region of Déjà Vu', '2013-04', 'JP');
-select catalog.add_entry('steins-gate-elite', 'visual_novel', 'full', 'Steins;Gate Elite', '2018', 'JP');
-select catalog.add_entry('steins-gate-0-vn', 'visual_novel', 'full', 'Steins;Gate 0', '2015', 'JP');
-select catalog.add_entry('steins-gate-0-anime', 'anime', 'tv', 'Steins;Gate 0', '2018-04', 'JP', 'episode', 23);
+select catalog.add_entry('steins-gate-movie', 'anime', 'movie', 'Steins;Gate: The Movie - Load Region of Déjà Vu', '2013-04', 'JP', p_public_id => 8);
+select catalog.add_entry('steins-gate-elite', 'visual_novel', 'full', 'Steins;Gate Elite', '2018', 'JP', p_public_id => 9);
+select catalog.add_entry('steins-gate-0-vn', 'visual_novel', 'full', 'Steins;Gate 0', '2015', 'JP', p_public_id => 10);
+select catalog.add_entry('steins-gate-0-anime', 'anime', 'tv', 'Steins;Gate 0', '2018-04', 'JP', 'episode', 23, p_public_id => 11);
 select catalog.add_units('steins-gate-0-anime', 23);
-select catalog.add_entry('robotics-notes-vn', 'visual_novel', 'full', 'Robotics;Notes', '2012', 'JP');
-select catalog.add_entry('robotics-notes-dash', 'visual_novel', 'full', 'Robotics;Notes DaSH', '2019', 'JP');
+select catalog.add_entry('robotics-notes-vn', 'visual_novel', 'full', 'Robotics;Notes', '2012', 'JP', p_public_id => 12);
+select catalog.add_entry('robotics-notes-dash', 'visual_novel', 'full', 'Robotics;Notes DaSH', '2019', 'JP', p_public_id => 13);
 
 select catalog.member('steins-gate-main', 'steins-gate-vn', 'steins-gate-anime', 'steins-gate-movie', 'steins-gate-elite');
 select catalog.member('steins-gate-zero', 'steins-gate-0-vn', 'steins-gate-0-anime');

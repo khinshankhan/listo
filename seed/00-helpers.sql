@@ -24,11 +24,26 @@ exception when no_data_found then
   raise exception 'no unit % on %', p_ref, p_slug;
 end $$;
 
+-- Seeds pin public ids so URLs don't move as the seed grows.
+-- NOTE: public_id is generated always, hence overriding system value.
+create function catalog.add_node(p_type text, p_slug text, p_public_id bigint default null)
+returns uuid language plpgsql as $$
+declare v uuid;
+begin
+  if p_public_id is null then
+    insert into catalog.node (type, slug) values (p_type, p_slug) returning id into v;
+  else
+    insert into catalog.node (public_id, type, slug) overriding system value
+    values (p_public_id, p_type, p_slug) returning id into v;
+  end if;
+  return v;
+end $$;
+
 -- p_start is '2009', '2011-04' or '2011-04-06'; its length sets the precision.
 create function catalog.add_entry(p_slug text, p_medium text, p_format text, p_title text,
     p_start text default null, p_country text default null,
     p_unit_kind text default 'none', p_total int default null,
-    p_title_kind text default 'english')
+    p_title_kind text default 'english', p_public_id bigint default null)
 returns uuid language plpgsql as $$
 declare
   v uuid;
@@ -37,7 +52,7 @@ begin
   if p_start is not null and v_precision is null then
     raise exception 'bad start date %', p_start;
   end if;
-  insert into catalog.node (type, slug) values ('entry', p_slug) returning id into v;
+  v := catalog.add_node('entry', p_slug, p_public_id);
   insert into catalog.entry (id, medium, format, country, title, start_date, start_precision, unit_kind, unit_total)
   values (v, p_medium, p_format, p_country, p_title,
           case v_precision
@@ -69,11 +84,12 @@ language sql as $$
   group by e.id
 $$;
 
-create function catalog.add_group(p_slug text, p_kind text, p_name text, p_standing text default null)
+create function catalog.add_group(p_slug text, p_kind text, p_name text, p_standing text default null,
+    p_public_id bigint default null)
 returns uuid language plpgsql as $$
 declare v uuid;
 begin
-  insert into catalog.node (type, slug) values ('group', p_slug) returning id into v;
+  v := catalog.add_node('group', p_slug, p_public_id);
   insert into catalog.grp (id, kind, name, standing) values (v, p_kind, p_name, p_standing);
   insert into catalog.title (node_id, kind, title) values (v, 'english', p_name);
   return v;
