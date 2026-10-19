@@ -101,7 +101,7 @@ func (q *Queries) GroupMembers(ctx context.Context, groupID uuid.UUID) ([]GroupM
 
 const groupOrderings = `-- name: GroupOrderings :many
 select o.id as ordering_id, o.kind, o.name, o.rationale,
-       oi.position, oi.branch, oi.step,
+       oi.position, oi.branch, oi.step, oi.section,
        n.public_id, n.slug, e.title,
        uf.label as unit_from, ut.label as unit_to,
        oi.necessity, oi.note
@@ -123,6 +123,7 @@ type GroupOrderingsRow struct {
 	Position   int32
 	Branch     int32
 	Step       int32
+	Section    *string
 	PublicID   int64
 	Slug       string
 	Title      string
@@ -150,6 +151,7 @@ func (q *Queries) GroupOrderings(ctx context.Context, groupID uuid.UUID) ([]Grou
 			&i.Position,
 			&i.Branch,
 			&i.Step,
+			&i.Section,
 			&i.PublicID,
 			&i.Slug,
 			&i.Title,

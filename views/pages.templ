@@ -76,19 +76,26 @@ templ GroupPage(g Group) {
 					<p class="mt-1 text-14 text-foreground-muted">{ o.Rationale }</p>
 				}
 			</li>
-			for _, st := range o.Steps {
-				<li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
-					<span class="w-8 shrink-0 font-mono text-13 text-foreground-muted">{ st.Number }</span>
-					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ st.Href }>{ st.Title }</a>
-					if st.Units != "" {
-						<span class="font-mono text-13 text-foreground-muted">{ st.Units }</span>
-					}
-					if st.Necessity != "" {
-						<span class="ml-auto font-mono text-11 tracking-wide text-foreground-muted uppercase">{ st.Necessity }</span>
-					}
-					if st.Note != "" {
-						<p class="basis-full pl-12 text-14 text-foreground-muted">{ st.Note }</p>
-					}
+			for _, pos := range o.Positions {
+				if pos.Section != "" {
+					<li class="bg-background-1 px-4 py-2 text-14 font-semibold text-foreground">{ pos.Section }</li>
+				}
+				<li class="flex gap-4 px-4 py-3">
+					<span class="w-8 shrink-0 font-mono text-13 text-foreground-muted">{ pos.Number }</span>
+					<div class="min-w-0 flex-1">
+						if pos.PickOne() {
+							<p class="font-mono text-11 tracking-wide text-foreground-muted uppercase">pick one</p>
+							<ol class="mt-2 space-y-2">
+								for _, c := range pos.Choices {
+									<li class="rounded-md border border-border-subtle px-3 py-2">
+										@steps(c.Steps)
+									</li>
+								}
+							</ol>
+						} else {
+							@steps(pos.Choices[0].Steps)
+						}
+					</div>
 				</li>
 			}
 		}
@@ -109,6 +116,28 @@ templ GroupPage(g Group) {
 	@relationsPanel(g.Relations)
 	@titlesPanel(g.Titles)
 	@linksPanel(g.Links)
+}
+
+// steps is one choice's entries, in order.
+templ steps(steps []Step) {
+	<ol class="space-y-2">
+		for _, st := range steps {
+			<li>
+				<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ templ.SafeURL(st.Href) }>{ st.Title }</a>
+					if st.Units != "" {
+						<span class="font-mono text-13 text-foreground-muted">{ st.Units }</span>
+					}
+					if st.Necessity != "" {
+						<span class="ml-auto font-mono text-11 tracking-wide text-foreground-muted uppercase">{ st.Necessity }</span>
+					}
+				</div>
+				if st.Note != "" {
+					<p class="mt-1 text-14 text-foreground-muted">{ st.Note }</p>
+				}
+			</li>
+		}
+	</ol>
 }
 
 templ heading(title, native, nativeLang string) {
@@ -145,6 +174,9 @@ templ relationsPanel(relations []Related) {
 				<li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
 					<span class="w-36 shrink-0 font-mono text-11 tracking-wide text-foreground-muted uppercase">{ r.Reading }</span>
 					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ r.Href }>{ r.Title }</a>
+					if r.Anchor != "" {
+						<span class="font-mono text-13 text-foreground-muted">{ r.Anchor }</span>
+					}
 					<span class="ml-auto font-mono text-13 text-foreground-muted">{ r.Meta }</span>
 					if r.Note != "" {
 						<p class="basis-full pl-40 text-14 text-foreground-muted">{ r.Note }</p>

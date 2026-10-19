@@ -125,9 +125,17 @@ func TestCatalogPages(t *testing.T) {
 			want: []string{`content="Science Adventure, a universe on listo."`}},
 		{name: "a continuity shows its standing", path: "/groups/3/steins-gate-main", status: http.StatusOK,
 			want: []string{"w-12 shrink-0", "continuity &middot; primary", `href="/entries/7/steins-gate-anime">Steins;Gate</a>`, "anime · 2011"}},
-		{name: "an ordering, step by step", path: "/groups/2/steins-gate", status: http.StatusOK,
+		{name: "an ordering, position by position", path: "/groups/2/steins-gate", status: http.StatusOK,
 			want: []string{">recommended order</h2>", "first-timer order", "Watch the series, then the branch",
-				">01</span>", "Ep. 1 to Ep. 22", ">02</span>", ">23β</span>", ">or</span>", ">optional</span>", "epilogue"}},
+				">01</span>", "Ep. 1 to Ep. 22", ">02</span>", ">23β</span>", ">optional</span>", "epilogue"}},
+		{name: "a fork keeps each choice whole, in order", path: "/groups/2/steins-gate", status: http.StatusOK,
+			want: []string{">pick one</p>", ">the branch</li>",
+				// second choice: the film, then the sequel
+				`href="/entries/8/steins-gate-movie">Steins;Gate: The Movie</a>`,
+				`href="/entries/11/steins-gate-0-anime">Steins;Gate 0</a>`},
+			dontWant: []string{">or</span>"}},
+		{name: "a relation says where it attaches", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
+			want: []string{">here at Ep. 23</span>"}},
 		{name: "group wrong slug redirects", path: "/groups/2/sg?x=1", status: http.StatusMovedPermanently,
 			location: "/groups/2/steins-gate?x=1"},
 		{name: "group missing slug redirects", path: "/groups/3", status: http.StatusMovedPermanently,
@@ -284,13 +292,17 @@ func (fakeCatalog) GroupOrderings(_ context.Context, id uuid.UUID) ([]sqlcgen.Gr
 			Rationale: &rationale, Position: pos, Branch: branch, Step: 1, PublicID: publicID, Slug: slug,
 			Title: title, Necessity: "required"}
 	}
+	section := "the branch"
 	first := step(1, 1, 7, "steins-gate-anime", "Steins;Gate")
 	first.UnitFrom, first.UnitTo = &ep1, &ep22
+	// position 2 forks: the 23β episode alone, or the film then the sequel
 	second := step(2, 1, 7, "steins-gate-anime", "Steins;Gate")
-	second.UnitFrom, second.UnitTo = &beta, &beta
-	pick := step(2, 2, 8, "steins-gate-movie", "Steins;Gate: The Movie")
-	pick.Necessity, pick.Note = "optional", &note
-	return []sqlcgen.GroupOrderingsRow{first, second, pick}, nil
+	second.UnitFrom, second.UnitTo, second.Section = &beta, &beta, &section
+	film := step(2, 2, 8, "steins-gate-movie", "Steins;Gate: The Movie")
+	film.Necessity, film.Note, film.Section = "optional", &note, &section
+	sequel := step(2, 2, 11, "steins-gate-0-anime", "Steins;Gate 0")
+	sequel.Step, sequel.Section = 2, &section
+	return []sqlcgen.GroupOrderingsRow{first, second, film, sequel}, nil
 }
 
 func (fakeCatalog) NodeTitles(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeTitlesRow, error) {
@@ -321,12 +333,12 @@ func (fakeCatalog) NodeRelations(_ context.Context, id uuid.UUID) ([]sqlcgen.Nod
 	switch id {
 	case sgAnime:
 		vn, year := "visual novel", time.Date(2009, 10, 15, 0, 0, 0, 0, time.UTC)
-		note := "branches off episode 23"
+		note, ep23 := "branches off episode 23", "Ep. 23"
 		return []sqlcgen.NodeRelationsRow{
 			{Reading: "adaptation of", PublicID: 6, Slug: "steins-gate-vn", Type: "entry",
 				Title: "Steins;Gate", MediumLabel: &vn, StartDate: &year},
 			{Reading: "prequel of", PublicID: 11, Slug: "steins-gate-0-anime", Type: "entry",
-				Title: "Steins;Gate 0", Note: &note},
+				Title: "Steins;Gate 0", Note: &note, MyUnit: &ep23},
 		}, nil
 	case broken:
 		return nil, errors.New("connection reset")

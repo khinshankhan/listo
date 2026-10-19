@@ -22,9 +22,10 @@ type Title struct {
 	Kind, Title string
 }
 
-// Related is one relation from this node's side.
+// Related is one relation from this node's side. Anchor is where it attaches,
+// eg "at Ep. 23".
 type Related struct {
-	Reading, Title, Href, Meta, Note string
+	Reading, Title, Href, Meta, Anchor, Note string
 }
 
 // GroupRef is a group a node sits in, nearest first.
@@ -62,12 +63,28 @@ type Member struct {
 // Ordering is a curated path through a group. Names render as typed.
 type Ordering struct {
 	Kind, Name, Rationale string
-	Steps                 []Step
+	Positions             []Position
 }
 
-// Step is one row of an ordering, numbered on a position's first branch.
+// Position is one stop on the path; more than one choice is a fork. Section
+// is set where a new section starts.
+type Position struct {
+	Number, Section string
+	Choices         []Choice
+}
+
+func (p Position) PickOne() bool {
+	return len(p.Choices) > 1
+}
+
+// Choice is one way through a position: its entries, in order.
+type Choice struct {
+	Steps []Step
+}
+
+// Step is one entry in a choice. Necessity is empty when it's required.
 type Step struct {
-	Number, Title, Href, Units, Necessity, Note string
+	Title, Href, Units, Necessity, Note string
 }
 
 // Link is a jump-out link to another site's page for the same work.

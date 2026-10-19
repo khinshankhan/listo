@@ -167,13 +167,16 @@ select (case when r.from_node = $1::uuid then rk.label
              else coalesce(rk.inverse_label, rk.label) end)::text as reading,
        rk.family, o.public_id, o.slug, o.type,
        coalesce(e.title, g.name)::text as title,
-       m.label as medium_label, e.start_date, r.note
+       m.label as medium_label, e.start_date, r.note,
+       mine.label as my_unit, theirs.label as their_unit
 from catalog.relation r
 join catalog.relation_kind rk on rk.kind = r.kind
 join catalog.node o on o.id = case when r.from_node = $1::uuid then r.to_node else r.from_node end
 left join catalog.entry e on e.id = o.id
 left join catalog.grp g on g.id = o.id
 left join catalog.medium m on m.medium = e.medium
+left join catalog.unit mine on mine.id = case when r.from_node = $1::uuid then r.from_unit else r.to_unit end
+left join catalog.unit theirs on theirs.id = case when r.from_node = $1::uuid then r.to_unit else r.from_unit end
 where $1::uuid in (r.from_node, r.to_node)
   and not r.spoiler
 order by rk.family, reading, e.start_date nulls last, title
@@ -189,9 +192,11 @@ type NodeRelationsRow struct {
 	MediumLabel *string
 	StartDate   *time.Time
 	Note        *string
+	MyUnit      *string
+	TheirUnit   *string
 }
 
-// A node's relations, labelled from its own side.
+// A node's relations, labelled and anchored from its own side.
 // NOTE: spoilers are left out until there's UI to hide them.
 func (q *Queries) NodeRelations(ctx context.Context, nodeID uuid.UUID) ([]NodeRelationsRow, error) {
 	rows, err := q.db.Query(ctx, nodeRelations, nodeID)
@@ -212,6 +217,8 @@ func (q *Queries) NodeRelations(ctx context.Context, nodeID uuid.UUID) ([]NodeRe
 			&i.MediumLabel,
 			&i.StartDate,
 			&i.Note,
+			&i.MyUnit,
+			&i.TheirUnit,
 		); err != nil {
 			return nil, err
 		}

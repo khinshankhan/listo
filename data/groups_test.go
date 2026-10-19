@@ -63,8 +63,8 @@ func TestGroupPageQueries(t *testing.T) {
 		franchise).Scan(&ordering); err != nil {
 		t.Fatal(err)
 	}
-	exec(`insert into catalog.ordering_item (ordering_id, position, entry_id, necessity, note) values ($1, 2, $2, 'optional', 'if you liked it')`,
-		ordering, later)
+	exec(`insert into catalog.ordering_item (ordering_id, position, entry_id, necessity, note, section)
+	      values ($1, 2, $2, 'optional', 'if you liked it', 'the later arc')`, ordering, later)
 	exec(`insert into catalog.ordering_item (ordering_id, position, entry_id, unit_from, unit_to)
 	      select $1, 1, $2, (select id from catalog.unit where entry_id = $2 and ordinal = 1),
 	             (select id from catalog.unit where entry_id = $2 and ordinal = 2)`, ordering, earlier)
@@ -122,6 +122,9 @@ func TestGroupPageQueries(t *testing.T) {
 		}
 		if second.Title != "Aa Later" || second.Necessity != "optional" || second.Note == nil || *second.Note != "if you liked it" {
 			t.Errorf("second step = %+v, want Aa Later, optional, with its note", second)
+		}
+		if first.Section != nil || second.Section == nil || *second.Section != "the later arc" {
+			t.Errorf("sections = %v, %v, want none, then the later arc", first.Section, second.Section)
 		}
 	})
 }

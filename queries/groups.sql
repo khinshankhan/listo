@@ -25,7 +25,7 @@ order by n.type desc, e.start_date nulls last, title;
 -- name: GroupOrderings :many
 -- A group's orderings, one row per step.
 select o.id as ordering_id, o.kind, o.name, o.rationale,
-       oi.position, oi.branch, oi.step,
+       oi.position, oi.branch, oi.step, oi.section,
        n.public_id, n.slug, e.title,
        uf.label as unit_from, ut.label as unit_to,
        oi.necessity, oi.note

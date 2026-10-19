@@ -145,7 +145,10 @@ func TestEntryPageQueries(t *testing.T) {
 		return id
 	}
 	source1, adaptation := entry("source", "The Source"), entry("adaptation", "The Adaptation")
-	exec(`insert into catalog.relation (from_node, kind, to_node) values ($1, $2, $3)`, adaptation, kind, source1)
+	// anchored at the source's second episode
+	exec(`insert into catalog.unit (entry_id, ordinal, kind, label) values ($1, 1, 'episode', 'Ep. 1'), ($1, 2, 'episode', 'Ep. 2')`, source1)
+	exec(`insert into catalog.relation (from_node, kind, to_node, to_unit)
+	      select $1, $2, $3, id from catalog.unit where entry_id = $3 and ordinal = 2`, adaptation, kind, source1)
 
 	franchise, films, specials := node("group", "franchise"), node("group", "films"), node("group", "specials")
 	exec(`insert into catalog.grp (id, kind, name) values
@@ -168,9 +171,11 @@ func TestEntryPageQueries(t *testing.T) {
 			from      uuid.UUID
 			wantRead  string
 			wantTitle string
+			wantMine  string
+			wantTheir string
 		}{
-			{"the adaptation sees its source", adaptation, "adaptation of", "The Source"},
-			{"the source sees the inverse", source1, "adapted as", "The Adaptation"},
+			{"the adaptation sees its source, at the source's unit", adaptation, "adaptation of", "The Source", "", "Ep. 2"},
+			{"the source sees the inverse, at its own unit", source1, "adapted as", "The Adaptation", "Ep. 2", ""},
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
@@ -179,7 +184,13 @@ func TestEntryPageQueries(t *testing.T) {
 					t.Fatal(err)
 				}
 				if len(got) != 1 || got[0].Reading != tc.wantRead || got[0].Title != tc.wantTitle {
-					t.Errorf("got %+v, want one %q %q", got, tc.wantRead, tc.wantTitle)
+					t.Fatalf("got %+v, want one %q %q", got, tc.wantRead, tc.wantTitle)
+				}
+				if mine := deref(got[0].MyUnit); mine != tc.wantMine {
+					t.Errorf("MyUnit = %q, want %q", mine, tc.wantMine)
+				}
+				if theirs := deref(got[0].TheirUnit); theirs != tc.wantTheir {
+					t.Errorf("TheirUnit = %q, want %q", theirs, tc.wantTheir)
 				}
 			})
 		}
@@ -230,4 +241,11 @@ func TestEntryPageQueries(t *testing.T) {
 			t.Errorf("got %+v", got)
 		}
 	})
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

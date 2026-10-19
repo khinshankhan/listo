@@ -85,19 +85,37 @@ func (p *Pages) groupView(ctx context.Context, g sqlcgen.GroupByPublicIDRow) (vi
 	return v, nil
 }
 
-// orderings folds the step rows back into orderings. Rows arrive sorted by
-// ordering, position, branch, step; a position's first branch is numbered,
-// later ones are "or".
+// orderings folds the step rows back into orderings, positions, choices and
+// steps. Rows arrive sorted by ordering, position, branch, step.
 func orderings(rows []sqlcgen.GroupOrderingsRow) []views.Ordering {
 	var out []views.Ordering
+	var section string
 	for i, row := range rows {
-		if i == 0 || row.OrderingID != rows[i-1].OrderingID {
+		newOrdering := i == 0 || row.OrderingID != rows[i-1].OrderingID
+		if newOrdering {
 			out = append(out, views.Ordering{
 				Kind:      row.Kind + " order",
 				Name:      row.Name,
 				Rationale: deref(row.Rationale),
 			})
+			section = ""
 		}
+		o := &out[len(out)-1]
+
+		if newOrdering || row.Position != rows[i-1].Position {
+			pos := views.Position{Number: fmt.Sprintf("%02d", row.Position)}
+			// heading only where the section changes
+			if s := deref(row.Section); s != section {
+				pos.Section, section = s, s
+			}
+			o.Positions = append(o.Positions, pos)
+		}
+		pos := &o.Positions[len(o.Positions)-1]
+
+		if len(pos.Choices) == 0 || row.Branch != rows[i-1].Branch {
+			pos.Choices = append(pos.Choices, views.Choice{})
+		}
+		choice := &pos.Choices[len(pos.Choices)-1]
 
 		step := views.Step{
 			Title: row.Title,
@@ -108,16 +126,7 @@ func orderings(rows []sqlcgen.GroupOrderingsRow) []views.Ordering {
 		if row.Necessity != "required" {
 			step.Necessity = necessity(row.Necessity)
 		}
-		switch {
-		case row.Step > 1:
-		case row.Branch > 1:
-			step.Number = "or"
-		default:
-			step.Number = fmt.Sprintf("%02d", row.Position)
-		}
-
-		o := &out[len(out)-1]
-		o.Steps = append(o.Steps, step)
+		choice.Steps = append(choice.Steps, step)
 	}
 	return out
 }

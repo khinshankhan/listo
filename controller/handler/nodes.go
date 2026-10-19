@@ -125,6 +125,7 @@ func (p *Pages) nodeParts(ctx context.Context, id uuid.UUID, country string) (no
 			Title:   rel.Title,
 			Href:    NodePath(rel.Type, rel.PublicID, rel.Slug),
 			Meta:    "group",
+			Anchor:  anchor(rel.MyUnit, rel.TheirUnit),
 			Note:    deref(rel.Note),
 		}
 		if rel.Type == "entry" {
@@ -154,4 +155,17 @@ func (p *Pages) nodeParts(ctx context.Context, id uuid.UUID, country string) (no
 	}
 
 	return parts, nil
+}
+
+// anchor phrases where a relation attaches, read from this node's side.
+func anchor(mine, theirs *string) string {
+	switch {
+	case mine != nil && theirs != nil:
+		return fmt.Sprintf("here at %s, there at %s", *mine, *theirs)
+	case mine != nil:
+		return "here at " + *mine
+	case theirs != nil:
+		return "at " + *theirs
+	}
+	return ""
 }
