@@ -100,7 +100,7 @@ type LinkProps struct {
 
 // The classes the shared links add to their variant.
 
-const breadcrumbClass = "font-mono text-11 leading-[14px] tracking-wide text-foreground-subtle uppercase"
+const breadcrumbClass = "font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase"
 
 func sideLinkClass(active bool) string {
 	if active {

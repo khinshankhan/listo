@@ -159,7 +159,7 @@ templ EntryPage(e Entry) {
 							if i > 0 {
 								<span class="inline-block size-[3px] shrink-0 rounded-full bg-border" aria-hidden="true"></span>
 							}
-							<span class="font-mono text-11 leading-[14px] tracking-wide text-foreground-subtle uppercase">{ part }</span>
+							<span class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">{ part }</span>
 						}
 					</p>
 					<h1 class="font-heading text-44 leading-12 font-semibold tracking-tight text-foreground-strong">{ e.Title }</h1>
@@ -167,7 +167,7 @@ templ EntryPage(e Entry) {
 						<dl class="flex flex-col gap-[3px]">
 							for _, t := range e.Titles {
 								<div class="flex items-baseline gap-2">
-									<dt class="w-[78px] shrink-0 font-mono text-[10px] leading-3 text-foreground-subtle uppercase">{ t.Kind }</dt>
+									<dt class="w-[78px] shrink-0 font-mono text-[10px] leading-3 text-foreground-muted uppercase">{ t.Kind }</dt>
 									<dd class="text-13 leading-4 text-foreground-muted" lang={ t.Lang }>{ t.Title }</dd>
 								</div>
 							}
@@ -218,7 +218,7 @@ templ relationCard(r Related) {
 				{ r.Title }
 			}
 			<span class="text-12 leading-4 text-foreground-muted">{ r.Meta }</span>
-			<span class="pt-[2px] font-mono text-[10px] leading-3 tracking-[0.04em] text-foreground-subtle uppercase">{ r.Reading }</span>
+			<span class="pt-[2px] font-mono text-[10px] leading-3 tracking-[0.04em] text-foreground-muted uppercase">{ r.Reading }</span>
 			if r.Anchor != "" {
 				<span class="font-mono text-11 leading-4 text-foreground-muted">{ r.Anchor }</span>
 			}
@@ -331,7 +331,7 @@ templ partOf(groups []GroupRef) {
 		<p class="mt-2 text-14 text-foreground">
 			for i, g := range groups {
 				if i > 0 {
-					<span class="text-foreground-subtle">&nbsp;/&nbsp;</span>
+					<span class="text-foreground-subtle" aria-hidden="true">&nbsp;/&nbsp;</span>
 				}
 				if g.Position != "" {
 					<span class="font-mono text-foreground-muted">{ g.Position }</span> in

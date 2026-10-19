@@ -111,7 +111,7 @@ func TestCatalogPages(t *testing.T) {
 			want: []string{`aria-label="breadcrumb"`, `href="/entries?medium=anime">anime</a>`}},
 		{name: "a tv anime's eyebrow has its season, and the format only when it adds something", path: "/entries/7/steins-gate-anime",
 			status: http.StatusOK, want: []string{`uppercase">spring 2011</span>`},
-			once: []string{`text-foreground-subtle uppercase">anime</span>`}},
+			once: []string{`leading-[14px] tracking-wide text-foreground-muted uppercase">anime</span>`}},
 		{name: "tags", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
 			want: []string{`aria-label="tags"`, ">sci-fi</li>", ">thriller</li>"}},
 		{name: "a film names its format, is released, and shows no units", path: "/entries/8/steins-gate-movie", status: http.StatusOK,
