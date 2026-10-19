@@ -7,3 +7,9 @@
 
 /* tailwind has to scan the templ pages too */
 @source "../../views";
+
+/* always reserve the scrollbar, so pages don't shift sideways between short
+   and long ones */
+html {
+  scrollbar-gutter: stable;
+}
