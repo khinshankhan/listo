@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -92,6 +93,10 @@ func describe(v views.Entry) string {
 }
 
 func article(word string) string {
+	// "uni" sounds like "you": a universe
+	if strings.HasPrefix(word, "uni") {
+		return "a"
+	}
 	switch word[0] {
 	case 'a', 'e', 'i', 'o', 'u':
 		return "an"

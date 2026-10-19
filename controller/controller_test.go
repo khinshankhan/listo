@@ -119,6 +119,8 @@ func TestCatalogPages(t *testing.T) {
 			dontWant: []string{"w-12 shrink-0"},
 			want: []string{`uppercase">franchise`, "Steins;Gate</h1>", `href="/groups/3/steins-gate-main">Main timeline</a>`, ">continuity</span>",
 				`<link rel="canonical" href="/groups/2/steins-gate">`, `content="Steins;Gate, a franchise on listo."`}},
+		{name: "a universe, not an universe", path: "/groups/1/science-adventure", status: http.StatusOK,
+			want: []string{`content="Science Adventure, a universe on listo."`}},
 		{name: "a continuity shows its standing", path: "/groups/3/steins-gate-main", status: http.StatusOK,
 			want: []string{"w-12 shrink-0", "continuity &middot; primary", `href="/entries/7/steins-gate-anime">Steins;Gate</a>`, "anime · 2011"}},
 		{name: "an ordering, step by step", path: "/groups/2/steins-gate", status: http.StatusOK,
@@ -185,6 +187,7 @@ func TestCatalogPages(t *testing.T) {
 type fakeCatalog struct{}
 
 var (
+	saUniverse  = uuid.MustParse("01a151f2-0000-7000-8000-000000000001")
 	sgFranchise = uuid.MustParse("01a151f2-0000-7000-8000-000000000002")
 	sgMain      = uuid.MustParse("01a151f2-0000-7000-8000-000000000003")
 	sgOrder     = uuid.MustParse("01a151f2-0000-7000-8000-00000000f001")
@@ -237,6 +240,9 @@ func (fakeCatalog) NodeByPublicID(_ context.Context, id int64) (sqlcgen.NodeByPu
 func (fakeCatalog) GroupByPublicID(_ context.Context, id int64) (sqlcgen.GroupByPublicIDRow, error) {
 	primary := "primary"
 	switch id {
+	case 1:
+		return sqlcgen.GroupByPublicIDRow{ID: saUniverse, PublicID: 1, Slug: "science-adventure", Kind: "universe",
+			Name: "Science Adventure"}, nil
 	case 2:
 		return sqlcgen.GroupByPublicIDRow{ID: sgFranchise, PublicID: 2, Slug: "steins-gate", Kind: "franchise", Name: "Steins;Gate"}, nil
 	case 3:
