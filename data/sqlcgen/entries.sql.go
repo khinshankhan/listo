@@ -8,21 +8,19 @@ package sqlcgen
 import (
 	"context"
 	"time"
-
-	"github.com/google/uuid"
 )
 
-const entryBySlug = `-- name: EntryBySlug :one
-select n.id, n.slug, e.medium, e.format, mf.label as format_label, e.country,
+const entryByPublicID = `-- name: EntryByPublicID :one
+select n.public_id, n.slug, e.medium, e.format, mf.label as format_label, e.country,
        e.title, e.start_date, e.start_precision, e.unit_kind, e.unit_total
 from catalog.node n
 join catalog.entry e on e.id = n.id
 join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
-where n.slug = $1
+where n.public_id = $1
 `
 
-type EntryBySlugRow struct {
-	ID             uuid.UUID
+type EntryByPublicIDRow struct {
+	PublicID       int64
 	Slug           string
 	Medium         string
 	Format         string
@@ -35,12 +33,12 @@ type EntryBySlugRow struct {
 	UnitTotal      *int32
 }
 
-// An entry with its format label.
-func (q *Queries) EntryBySlug(ctx context.Context, slug string) (EntryBySlugRow, error) {
-	row := q.db.QueryRow(ctx, entryBySlug, slug)
-	var i EntryBySlugRow
+// An entry by public id, with its format label. The caller checks the slug.
+func (q *Queries) EntryByPublicID(ctx context.Context, publicID int64) (EntryByPublicIDRow, error) {
+	row := q.db.QueryRow(ctx, entryByPublicID, publicID)
+	var i EntryByPublicIDRow
 	err := row.Scan(
-		&i.ID,
+		&i.PublicID,
 		&i.Slug,
 		&i.Medium,
 		&i.Format,

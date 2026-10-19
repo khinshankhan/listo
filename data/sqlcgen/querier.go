@@ -9,8 +9,8 @@ import (
 )
 
 type Querier interface {
-	// An entry with its format label.
-	EntryBySlug(ctx context.Context, slug string) (EntryBySlugRow, error)
+	// An entry by public id, with its format label. The caller checks the slug.
+	EntryByPublicID(ctx context.Context, publicID int64) (EntryByPublicIDRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

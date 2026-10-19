@@ -41,7 +41,7 @@ func testTx(t *testing.T) pgx.Tx {
 	return tx
 }
 
-func TestEntryBySlug(t *testing.T) {
+func TestEntryByPublicID(t *testing.T) {
 	tx := testTx(t)
 	ctx := context.Background()
 
@@ -60,22 +60,24 @@ func TestEntryBySlug(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, err := tx.Exec(ctx, `
-		with n as (insert into catalog.node (type, slug) values ('entry', $1) returning id)
-		insert into catalog.entry (id, medium, format, country, title, start_date, start_precision, unit_kind)
-		select id, $2, 'movie', 'JP', 'Test Film', '2013-04-01', 'month', 'none' from n`,
-		slug, medium); err != nil {
+	var id int64
+	if err := tx.QueryRow(ctx, `
+		with n as (insert into catalog.node (type, slug) values ('entry', $1) returning id, public_id),
+		     e as (insert into catalog.entry (id, medium, format, country, title, start_date, start_precision, unit_kind)
+		           select id, $2, 'movie', 'JP', 'Test Film', '2013-04-01', 'month', 'none' from n)
+		select public_id from n`,
+		slug, medium).Scan(&id); err != nil {
 		t.Fatal(err)
 	}
 
 	q := sqlcgen.New(tx)
 
 	t.Run("found", func(t *testing.T) {
-		got, err := q.EntryBySlug(ctx, slug)
+		got, err := q.EntryByPublicID(ctx, id)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got.Slug != slug || got.Medium != medium || got.Format != "movie" || got.Title != "Test Film" {
+		if got.PublicID != id || got.Slug != slug || got.Medium != medium || got.Format != "movie" || got.Title != "Test Film" {
 			t.Errorf("got %+v", got)
 		}
 		// the format's label comes from the vocabulary row, not the format key
@@ -93,8 +95,9 @@ func TestEntryBySlug(t *testing.T) {
 		}
 	})
 
-	t.Run("unknown slug", func(t *testing.T) {
-		_, err := q.EntryBySlug(ctx, slug+"-nope")
+	t.Run("unknown id", func(t *testing.T) {
+		// far past the id this test just took, and identity values only go up
+		_, err := q.EntryByPublicID(ctx, id+1_000_000)
 		if !errors.Is(err, pgx.ErrNoRows) {
 			t.Errorf("err = %v, want pgx.ErrNoRows", err)
 		}
