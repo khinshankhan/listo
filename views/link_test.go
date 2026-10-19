@@ -23,8 +23,8 @@ func TestResolveLinkKind(t *testing.T) {
 		{"http://example.com", LinkExternal},
 		// as quicksilver has it: no leading slash is not root-relative
 		{"entries/7", LinkExternal},
-		// as quicksilver has it, though a browser would leave the site
-		{"//example.com/x", LinkInternal},
+		// protocol-relative: the browser leaves the site
+		{"//example.com/x", LinkExternal},
 	}
 	for _, tc := range cases {
 		t.Run(tc.href, func(t *testing.T) {

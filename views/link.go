@@ -21,6 +21,7 @@ const (
 )
 
 // ResolveLinkKind is quicksilver's resolveKindLite.
+// NOTE: unlike quicksilver, //host is external.
 func ResolveLinkKind(href string) LinkKind {
 	switch {
 	case strings.HasPrefix(href, "mailto:"):
@@ -29,6 +30,8 @@ func ResolveLinkKind(href string) LinkKind {
 		return LinkTel
 	case strings.HasPrefix(href, "#"):
 		return LinkHash
+	case strings.HasPrefix(href, "//"):
+		return LinkExternal
 	case strings.HasPrefix(href, "/"):
 		return LinkInternal
 	}
