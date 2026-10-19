@@ -14,11 +14,11 @@ import (
 // Pages renders the server-side pages.
 type Pages struct {
 	tags    web.Tags
-	entries EntryFinder
+	catalog Catalog
 }
 
-func NewPages(tags web.Tags, entries EntryFinder) *Pages {
-	return &Pages{tags: tags, entries: entries}
+func NewPages(tags web.Tags, catalog Catalog) *Pages {
+	return &Pages{tags: tags, catalog: catalog}
 }
 
 func (p *Pages) Home(w http.ResponseWriter, r *http.Request) {

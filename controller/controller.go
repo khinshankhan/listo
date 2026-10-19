@@ -40,9 +40,9 @@ type httpServer struct {
 	srv *http.Server
 }
 
-func newHTTPServer(addr string, bundle *web.Bundle, db handler.Pinger, entries handler.EntryFinder) *httpServer {
+func newHTTPServer(addr string, bundle *web.Bundle, db handler.Pinger, catalog handler.Catalog) *httpServer {
 	api := handler.NewAPI(db)
-	pages := handler.NewPages(bundle.Tags, entries)
+	pages := handler.NewPages(bundle.Tags, catalog)
 
 	// first listed is outermost
 	// NOTE: BlackHole wraps the mux directly, it reads the mux's routes

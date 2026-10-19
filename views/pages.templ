@@ -26,20 +26,103 @@ templ NotFound() {
 
 // EntryPage is all HTML, for crawlers and link previews.
 templ EntryPage(e Entry) {
-	<p class="font-mono text-12 tracking-wide text-foreground-muted uppercase">
-		{ e.Format }
-		if e.Country != "" {
-			&middot; { e.Country }
-		}
-	</p>
-	<h1 class="mt-2 font-heading text-44 font-semibold tracking-tight text-foreground-strong">{ e.Title }</h1>
-	if e.Released != "" || e.Units != "" {
-		<p class="mt-2 font-mono text-14 text-foreground-muted">
-			{ e.Released }
-			if e.Released != "" && e.Units != "" {
-				&middot;
+	<article class="flex flex-col gap-8 sm:flex-row">
+		@cover(e.Medium, e.Title, e.Year)
+		<div class="min-w-0 flex-1">
+			<p class="font-mono text-12 tracking-wide text-foreground-muted uppercase">
+				{ e.Medium }
+				if e.Format != "" {
+					&middot; { e.Format }
+				}
+				if e.Country != "" {
+					&middot; { e.Country }
+				}
+			</p>
+			<h1 class="mt-2 font-heading text-44 leading-snug font-semibold tracking-tight text-foreground-strong">{ e.Title }</h1>
+			if e.Native != "" {
+				<p class="mt-1 text-18 text-foreground-muted" lang={ e.NativeLang }>{ e.Native }</p>
 			}
-			{ e.Units }
-		</p>
+			if e.Released != "" || e.Units != "" {
+				<p class="mt-4 font-mono text-14 text-foreground-muted">
+					{ e.Released }
+					if e.Released != "" && e.Units != "" {
+						&middot;
+					}
+					{ e.Units }
+				</p>
+			}
+			if len(e.Groups) > 0 {
+				<p class="mt-2 text-14 text-foreground">
+					for i, g := range e.Groups {
+						if i > 0 {
+							<span class="text-foreground-subtle">&nbsp;/&nbsp;</span>
+						}
+						if g.Position != "" {
+							<span class="font-mono text-foreground-muted">{ g.Position }</span> in
+						} else {
+							<span class="text-foreground-muted">part of</span>
+						}
+						{ g.Name }
+					}
+				</p>
+			}
+		</div>
+	</article>
+	if len(e.Relations) > 0 {
+		@panel("relations") {
+			for _, r := range e.Relations {
+				<li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
+					<span class="w-36 shrink-0 font-mono text-11 tracking-wide text-foreground-muted uppercase">{ r.Reading }</span>
+					if r.Href != "" {
+						<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ templ.SafeURL(r.Href) }>{ r.Title }</a>
+					} else {
+						<span class="font-semibold text-foreground-strong">{ r.Title }</span>
+					}
+					<span class="ml-auto font-mono text-13 text-foreground-muted">{ r.Meta }</span>
+					if r.Note != "" {
+						<p class="basis-full pl-40 text-14 text-foreground-muted">{ r.Note }</p>
+					}
+				</li>
+			}
+		}
 	}
+	if len(e.Titles) > 0 {
+		@panel("titles") {
+			for _, t := range e.Titles {
+				<li class="flex items-baseline gap-4 px-4 py-3">
+					<span class="w-36 shrink-0 font-mono text-11 tracking-wide text-foreground-muted uppercase">{ t.Kind }</span>
+					<span class="text-foreground-strong">{ t.Title }</span>
+				</li>
+			}
+		}
+	}
+	if len(e.Links) > 0 {
+		@panel("elsewhere") {
+			for _, l := range e.Links {
+				<li class="flex items-baseline gap-4 px-4 py-3">
+					<a class="text-accent-9 underline-offset-2 hover:underline" href={ templ.SafeURL(l.Href) } rel="noopener">{ l.Site }</a>
+					<span class="ml-auto font-mono text-13 text-foreground-muted">{ l.ID }</span>
+				</li>
+			}
+		}
+	}
+}
+
+// cover is a text placeholder until cover images are cached.
+templ cover(medium, title, year string) {
+	<div class="flex aspect-[5/7] w-44 shrink-0 flex-col justify-between rounded-md bg-placeholder p-4" aria-hidden="true">
+		<span class="font-mono text-11 tracking-wide text-foreground-muted uppercase">{ medium }</span>
+		<span class="text-18 leading-snug font-semibold text-foreground-muted">{ title }</span>
+		<span class="font-mono text-12 text-foreground-muted">{ year }</span>
+	</div>
+}
+
+// panel is one titled section of a page: a mono eyebrow over a raised list.
+templ panel(eyebrow string) {
+	<section class="mt-12">
+		<h2 class="font-mono text-12 tracking-wide text-foreground-muted uppercase">{ eyebrow }</h2>
+		<ul class="mt-3 divide-y divide-border-subtle rounded-lg border border-border bg-background-2">
+			{ children... }
+		</ul>
+	</section>
 }

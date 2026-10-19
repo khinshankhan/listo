@@ -11,6 +11,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/khinshankhan/listo/data/sqlcgen"
@@ -22,9 +23,9 @@ func TestRoutes(t *testing.T) {
 		Files: fstest.MapFS{"assets/app-abc.css": {Data: []byte("body{}")}},
 		Tags:  web.Tags{CSS: []string{"/assets/app-abc.css"}, Script: "/assets/islands-abc.js"},
 	}
-	up := httptest.NewServer(newHTTPServer("", bundle, fakeDB{}, fakeEntries{}).srv.Handler)
+	up := httptest.NewServer(newHTTPServer("", bundle, fakeDB{}, fakeCatalog{}).srv.Handler)
 	t.Cleanup(up.Close)
-	down := httptest.NewServer(newHTTPServer("", bundle, fakeDB{err: errors.New("connection refused")}, fakeEntries{}).srv.Handler)
+	down := httptest.NewServer(newHTTPServer("", bundle, fakeDB{err: errors.New("connection refused")}, fakeCatalog{}).srv.Handler)
 	t.Cleanup(down.Close)
 
 	cases := []struct {
@@ -78,7 +79,7 @@ func (f fakeDB) Ping(context.Context) error {
 
 func TestEntryPage(t *testing.T) {
 	bundle := &web.Bundle{Files: fstest.MapFS{}}
-	srv := httptest.NewServer(newHTTPServer("", bundle, fakeDB{}, fakeEntries{}).srv.Handler)
+	srv := httptest.NewServer(newHTTPServer("", bundle, fakeDB{}, fakeCatalog{}).srv.Handler)
 	t.Cleanup(srv.Close)
 
 	// redirects are the point here, so don't follow them
@@ -94,10 +95,25 @@ func TestEntryPage(t *testing.T) {
 		want     []string
 	}{
 		{name: "canonical", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
-			want: []string{"Steins;Gate", "anime &middot; JP", "Apr 2011 &middot; 24 episodes",
-				`<link rel="canonical" href="/entries/7/steins-gate-anime">`}},
-		{name: "a film shows no units", path: "/entries/8/steins-gate-movie", status: http.StatusOK,
-			want: []string{"Load Region", "Apr 20, 2013"}},
+			want: []string{"Steins;Gate", "Apr 2011 &middot; 24 episodes",
+				`<link rel="canonical" href="/entries/7/steins-gate-anime">`,
+				`<meta name="description" content="Steins;Gate, an anime from 2011.">`}},
+		{name: "format that only repeats the medium is left out", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
+			want: []string{">anime &middot; JP</p>"}},
+		{name: "a film names its format and shows no units", path: "/entries/8/steins-gate-movie", status: http.StatusOK,
+			want: []string{"Load Region", "anime &middot; film &middot; JP", "Apr 20, 2013",
+				`content="Steins;Gate: The Movie - Load Region of Déjà Vu, an anime film from 2013."`}},
+		{name: "native title is tagged with its language", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
+			want: []string{`lang="ja">シュタインズ・ゲート</p>`}},
+		{name: "relations link to their entries", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
+			want: []string{`href="/entries/6/steins-gate-vn">Steins;Gate</a>`, "visual novel · 2009",
+				`href="/entries/11/steins-gate-0-anime">Steins;Gate 0</a>`, "branches off episode 23"}},
+		{name: "groups, nearest first", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
+			want: []string{"#1</span> in Main timeline", `part of</span> Steins;Gate`}},
+		{name: "every title and the links out", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
+			want: []string{">synonym</span>", "S;G", `href="https://anilist.co/anime/9253"`, ">9253</span>"}},
+		{name: "a failed secondary read is a 500, not a half page", path: "/entries/501/broken",
+			status: http.StatusInternalServerError},
 		{name: "wrong slug redirects", path: "/entries/7/steins-gate", status: http.StatusMovedPermanently,
 			location: "/entries/7/steins-gate-anime"},
 		{name: "missing slug redirects", path: "/entries/7", status: http.StatusMovedPermanently,
@@ -137,29 +153,88 @@ func TestEntryPage(t *testing.T) {
 	}
 }
 
-// fakeEntries serves two seed entries by public id; 500 fails.
-type fakeEntries struct{}
+// fakeCatalog serves two seed entries by public id. 500 fails outright, 501
+// fails on its relations.
+type fakeCatalog struct{}
 
-func (fakeEntries) EntryByPublicID(_ context.Context, id int64) (sqlcgen.EntryByPublicIDRow, error) {
+var (
+	sgAnime = uuid.MustParse("01a151f2-0000-7000-8000-000000000007")
+	sgMovie = uuid.MustParse("01a151f2-0000-7000-8000-000000000008")
+	broken  = uuid.MustParse("01a151f2-0000-7000-8000-000000000501")
+)
+
+func (fakeCatalog) EntryByPublicID(_ context.Context, id int64) (sqlcgen.EntryByPublicIDRow, error) {
 	jp, month, day, total := "JP", "month", "day", int32(24)
 	switch id {
 	case 7:
 		start := time.Date(2011, 4, 1, 0, 0, 0, 0, time.UTC)
 		return sqlcgen.EntryByPublicIDRow{
-			PublicID: 7, Slug: "steins-gate-anime", Medium: "anime", Format: "tv", FormatLabel: "anime",
-			Country: &jp, Title: "Steins;Gate", StartDate: &start, StartPrecision: &month,
-			UnitKind: "episode", UnitTotal: &total,
+			ID: sgAnime, PublicID: 7, Slug: "steins-gate-anime", Medium: "anime", MediumLabel: "anime",
+			Format: "tv", FormatLabel: "anime", Country: &jp, Title: "Steins;Gate", StartDate: &start,
+			StartPrecision: &month, UnitKind: "episode", UnitTotal: &total,
 		}, nil
 	case 8:
 		start := time.Date(2013, 4, 20, 0, 0, 0, 0, time.UTC)
 		return sqlcgen.EntryByPublicIDRow{
-			PublicID: 8, Slug: "steins-gate-movie", Medium: "anime", Format: "movie", FormatLabel: "film",
-			Country: &jp, Title: "Steins;Gate: The Movie - Load Region of Déjà Vu", StartDate: &start,
+			ID: sgMovie, PublicID: 8, Slug: "steins-gate-movie", Medium: "anime", MediumLabel: "anime",
+			Format: "movie", FormatLabel: "film", Country: &jp,
+			Title: "Steins;Gate: The Movie - Load Region of Déjà Vu", StartDate: &start,
 			StartPrecision: &day, UnitKind: "none",
 		}, nil
 	case 500:
 		return sqlcgen.EntryByPublicIDRow{}, errors.New("connection reset")
+	case 501:
+		return sqlcgen.EntryByPublicIDRow{ID: broken, PublicID: 501, Slug: "broken", Medium: "anime",
+			MediumLabel: "anime", Format: "tv", FormatLabel: "anime", Title: "Broken", UnitKind: "none"}, nil
 	default:
 		return sqlcgen.EntryByPublicIDRow{}, pgx.ErrNoRows
 	}
+}
+
+func (fakeCatalog) NodeTitles(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeTitlesRow, error) {
+	if id != sgAnime {
+		return nil, nil
+	}
+	return []sqlcgen.NodeTitlesRow{
+		{Kind: "english", Title: "Steins;Gate"},
+		{Kind: "native", Title: "シュタインズ・ゲート"},
+		{Kind: "synonym", Title: "S;G"},
+	}, nil
+}
+
+func (fakeCatalog) NodeLinks(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeLinksRow, error) {
+	if id != sgAnime {
+		return nil, nil
+	}
+	return []sqlcgen.NodeLinksRow{
+		{Site: "AniList", Source: "anilist_anime", ExternalID: "9253", Url: "https://anilist.co/anime/9253"},
+	}, nil
+}
+
+func (fakeCatalog) NodeRelations(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeRelationsRow, error) {
+	switch id {
+	case sgAnime:
+		vn, year := "visual novel", time.Date(2009, 10, 15, 0, 0, 0, 0, time.UTC)
+		note := "branches off episode 23"
+		return []sqlcgen.NodeRelationsRow{
+			{Reading: "adaptation of", PublicID: 6, Slug: "steins-gate-vn", Type: "entry",
+				Title: "Steins;Gate", MediumLabel: &vn, StartDate: &year},
+			{Reading: "prequel of", PublicID: 11, Slug: "steins-gate-0-anime", Type: "entry",
+				Title: "Steins;Gate 0", Note: &note},
+		}, nil
+	case broken:
+		return nil, errors.New("connection reset")
+	}
+	return nil, nil
+}
+
+func (fakeCatalog) NodeGroups(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeGroupsRow, error) {
+	if id != sgAnime {
+		return nil, nil
+	}
+	first := "#1"
+	return []sqlcgen.NodeGroupsRow{
+		{PublicID: 3, Slug: "steins-gate-main", Kind: "continuity", Name: "Main timeline", PositionLabel: &first, Depth: 1},
+		{PublicID: 2, Slug: "steins-gate", Kind: "franchise", Name: "Steins;Gate", Depth: 2},
+	}, nil
 }
