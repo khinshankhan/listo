@@ -79,7 +79,7 @@ templ GroupPage(g Group) {
 			for _, st := range o.Steps {
 				<li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
 					<span class="w-8 shrink-0 font-mono text-13 text-foreground-muted">{ st.Number }</span>
-					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ templ.SafeURL(st.Href) }>{ st.Title }</a>
+					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ st.Href }>{ st.Title }</a>
 					if st.Units != "" {
 						<span class="font-mono text-13 text-foreground-muted">{ st.Units }</span>
 					}
@@ -100,7 +100,7 @@ templ GroupPage(g Group) {
 					if g.Positioned() {
 						<span class="w-12 shrink-0 font-mono text-13 text-foreground-muted">{ m.Position }</span>
 					}
-					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ templ.SafeURL(m.Href) }>{ m.Title }</a>
+					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ m.Href }>{ m.Title }</a>
 					<span class="ml-auto font-mono text-13 text-foreground-muted">{ m.Meta }</span>
 				</li>
 			}
@@ -132,7 +132,7 @@ templ partOf(groups []GroupRef) {
 				} else {
 					<span class="text-foreground-muted">part of</span>
 				}
-				<a class="hover:text-accent-9" href={ templ.SafeURL(g.Href) }>{ g.Name }</a>
+				<a class="hover:text-accent-9" href={ g.Href }>{ g.Name }</a>
 			}
 		</p>
 	}
@@ -144,7 +144,7 @@ templ relationsPanel(relations []Related) {
 			for _, r := range relations {
 				<li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
 					<span class="w-36 shrink-0 font-mono text-11 tracking-wide text-foreground-muted uppercase">{ r.Reading }</span>
-					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ templ.SafeURL(r.Href) }>{ r.Title }</a>
+					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ r.Href }>{ r.Title }</a>
 					<span class="ml-auto font-mono text-13 text-foreground-muted">{ r.Meta }</span>
 					if r.Note != "" {
 						<p class="basis-full pl-40 text-14 text-foreground-muted">{ r.Note }</p>
@@ -173,7 +173,7 @@ templ linksPanel(links []Link) {
 		@panel("elsewhere") {
 			for _, l := range links {
 				<li class="flex items-baseline gap-4 px-4 py-3">
-					<a class="text-accent-9 underline-offset-2 hover:underline" href={ templ.SafeURL(l.Href) } rel="noopener">{ l.Site }</a>
+					<a class="text-accent-9 underline-offset-2 hover:underline" href={ l.Href }>{ l.Site }</a>
 					<span class="ml-auto font-mono text-13 text-foreground-muted">{ l.ID }</span>
 				</li>
 			}

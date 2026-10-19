@@ -105,6 +105,8 @@ func TestCatalogPages(t *testing.T) {
 		{name: "a film names its format and shows no units", path: "/entries/8/steins-gate-movie", status: http.StatusOK,
 			want: []string{"Load Region", "anime &middot; film &middot; JP", "Apr 20, 2013",
 				`content="Steins;Gate: The Movie - Load Region of Déjà Vu, an anime film from 2013."`}},
+		{name: "a link out is never a script", path: "/entries/8/steins-gate-movie", status: http.StatusOK,
+			want: []string{">Bad</a>"}, dontWant: []string{`href="javascript:`}},
 		{name: "native title is tagged with its language", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
 			want: []string{`lang="ja">シュタインズ・ゲート</p>`}},
 		{name: "relations link to their entries", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
@@ -303,12 +305,16 @@ func (fakeCatalog) NodeTitles(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeTi
 }
 
 func (fakeCatalog) NodeLinks(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeLinksRow, error) {
-	if id != sgAnime {
-		return nil, nil
+	switch id {
+	case sgAnime:
+		return []sqlcgen.NodeLinksRow{
+			{Site: "AniList", Source: "anilist_anime", ExternalID: "9253", Url: "https://anilist.co/anime/9253"},
+		}, nil
+	case sgMovie:
+		// an id_source url_template gone wrong
+		return []sqlcgen.NodeLinksRow{{Site: "Bad", Source: "bad", ExternalID: "1", Url: "javascript:alert(1)"}}, nil
 	}
-	return []sqlcgen.NodeLinksRow{
-		{Site: "AniList", Source: "anilist_anime", ExternalID: "9253", Url: "https://anilist.co/anime/9253"},
-	}, nil
+	return nil, nil
 }
 
 func (fakeCatalog) NodeRelations(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeRelationsRow, error) {
