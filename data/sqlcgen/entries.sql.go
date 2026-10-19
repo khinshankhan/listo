@@ -230,6 +230,39 @@ func (q *Queries) NodeRelations(ctx context.Context, nodeID uuid.UUID) ([]NodeRe
 	return items, nil
 }
 
+const nodeTags = `-- name: NodeTags :many
+select t.kind, t.name
+from catalog.node_tag nt
+join catalog.tag t on t.id = nt.tag_id
+where nt.node_id = $1
+order by t.kind, t.name
+`
+
+type NodeTagsRow struct {
+	Kind string
+	Name string
+}
+
+func (q *Queries) NodeTags(ctx context.Context, nodeID uuid.UUID) ([]NodeTagsRow, error) {
+	rows, err := q.db.Query(ctx, nodeTags, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []NodeTagsRow{}
+	for rows.Next() {
+		var i NodeTagsRow
+		if err := rows.Scan(&i.Kind, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const nodeTitles = `-- name: NodeTitles :many
 select kind, language, title
 from catalog.title

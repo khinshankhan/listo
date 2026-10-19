@@ -39,7 +39,7 @@ func (p *Pages) Home(w http.ResponseWriter, r *http.Request) {
 			Name:    g.Name,
 			Kind:    g.Kind,
 			Href:    GroupPath(g.PublicID, g.Slug),
-			Members: int(g.Members),
+			Entries: int(g.Entries),
 		})
 	}
 

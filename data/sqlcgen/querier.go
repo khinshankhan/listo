@@ -33,12 +33,14 @@ type Querier interface {
 	// A node's relations, labelled and anchored from its own side.
 	// NOTE: spoilers are left out until there's UI to hide them.
 	NodeRelations(ctx context.Context, nodeID uuid.UUID) ([]NodeRelationsRow, error)
+	NodeTags(ctx context.Context, nodeID uuid.UUID) ([]NodeTagsRow, error)
 	// Every title a node goes by, the likeliest to be searched for first.
 	NodeTitles(ctx context.Context, nodeID uuid.UUID) ([]NodeTitlesRow, error)
 	// Fuzzy title search over entries and groups, one hit per node by its best
 	// matching title.
 	SearchNodes(ctx context.Context, arg SearchNodesParams) ([]SearchNodesRow, error)
-	// Top-level groups.
+	// Top-level groups with every entry beneath them counted.
+	// NOTE: union, not union all, so a membership cycle ends.
 	TopGroups(ctx context.Context) ([]TopGroupsRow, error)
 }
 

@@ -23,12 +23,23 @@ order by hit.score desc, title
 limit sqlc.arg(max_results)::int;
 
 -- name: TopGroups :many
--- Top-level groups.
-select n.public_id, n.slug, g.kind, g.name,
-       (select count(*) from catalog.membership ms where ms.group_id = g.id)::int as members
-from catalog.grp g
+-- Top-level groups with every entry beneath them counted.
+-- NOTE: union, not union all, so a membership cycle ends.
+with recursive down (root, id) as (
+  select g.id, g.id
+  from catalog.grp g
+  where not exists (select 1 from catalog.membership ms where ms.member_id = g.id)
+  union
+  select down.root, ms.member_id
+  from down
+  join catalog.membership ms on ms.group_id = down.id
+)
+select n.public_id, n.slug, g.kind, g.name, count(e.id)::int as entries
+from down
+join catalog.grp g on g.id = down.root
 join catalog.node n on n.id = g.id
-where not exists (select 1 from catalog.membership ms where ms.member_id = g.id)
+left join catalog.entry e on e.id = down.id
+group by n.public_id, n.slug, g.kind, g.name
 order by g.name;
 
 -- name: MediumCounts :many

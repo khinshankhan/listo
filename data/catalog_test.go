@@ -48,6 +48,10 @@ func TestCatalogQueries(t *testing.T) {
 	nested, nestedSlug := node("group", "nested")
 	exec(`insert into catalog.grp (id, kind, name) values ($1, 'franchise', 'Zorblax'), ($2, 'series', 'Zorblax Shorts')`, top, nested)
 	exec(`insert into catalog.membership (group_id, member_id) values ($1, $2), ($1, $3)`, top, nested, entry)
+	// one more entry a level down, which the top group still counts
+	deep, _ := node("entry", "deep")
+	exec(`insert into catalog.entry (id, medium, format, title) values ($1, $2, 'tv', 'Zorblax Shorts: One')`, deep, medium)
+	exec(`insert into catalog.membership (group_id, member_id) values ($1, $2)`, nested, deep)
 
 	q := sqlcgen.New(tx)
 
@@ -108,8 +112,8 @@ func TestCatalogQueries(t *testing.T) {
 			switch g.Slug {
 			case topSlug:
 				sawTop = true
-				if g.Members != 2 {
-					t.Errorf("top group members = %d, want 2", g.Members)
+				if g.Entries != 2 {
+					t.Errorf("top group entries = %d, want 2 (one direct, one nested)", g.Entries)
 				}
 			case nestedSlug:
 				sawNested = true
@@ -125,8 +129,8 @@ func TestCatalogQueries(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(rows) != 1 || rows[0].Slug != entrySlug {
-			t.Errorf("got %+v, want only the test entry", rows)
+		if len(rows) != 2 || rows[0].Slug != entrySlug {
+			t.Errorf("got %+v, want the two test entries, alphabetically", rows)
 		}
 
 		counts, err := q.MediumCounts(ctx)
@@ -134,9 +138,24 @@ func TestCatalogQueries(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, c := range counts {
-			if c.Medium == medium && c.Entries != 1 {
-				t.Errorf("count for test medium = %d, want 1", c.Entries)
+			if c.Medium == medium && c.Entries != 2 {
+				t.Errorf("count for test medium = %d, want 2", c.Entries)
 			}
+		}
+	})
+
+	t.Run("tags", func(t *testing.T) {
+		exec(`insert into catalog.tag (kind, name) values ('genre', $1), ('theme', $2)`, "zz-genre-"+run, "aa-theme-"+run)
+		exec(`insert into catalog.node_tag (node_id, tag_id) select $1, id from catalog.tag where name in ($2, $3)`,
+			entry, "zz-genre-"+run, "aa-theme-"+run)
+
+		got, err := q.NodeTags(ctx, entry)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// by kind, then name
+		if len(got) != 2 || got[0].Kind != "genre" || got[1].Kind != "theme" {
+			t.Errorf("got %+v, want the genre then the theme", got)
 		}
 	})
 }

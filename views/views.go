@@ -102,10 +102,10 @@ type Home struct {
 	Media  []MediumLink
 }
 
-// GroupCard is a top-level group, with how many members it has.
+// GroupCard is a top-level group, with how many entries sit beneath it.
 type GroupCard struct {
 	Name, Kind, Href string
-	Members          int
+	Entries          int
 }
 
 // MediumLink filters the browse list to one medium; the empty Label is "all".
@@ -138,10 +138,10 @@ type Row struct {
 	Title, Href, Meta string
 }
 
-// count is "1 member", "29 members".
-func count(n int, noun string) string {
+// count is "1 entry", "36 entries".
+func count(n int, one, many string) string {
 	if n == 1 {
-		return fmt.Sprintf("1 %s", noun)
+		return fmt.Sprintf("1 %s", one)
 	}
-	return fmt.Sprintf("%d %ss", n, noun)
+	return fmt.Sprintf("%d %s", n, many)
 }

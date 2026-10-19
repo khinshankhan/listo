@@ -237,6 +237,9 @@
   --text-32: 32px;
   --text-44: 44px;
 
+  --container-sidebar: 236px;
+  --container-content: 1152px;
+
   --tracking-tight: -0.03em;
   --tracking-snug: -0.01em;
   --tracking-normal: 0em;

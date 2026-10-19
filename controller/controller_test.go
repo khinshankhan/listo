@@ -206,7 +206,7 @@ func TestFrontPages(t *testing.T) {
 	}{
 		{name: "home searches and starts browsing", path: "/", status: http.StatusOK,
 			want: []string{`<form action="/search" method="get" role="search"`,
-				`href="/groups/2/steins-gate">Steins;Gate</a>`, "franchise &middot; 1 member",
+				`href="/groups/2/steins-gate">Steins;Gate</a>`, "franchise &middot; 14 entries",
 				`href="/entries?medium=anime"`, `href="/entries"`},
 			dontWant: []string{"data-island", "noindex"}},
 		{name: "empty search is just the form", path: "/search", status: http.StatusOK,
@@ -446,7 +446,7 @@ func (fakeCatalog) SearchNodes(_ context.Context, arg sqlcgen.SearchNodesParams)
 }
 
 func (fakeCatalog) TopGroups(context.Context) ([]sqlcgen.TopGroupsRow, error) {
-	return []sqlcgen.TopGroupsRow{{PublicID: 2, Slug: "steins-gate", Kind: "franchise", Name: "Steins;Gate", Members: 1}}, nil
+	return []sqlcgen.TopGroupsRow{{PublicID: 2, Slug: "steins-gate", Kind: "franchise", Name: "Steins;Gate", Entries: 14}}, nil
 }
 
 func (fakeCatalog) MediumCounts(context.Context) ([]sqlcgen.MediumCountsRow, error) {

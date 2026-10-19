@@ -67,3 +67,10 @@ left join catalog.membership ms on ms.group_id = g.id and ms.member_id = $1
 where not up.looped
 group by n.public_id, n.slug, g.kind, g.name, ms.position_label
 order by depth, g.name;
+
+-- name: NodeTags :many
+select t.kind, t.name
+from catalog.node_tag nt
+join catalog.tag t on t.id = nt.tag_id
+where nt.node_id = $1
+order by t.kind, t.name;
