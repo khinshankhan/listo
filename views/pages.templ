@@ -15,7 +15,7 @@ templ HomePage(h Home) {
 		@panel("start somewhere") {
 			for _, g := range h.Groups {
 				<li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
-					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ templ.SafeURL(g.Href) }>{ g.Name }</a>
+					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ g.Href }>{ g.Name }</a>
 					<span class="ml-auto font-mono text-13 text-foreground-muted">{ g.Kind } &middot; { count(g.Entries, "entry", "entries") }</span>
 				</li>
 			}
@@ -42,7 +42,7 @@ templ SearchPage(s Search) {
 			@panel("results") {
 				for _, res := range s.Results {
 					<li class="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-4">
-						<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ templ.SafeURL(res.Href) }>{ res.Title }</a>
+						<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ res.Href }>{ res.Title }</a>
 						if res.Matched != "" {
 							<span class="text-14 text-foreground-muted">as { res.Matched }</span>
 						}
@@ -64,7 +64,7 @@ templ BrowsePage(b Browse) {
 		@panel("entries") {
 			for _, e := range b.Entries {
 				<li class="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-baseline sm:gap-4">
-					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ templ.SafeURL(e.Href) }>{ e.Title }</a>
+					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ e.Href }>{ e.Title }</a>
 					<span class="font-mono text-13 text-foreground-muted sm:ml-auto">{ e.Meta }</span>
 				</li>
 			}
@@ -95,7 +95,7 @@ templ mediumNav(media []MediumLink) {
 		<nav class="mt-8 flex flex-wrap gap-2" aria-label="browse by medium">
 			for _, m := range media {
 				<a
-					href={ templ.SafeURL(m.Href) }
+					href={ m.Href }
 					if m.Active {
 						aria-current="page"
 					}
@@ -220,7 +220,7 @@ templ steps(steps []Step) {
 		for _, st := range steps {
 			<li>
 				<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ templ.SafeURL(st.Href) }>{ st.Title }</a>
+					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ st.Href }>{ st.Title }</a>
 					if st.Units != "" {
 						<span class="font-mono text-13 text-foreground-muted">{ st.Units }</span>
 					}

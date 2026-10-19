@@ -122,7 +122,7 @@ templ sideSection(title string) {
 
 templ sideLink(href, label string, n int, active bool) {
 	<a
-		href={ templ.SafeURL(href) }
+		href={ href }
 		if active {
 			aria-current="page"
 		}
