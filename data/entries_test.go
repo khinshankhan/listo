@@ -147,11 +147,14 @@ func TestEntryPageQueries(t *testing.T) {
 	source1, adaptation := entry("source", "The Source"), entry("adaptation", "The Adaptation")
 	exec(`insert into catalog.relation (from_node, kind, to_node) values ($1, $2, $3)`, adaptation, kind, source1)
 
-	franchise, films := node("group", "franchise"), node("group", "films")
-	exec(`insert into catalog.grp (id, kind, name) values ($1, 'franchise', 'Test Franchise'), ($2, 'series', 'Test Series')`,
-		franchise, films)
-	exec(`insert into catalog.membership (group_id, member_id) values ($1, $2)`, franchise, films)
-	exec(`insert into catalog.membership (group_id, member_id, position_label) values ($1, $2, '#3')`, films, adaptation)
+	franchise, films, specials := node("group", "franchise"), node("group", "films"), node("group", "specials")
+	exec(`insert into catalog.grp (id, kind, name) values
+	      ($1, 'franchise', 'Test Franchise'), ($2, 'series', 'Test Series'), ($3, 'series', 'Test Specials')`,
+		franchise, films, specials)
+	exec(`insert into catalog.membership (group_id, member_id, position_label) values ($1, $2, 'Films'), ($1, $3, 'Specials')`,
+		franchise, films, specials)
+	exec(`insert into catalog.membership (group_id, member_id, position_label) values ($1, $2, '#3'), ($3, $2, '#1')`,
+		films, adaptation, specials)
 
 	exec(`insert into catalog.title (node_id, kind, title) values
 	      ($1, 'synonym', 'TA'), ($1, 'native', 'ジ・アダプテーション'), ($1, 'english', 'The Adaptation')`, adaptation)
@@ -187,14 +190,20 @@ func TestEntryPageQueries(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(got) != 2 {
-			t.Fatalf("got %d groups, want 2: %+v", len(got), got)
+		var names []string
+		for _, g := range got {
+			names = append(names, g.Name)
 		}
-		if got[0].Name != "Test Series" || got[0].Depth != 1 || got[0].PositionLabel == nil || *got[0].PositionLabel != "#3" {
-			t.Errorf("nearest = %+v, want Test Series at depth 1, #3", got[0])
+		// the franchise is reached through both series, and listed once
+		if want := "Test Series|Test Specials|Test Franchise"; strings.Join(names, "|") != want {
+			t.Fatalf("groups = %v, want %s", names, want)
 		}
-		if got[1].Name != "Test Franchise" || got[1].Depth != 2 || got[1].PositionLabel != nil {
-			t.Errorf("next = %+v, want Test Franchise at depth 2, no position", got[1])
+		if got[0].Depth != 1 || got[0].PositionLabel == nil || *got[0].PositionLabel != "#3" {
+			t.Errorf("nearest = %+v, want depth 1, #3", got[0])
+		}
+		// a series' position in the franchise is the series', not the entry's
+		if got[2].Depth != 2 || got[2].PositionLabel != nil {
+			t.Errorf("franchise = %+v, want depth 2, no position", got[2])
 		}
 	})
 

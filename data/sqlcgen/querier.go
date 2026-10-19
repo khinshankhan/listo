@@ -21,7 +21,8 @@ type Querier interface {
 	GroupOrderings(ctx context.Context, groupID uuid.UUID) ([]GroupOrderingsRow, error)
 	// A node's type, to redirect an id used under the wrong path.
 	NodeByPublicID(ctx context.Context, publicID int64) (NodeByPublicIDRow, error)
-	// Every group a node is in, nearest first, with a cycle guard.
+	// Every group a node is in, nearest first, with a cycle guard. Only direct
+	// groups have a position.
 	NodeGroups(ctx context.Context, memberID uuid.UUID) ([]NodeGroupsRow, error)
 	// Jump-out links: only ids are stored, URLs come from the id_source vocabulary.
 	NodeLinks(ctx context.Context, nodeID uuid.UUID) ([]NodeLinksRow, error)

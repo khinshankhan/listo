@@ -45,13 +45,14 @@ where sqlc.arg(node_id)::uuid in (r.from_node, r.to_node)
 order by rk.family, reading, e.start_date nulls last, title;
 
 -- name: NodeGroups :many
--- Every group a node is in, nearest first, with a cycle guard.
-with recursive up (id, member_id, depth) as (
-  select m.group_id, m.member_id, 1
+-- Every group a node is in, nearest first, with a cycle guard. Only direct
+-- groups have a position.
+with recursive up (id, depth) as (
+  select m.group_id, 1
   from catalog.membership m
   where m.member_id = $1
   union all
-  select m.group_id, m.member_id, up.depth + 1
+  select m.group_id, up.depth + 1
   from up
   join catalog.membership m on m.member_id = up.id
 ) cycle id set looped using path
@@ -59,7 +60,7 @@ select n.public_id, n.slug, g.kind, g.name, ms.position_label, min(up.depth)::in
 from up
 join catalog.grp g on g.id = up.id
 join catalog.node n on n.id = g.id
-join catalog.membership ms on ms.group_id = up.id and ms.member_id = up.member_id
+left join catalog.membership ms on ms.group_id = g.id and ms.member_id = $1
 where not up.looped
 group by n.public_id, n.slug, g.kind, g.name, ms.position_label
 order by depth, g.name;
