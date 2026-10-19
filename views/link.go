@@ -91,4 +91,24 @@ type LinkProps struct {
 	NoIcon bool
 	// Label is an aria-label, for a link whose text alone isn't enough.
 	Label string
+	// Current sets aria-current and data-active for the current page.
+	Current bool
+}
+
+// The classes the shared links add to their variant.
+
+const breadcrumbClass = "font-mono text-11 leading-[14px] tracking-wide text-foreground-subtle uppercase"
+
+func sideLinkClass(active bool) string {
+	if active {
+		return "flex items-center gap-[11px] rounded-lg bg-accent-3 px-2.5 py-[9px]"
+	}
+	return "flex items-center gap-[11px] rounded-lg px-2.5 py-[9px] hover:bg-background-1"
+}
+
+func pillClass(active bool) string {
+	if active {
+		return "rounded-md border border-accent-7 bg-accent-3 px-3 py-1.5 text-14 text-accent-12"
+	}
+	return "rounded-md border border-border px-3 py-1.5 text-14 text-foreground hover:border-accent-7"
 }
