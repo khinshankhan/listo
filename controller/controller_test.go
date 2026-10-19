@@ -78,7 +78,7 @@ func (f fakeDB) Ping(context.Context) error {
 	return f.err
 }
 
-func TestEntryPage(t *testing.T) {
+func TestCatalogPages(t *testing.T) {
 	bundle := &web.Bundle{Files: fstest.MapFS{}}
 	srv := httptest.NewServer(newHTTPServer("", bundle, fakeDB{}, fakeCatalog{}).srv.Handler)
 	t.Cleanup(srv.Close)
@@ -180,7 +180,7 @@ func TestEntryPage(t *testing.T) {
 	}
 }
 
-// fakeCatalog serves two seed entries by public id. 500 fails outright, 501
+// fakeCatalog serves a few seed nodes by public id. 500 fails outright, 501
 // fails on its relations.
 type fakeCatalog struct{}
 
@@ -249,7 +249,7 @@ func (fakeCatalog) GroupByPublicID(_ context.Context, id int64) (sqlcgen.GroupBy
 }
 
 func (fakeCatalog) GroupMembers(_ context.Context, id uuid.UUID) ([]sqlcgen.GroupMembersRow, error) {
-	continuity, anime, second := "continuity", "anime", "#2"
+	continuity, anime, first := "continuity", "anime", "#1"
 	start := time.Date(2011, 4, 6, 0, 0, 0, 0, time.UTC)
 	switch id {
 	case sgFranchise:
@@ -259,7 +259,7 @@ func (fakeCatalog) GroupMembers(_ context.Context, id uuid.UUID) ([]sqlcgen.Grou
 	case sgMain:
 		return []sqlcgen.GroupMembersRow{
 			{PublicID: 7, Slug: "steins-gate-anime", Type: "entry", Title: "Steins;Gate", MediumLabel: &anime, StartDate: &start,
-				PositionLabel: &second},
+				PositionLabel: &first},
 		}, nil
 	}
 	return nil, nil
