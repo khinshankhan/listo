@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/khinshankhan/listo/data/sqlcgen"
 	"github.com/khinshankhan/listo/views"
@@ -14,7 +15,7 @@ const (
 	// searchResults is how many hits a search page shows.
 	searchResults = 30
 
-	// maxQuery caps what's searched; a title is never longer.
+	// maxQuery caps what's searched, in characters; a title is never longer.
 	maxQuery = 200
 )
 
@@ -50,10 +51,7 @@ func (p *Pages) Home(w http.ResponseWriter, r *http.Request) {
 
 // Search serves /search?q=, fuzzy over every title in the local catalog.
 func (p *Pages) Search(w http.ResponseWriter, r *http.Request) {
-	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	if len(q) > maxQuery {
-		q = q[:maxQuery]
-	}
+	q := clampQuery(r.URL.Query().Get("q"))
 	v := views.Search{Query: q}
 
 	if q != "" {
@@ -186,4 +184,13 @@ func (p *Pages) chrome(r *http.Request, medium *string, query string) (views.Chr
 		})
 	}
 	return views.Chrome{Query: query, Sidebar: side}, nil
+}
+
+// clampQuery trims q and caps it at maxQuery runes, never splitting one.
+func clampQuery(q string) string {
+	q = strings.TrimSpace(q)
+	if utf8.RuneCountInString(q) <= maxQuery {
+		return q
+	}
+	return string([]rune(q)[:maxQuery])
 }
