@@ -6,10 +6,9 @@ import type { Mount } from "./mount";
 
 type Loader = () => Promise<Mount>;
 
-// One line per island, each its own chunk.
-const islands: Record<string, Loader> = {
-  wave: () => import("./islands/wave").then((m) => m.mount),
-};
+// One line per island, eg
+//   typeahead: () => import("./islands/typeahead").then((m) => m.mount),
+const islands: Record<string, Loader> = {};
 
 const start = (el: HTMLElement): void => {
   const name = el.dataset.island ?? "";

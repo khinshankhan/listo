@@ -11,6 +11,8 @@ import (
 )
 
 type Querier interface {
+	// Every entry, or one medium's, alphabetically.
+	BrowseEntries(ctx context.Context, medium *string) ([]BrowseEntriesRow, error)
 	// An entry by public id, with its medium and format labels. The caller
 	// checks the slug.
 	EntryByPublicID(ctx context.Context, publicID int64) (EntryByPublicIDRow, error)
@@ -19,6 +21,8 @@ type Querier interface {
 	GroupMembers(ctx context.Context, groupID uuid.UUID) ([]GroupMembersRow, error)
 	// A group's orderings, one row per step.
 	GroupOrderings(ctx context.Context, groupID uuid.UUID) ([]GroupOrderingsRow, error)
+	// How many entries each medium has, for the browse filters.
+	MediumCounts(ctx context.Context) ([]MediumCountsRow, error)
 	// A node's type, to redirect an id used under the wrong path.
 	NodeByPublicID(ctx context.Context, publicID int64) (NodeByPublicIDRow, error)
 	// Every group a node is in, nearest first, with a cycle guard. Only direct
@@ -31,6 +35,11 @@ type Querier interface {
 	NodeRelations(ctx context.Context, nodeID uuid.UUID) ([]NodeRelationsRow, error)
 	// Every title a node goes by, the likeliest to be searched for first.
 	NodeTitles(ctx context.Context, nodeID uuid.UUID) ([]NodeTitlesRow, error)
+	// Fuzzy title search over entries and groups, one hit per node by its best
+	// matching title.
+	SearchNodes(ctx context.Context, arg SearchNodesParams) ([]SearchNodesRow, error)
+	// Top-level groups.
+	TopGroups(ctx context.Context) ([]TopGroupsRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

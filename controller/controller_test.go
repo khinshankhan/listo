@@ -35,8 +35,8 @@ func TestRoutes(t *testing.T) {
 		status int
 		want   []string
 	}{
-		{"home", up, "/", http.StatusOK, []string{"hello world", `data-island="wave"`, `{&#34;name&#34;:&#34;world&#34;}`, "/assets/islands-abc.js"}},
-		{"there", up, "/there", http.StatusOK, []string{"hello there", `data-island="wave"`}},
+		{"home", up, "/", http.StatusOK, []string{"the 1 list for all your content", "/assets/islands-abc.js"}},
+		{"the demo page is gone", up, "/there", http.StatusNotFound, []string{"back home"}},
 		{"unknown path is a real 404", up, "/nope", http.StatusNotFound, []string{"back home"}},
 		{"there has no subpaths", up, "/there/x", http.StatusNotFound, []string{"back home"}},
 		{"hashed asset", up, "/assets/app-abc.css", http.StatusOK, []string{"body{}"}},
@@ -177,6 +177,74 @@ func TestCatalogPages(t *testing.T) {
 			}
 			if got := res.Header.Get("Location"); got != tc.location {
 				t.Errorf("Location = %q, want %q", got, tc.location)
+			}
+			for _, w := range tc.want {
+				if !strings.Contains(string(body), w) {
+					t.Errorf("body missing %q", w)
+				}
+			}
+			for _, w := range tc.dontWant {
+				if strings.Contains(string(body), w) {
+					t.Errorf("body has %q", w)
+				}
+			}
+		})
+	}
+}
+
+func TestFrontPages(t *testing.T) {
+	bundle := &web.Bundle{Files: fstest.MapFS{}}
+	srv := httptest.NewServer(newHTTPServer("", bundle, fakeDB{}, fakeCatalog{}).srv.Handler)
+	t.Cleanup(srv.Close)
+
+	cases := []struct {
+		name     string
+		path     string
+		status   int
+		want     []string
+		dontWant []string
+	}{
+		{name: "home searches and starts browsing", path: "/", status: http.StatusOK,
+			want: []string{`<form action="/search" method="get" role="search"`,
+				`href="/groups/2/steins-gate">Steins;Gate</a>`, "franchise &middot; 1 member",
+				`href="/entries?medium=anime"`, `href="/entries"`},
+			dontWant: []string{"data-island", "noindex"}},
+		{name: "empty search is just the form", path: "/search", status: http.StatusOK,
+			want: []string{`name="q"`, `<meta name="robots" content="noindex">`}, dontWant: []string{">results</h2>"}},
+		{name: "search finds groups and entries", path: "/search?q=steins", status: http.StatusOK,
+			want: []string{`value="steins"`, ">results</h2>", `href="/groups/2/steins-gate">Steins;Gate</a>`,
+				`href="/entries/7/steins-gate-anime">Steins;Gate</a>`, "anime · 2011", ">franchise</span>"}},
+		{name: "a hit on an alias says so", path: "/search?q=sg", status: http.StatusOK,
+			want: []string{"as S;G</span>"}},
+		{name: "no hits", path: "/search?q=nothing", status: http.StatusOK,
+			want: []string{"nothing matches &ldquo;nothing&rdquo; yet."}},
+		{name: "the query is escaped", path: "/search?q=%3Cscript%3E", status: http.StatusOK,
+			want: []string{"&lt;script&gt;"}, dontWant: []string{`value="<script>`, "&ldquo;<script>"}},
+		{name: "search error is a 500", path: "/search?q=boom", status: http.StatusInternalServerError},
+		{name: "browse everything", path: "/entries", status: http.StatusOK,
+			want: []string{`href="/entries/7/steins-gate-anime">Steins;Gate</a>`, `href="/entries/6/steins-gate-vn">Steins;Gate</a>`,
+				`<link rel="canonical" href="/entries">`}},
+		{name: "browse one medium", path: "/entries?medium=anime", status: http.StatusOK,
+			want: []string{`href="/entries/7/steins-gate-anime">Steins;Gate</a>`,
+				`<link rel="canonical" href="/entries?medium=anime">`, `aria-current="page"`},
+			dontWant: []string{"/entries/6/steins-gate-vn"}},
+		{name: "unknown medium", path: "/entries?medium=pottery", status: http.StatusNotFound, want: []string{"back home"}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := http.Get(srv.URL + tc.path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer res.Body.Close()
+
+			body, err := io.ReadAll(res.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res.StatusCode != tc.status {
+				t.Errorf("status = %d, want %d", res.StatusCode, tc.status)
 			}
 			for _, w := range tc.want {
 				if !strings.Contains(string(body), w) {
@@ -355,4 +423,49 @@ func (fakeCatalog) NodeGroups(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeGr
 		{PublicID: 3, Slug: "steins-gate-main", Kind: "continuity", Name: "Main timeline", PositionLabel: &first, Depth: 1},
 		{PublicID: 2, Slug: "steins-gate", Kind: "franchise", Name: "Steins;Gate", Depth: 2},
 	}, nil
+}
+
+func (fakeCatalog) SearchNodes(_ context.Context, arg sqlcgen.SearchNodesParams) ([]sqlcgen.SearchNodesRow, error) {
+	franchise, anime := "franchise", "anime"
+	start := time.Date(2011, 4, 6, 0, 0, 0, 0, time.UTC)
+	switch arg.Q {
+	case "steins":
+		return []sqlcgen.SearchNodesRow{
+			{PublicID: 2, Slug: "steins-gate", Type: "group", Title: "Steins;Gate", Matched: "Steins;Gate", GroupKind: &franchise},
+			{PublicID: 7, Slug: "steins-gate-anime", Type: "entry", Title: "Steins;Gate", Matched: "Steins;Gate",
+				MediumLabel: &anime, StartDate: &start},
+		}, nil
+	case "sg":
+		return []sqlcgen.SearchNodesRow{
+			{PublicID: 7, Slug: "steins-gate-anime", Type: "entry", Title: "Steins;Gate", Matched: "S;G", MediumLabel: &anime},
+		}, nil
+	case "boom":
+		return nil, errors.New("connection reset")
+	}
+	return nil, nil
+}
+
+func (fakeCatalog) TopGroups(context.Context) ([]sqlcgen.TopGroupsRow, error) {
+	return []sqlcgen.TopGroupsRow{{PublicID: 2, Slug: "steins-gate", Kind: "franchise", Name: "Steins;Gate", Members: 1}}, nil
+}
+
+func (fakeCatalog) MediumCounts(context.Context) ([]sqlcgen.MediumCountsRow, error) {
+	return []sqlcgen.MediumCountsRow{
+		{Medium: "anime", Label: "anime", Entries: 1},
+		{Medium: "visual_novel", Label: "visual novel", Entries: 1},
+	}, nil
+}
+
+func (fakeCatalog) BrowseEntries(_ context.Context, medium *string) ([]sqlcgen.BrowseEntriesRow, error) {
+	all := []sqlcgen.BrowseEntriesRow{
+		{PublicID: 7, Slug: "steins-gate-anime", Title: "Steins;Gate", MediumLabel: "anime"},
+		{PublicID: 6, Slug: "steins-gate-vn", Title: "Steins;Gate", MediumLabel: "visual novel"},
+	}
+	if medium == nil {
+		return all, nil
+	}
+	if *medium == "anime" {
+		return all[:1], nil
+	}
+	return nil, nil
 }

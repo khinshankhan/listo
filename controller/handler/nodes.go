@@ -27,6 +27,10 @@ type Catalog interface {
 	NodeLinks(ctx context.Context, nodeID uuid.UUID) ([]sqlcgen.NodeLinksRow, error)
 	NodeRelations(ctx context.Context, nodeID uuid.UUID) ([]sqlcgen.NodeRelationsRow, error)
 	NodeGroups(ctx context.Context, memberID uuid.UUID) ([]sqlcgen.NodeGroupsRow, error)
+	SearchNodes(ctx context.Context, arg sqlcgen.SearchNodesParams) ([]sqlcgen.SearchNodesRow, error)
+	TopGroups(ctx context.Context) ([]sqlcgen.TopGroupsRow, error)
+	MediumCounts(ctx context.Context) ([]sqlcgen.MediumCountsRow, error)
+	BrowseEntries(ctx context.Context, medium *string) ([]sqlcgen.BrowseEntriesRow, error)
 }
 
 // EntryPath is an entry's canonical URL: the id is the key, the slug decoration.

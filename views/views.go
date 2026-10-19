@@ -1,9 +1,13 @@
 // Package views is every page, in templ.
 package views
 
+import "fmt"
+
 // Head is what a page puts in <head>.
 type Head struct {
 	Title, Description, Canonical string
+	// NoIndex keeps a page out of search engines, eg search results.
+	NoIndex bool
 }
 
 // Entry is an entry page, in display form. Format is empty when it would
@@ -92,8 +96,52 @@ type Link struct {
 	Site, Href, ID string
 }
 
-// Island props: the JSON each island's mount() validates before rendering.
+// Home is the front page: search, and where browsing starts.
+type Home struct {
+	Groups []GroupCard
+	Media  []MediumLink
+}
 
-type WaveProps struct {
-	Name string `json:"name"`
+// GroupCard is a top-level group, with how many members it has.
+type GroupCard struct {
+	Name, Kind, Href string
+	Members          int
+}
+
+// MediumLink filters the browse list to one medium; the empty Label is "all".
+type MediumLink struct {
+	Label, Href string
+	Count       int
+	Active      bool
+}
+
+// Search is the search page: the query as typed, and what it found.
+type Search struct {
+	Query    string
+	Searched bool
+	Results  []Result
+}
+
+// Result is one search hit. Matched is set when an alias matched.
+type Result struct {
+	Title, Href, Meta, Matched string
+}
+
+// Browse is every entry, or one medium's.
+type Browse struct {
+	Media   []MediumLink
+	Entries []Row
+}
+
+// Row is one linked line in a list.
+type Row struct {
+	Title, Href, Meta string
+}
+
+// count is "1 member", "29 members".
+func count(n int, noun string) string {
+	if n == 1 {
+		return fmt.Sprintf("1 %s", noun)
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
 }

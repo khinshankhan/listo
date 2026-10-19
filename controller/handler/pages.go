@@ -21,16 +21,6 @@ func NewPages(tags web.Tags, catalog Catalog) *Pages {
 	return &Pages{tags: tags, catalog: catalog}
 }
 
-func (p *Pages) Home(w http.ResponseWriter, r *http.Request) {
-	head := views.Head{Title: "listo", Description: "The 1 list for all your content."}
-	p.render(w, r, http.StatusOK, head, views.Hello("world"))
-}
-
-func (p *Pages) There(w http.ResponseWriter, r *http.Request) {
-	head := views.Head{Title: "there | listo", Description: "Hello there."}
-	p.render(w, r, http.StatusOK, head, views.Hello("there"))
-}
-
 func (p *Pages) NotFound(w http.ResponseWriter, r *http.Request) {
 	head := views.Head{Title: "not found | listo", Description: "There is no page here."}
 	p.render(w, r, http.StatusNotFound, head, views.NotFound())

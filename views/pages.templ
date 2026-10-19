@@ -1,22 +1,111 @@
 package views
 
-// Hello is one island on a plain page.
-templ Hello(name string) {
-	<p class="font-mono text-12 tracking-wide text-foreground-muted uppercase">greeting</p>
-	<h1 class="mt-2 font-heading text-44 font-semibold tracking-tight text-foreground-strong">hello { name }</h1>
-	<section class="mt-8" aria-label="wave">
-		@Island("wave", WaveProps{Name: name}, "idle") {
-			@waveFrame("0 waves")
+import "fmt"
+
+// HomePage is search, then places to start browsing.
+templ HomePage(h Home) {
+	<h1 class="font-heading text-44 leading-snug font-semibold tracking-tight text-foreground-strong">
+		the 1 list for all your content
+	</h1>
+	<p class="mt-2 text-18 text-foreground-muted">anime, manga, films, games and books, and how they fit together.</p>
+	<div class="mt-8">
+		@searchForm("")
+	</div>
+	if len(h.Groups) > 0 {
+		@panel("start somewhere") {
+			for _, g := range h.Groups {
+				<li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
+					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ templ.SafeURL(g.Href) }>{ g.Name }</a>
+					<span class="ml-auto font-mono text-13 text-foreground-muted">{ g.Kind } &middot; { count(g.Members, "member") }</span>
+				</li>
+			}
 		}
-	</section>
+	}
+	@mediumNav(h.Media)
 }
 
-// waveFrame matches the wave island's first render.
-templ waveFrame(count string) {
-	<div class="flex h-10 items-center gap-4">
-		<span class="inline-flex h-10 items-center rounded-md bg-accent-4 px-4 text-14 font-semibold text-accent-12 opacity-60">wave</span>
-		<span class="font-mono text-14 text-foreground-muted">{ count }</span>
+// SearchPage is a GET form and its results.
+templ SearchPage(s Search) {
+	<h1 class="font-heading text-32 font-semibold tracking-tight text-foreground-strong">search</h1>
+	<div class="mt-6">
+		@searchForm(s.Query)
 	</div>
+	if s.Searched {
+		if len(s.Results) == 0 {
+			<p class="mt-8 text-foreground-muted">nothing matches &ldquo;{ s.Query }&rdquo; yet.</p>
+		} else {
+			@panel("results") {
+				for _, res := range s.Results {
+					<li class="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-4">
+						<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ templ.SafeURL(res.Href) }>{ res.Title }</a>
+						if res.Matched != "" {
+							<span class="text-14 text-foreground-muted">as { res.Matched }</span>
+						}
+						<span class="font-mono text-13 text-foreground-muted sm:ml-auto">{ res.Meta }</span>
+					</li>
+				}
+			}
+		}
+	}
+}
+
+// BrowsePage is every entry, or one medium's.
+templ BrowsePage(b Browse) {
+	<h1 class="font-heading text-32 font-semibold tracking-tight text-foreground-strong">browse</h1>
+	@mediumNav(b.Media)
+	if len(b.Entries) > 0 {
+		@panel("entries") {
+			for _, e := range b.Entries {
+				<li class="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-baseline sm:gap-4">
+					<a class="font-semibold text-foreground-strong hover:text-accent-9" href={ templ.SafeURL(e.Href) }>{ e.Title }</a>
+					<span class="font-mono text-13 text-foreground-muted sm:ml-auto">{ e.Meta }</span>
+				</li>
+			}
+		}
+	}
+}
+
+templ searchForm(q string) {
+	<form action="/search" method="get" role="search" class="flex gap-2">
+		<label for="q" class="sr-only">search titles</label>
+		<input
+			id="q"
+			name="q"
+			type="search"
+			value={ q }
+			placeholder="search titles, in any language"
+			class="h-11 min-w-0 flex-1 rounded-md border border-border bg-background-1 px-3 text-16 text-foreground-strong placeholder:text-foreground-muted focus-visible:outline-2 focus-visible:outline-stark-contrast"
+		/>
+		<button type="submit" class="h-11 shrink-0 cursor-pointer rounded-md bg-accent-9 px-4 text-14 font-semibold text-accent-1 hover:bg-accent-10 focus-visible:outline-2 focus-visible:outline-stark-contrast">
+			search
+		</button>
+	</form>
+}
+
+// mediumNav is the browse filters: all, then each medium with entries.
+templ mediumNav(media []MediumLink) {
+	if len(media) > 1 {
+		<nav class="mt-8 flex flex-wrap gap-2" aria-label="browse by medium">
+			for _, m := range media {
+				<a
+					href={ templ.SafeURL(m.Href) }
+					if m.Active {
+						aria-current="page"
+					}
+					class={ "rounded-md border px-3 py-1.5 text-14",
+						templ.KV("border-accent-7 bg-accent-3 text-accent-12", m.Active),
+						templ.KV("border-border text-foreground hover:border-accent-7", !m.Active) }
+				>
+					if m.Label == "" {
+						all
+					} else {
+						{ m.Label }
+					}
+					<span class="font-mono text-12 text-foreground-muted">{ fmt.Sprint(m.Count) }</span>
+				</a>
+			}
+		</nav>
+	}
 }
 
 templ NotFound() {
