@@ -68,6 +68,7 @@ type CatalogMembership struct {
 
 type CatalogNode struct {
 	ID        uuid.UUID
+	PublicID  int64
 	Type      string
 	Slug      string
 	Source    string

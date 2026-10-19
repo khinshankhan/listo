@@ -56,6 +56,8 @@ create table catalog.id_source (
 
 create table catalog.node (
   id         uuid primary key default uuidv7(),
+  -- for URLs, /entries/{public_id}/{slug}; the slug is just decoration
+  public_id  bigint not null generated always as identity unique,
   type       text not null check (type in ('entry', 'group')),
   slug       text not null unique check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
   source     text not null default 'staff',
