@@ -13,3 +13,11 @@
 html {
   scrollbar-gutter: stable;
 }
+
+/* cross-fade between pages; the top bar and sidebar are named, so they hold
+   still */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
