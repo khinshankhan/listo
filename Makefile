@@ -99,6 +99,15 @@ db-up: $(PGDATA)/PG_VERSION
 	@psql -X -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '$(PGDATABASE)'" | grep -qx 1 \
 		|| createdb $(PGDATABASE)
 
+# rebuild the database from schema/ and seed/; no migrations until there's
+# data worth keeping
+.PHONY: db-reset
+db-reset: db-up
+	dropdb --force $(PGDATABASE)
+	createdb $(PGDATABASE)
+	psql -X -q -v ON_ERROR_STOP=1 -f schema/schema.sql
+	for f in seed/*.sql; do psql -X -q -v ON_ERROR_STOP=1 -f "$$f" >/dev/null; done
+
 .PHONY: db-down
 db-down: need-pg
 	@pg_ctl status >/dev/null && pg_ctl stop --wait || echo "not running"
