@@ -8,21 +8,27 @@ package sqlcgen
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const entryByPublicID = `-- name: EntryByPublicID :one
-select n.public_id, n.slug, e.medium, e.format, mf.label as format_label, e.country,
-       e.title, e.start_date, e.start_precision, e.unit_kind, e.unit_total
+select n.id, n.public_id, n.slug, e.medium, m.label as medium_label, e.format,
+       mf.label as format_label, e.country, e.title, e.start_date, e.start_precision,
+       e.unit_kind, e.unit_total
 from catalog.node n
 join catalog.entry e on e.id = n.id
+join catalog.medium m on m.medium = e.medium
 join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
 where n.public_id = $1
 `
 
 type EntryByPublicIDRow struct {
+	ID             uuid.UUID
 	PublicID       int64
 	Slug           string
 	Medium         string
+	MediumLabel    string
 	Format         string
 	FormatLabel    string
 	Country        *string
@@ -33,14 +39,17 @@ type EntryByPublicIDRow struct {
 	UnitTotal      *int32
 }
 
-// An entry by public id, with its format label. The caller checks the slug.
+// An entry by public id, with its medium and format labels. The caller
+// checks the slug.
 func (q *Queries) EntryByPublicID(ctx context.Context, publicID int64) (EntryByPublicIDRow, error) {
 	row := q.db.QueryRow(ctx, entryByPublicID, publicID)
 	var i EntryByPublicIDRow
 	err := row.Scan(
+		&i.ID,
 		&i.PublicID,
 		&i.Slug,
 		&i.Medium,
+		&i.MediumLabel,
 		&i.Format,
 		&i.FormatLabel,
 		&i.Country,
@@ -51,4 +60,198 @@ func (q *Queries) EntryByPublicID(ctx context.Context, publicID int64) (EntryByP
 		&i.UnitTotal,
 	)
 	return i, err
+}
+
+const nodeGroups = `-- name: NodeGroups :many
+with recursive up (id, member_id, depth) as (
+  select m.group_id, m.member_id, 1
+  from catalog.membership m
+  where m.member_id = $1
+  union all
+  select m.group_id, m.member_id, up.depth + 1
+  from up
+  join catalog.membership m on m.member_id = up.id
+) cycle id set looped using path
+select n.public_id, n.slug, g.kind, g.name, ms.position_label, min(up.depth)::int as depth
+from up
+join catalog.grp g on g.id = up.id
+join catalog.node n on n.id = g.id
+join catalog.membership ms on ms.group_id = up.id and ms.member_id = up.member_id
+where not up.looped
+group by n.public_id, n.slug, g.kind, g.name, ms.position_label
+order by depth, g.name
+`
+
+type NodeGroupsRow struct {
+	PublicID      int64
+	Slug          string
+	Kind          string
+	Name          string
+	PositionLabel *string
+	Depth         int32
+}
+
+// Every group a node is in, nearest first, with a cycle guard.
+func (q *Queries) NodeGroups(ctx context.Context, memberID uuid.UUID) ([]NodeGroupsRow, error) {
+	rows, err := q.db.Query(ctx, nodeGroups, memberID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []NodeGroupsRow{}
+	for rows.Next() {
+		var i NodeGroupsRow
+		if err := rows.Scan(
+			&i.PublicID,
+			&i.Slug,
+			&i.Kind,
+			&i.Name,
+			&i.PositionLabel,
+			&i.Depth,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const nodeLinks = `-- name: NodeLinks :many
+select s.site, x.source, x.external_id,
+       replace(s.url_template, '{id}', x.external_id)::text as url
+from catalog.external_id x
+join catalog.id_source s on s.source = x.source
+where x.node_id = $1
+order by s.site, x.source
+`
+
+type NodeLinksRow struct {
+	Site       string
+	Source     string
+	ExternalID string
+	Url        string
+}
+
+// Jump-out links: only ids are stored, URLs come from the id_source vocabulary.
+func (q *Queries) NodeLinks(ctx context.Context, nodeID uuid.UUID) ([]NodeLinksRow, error) {
+	rows, err := q.db.Query(ctx, nodeLinks, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []NodeLinksRow{}
+	for rows.Next() {
+		var i NodeLinksRow
+		if err := rows.Scan(
+			&i.Site,
+			&i.Source,
+			&i.ExternalID,
+			&i.Url,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const nodeRelations = `-- name: NodeRelations :many
+select (case when r.from_node = $1::uuid then rk.label
+             else coalesce(rk.inverse_label, rk.label) end)::text as reading,
+       rk.family, o.public_id, o.slug, o.type,
+       coalesce(e.title, g.name)::text as title,
+       m.label as medium_label, e.start_date, r.note
+from catalog.relation r
+join catalog.relation_kind rk on rk.kind = r.kind
+join catalog.node o on o.id = case when r.from_node = $1::uuid then r.to_node else r.from_node end
+left join catalog.entry e on e.id = o.id
+left join catalog.grp g on g.id = o.id
+left join catalog.medium m on m.medium = e.medium
+where $1::uuid in (r.from_node, r.to_node)
+  and not r.spoiler
+order by rk.family, reading, e.start_date nulls last, title
+`
+
+type NodeRelationsRow struct {
+	Reading     string
+	Family      string
+	PublicID    int64
+	Slug        string
+	Type        string
+	Title       string
+	MediumLabel *string
+	StartDate   *time.Time
+	Note        *string
+}
+
+// A node's relations, labelled from its own side.
+// NOTE: spoilers are left out until there's UI to hide them.
+func (q *Queries) NodeRelations(ctx context.Context, nodeID uuid.UUID) ([]NodeRelationsRow, error) {
+	rows, err := q.db.Query(ctx, nodeRelations, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []NodeRelationsRow{}
+	for rows.Next() {
+		var i NodeRelationsRow
+		if err := rows.Scan(
+			&i.Reading,
+			&i.Family,
+			&i.PublicID,
+			&i.Slug,
+			&i.Type,
+			&i.Title,
+			&i.MediumLabel,
+			&i.StartDate,
+			&i.Note,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const nodeTitles = `-- name: NodeTitles :many
+select kind, language, title
+from catalog.title
+where node_id = $1
+order by array_position(array['english', 'native', 'romanized', 'localized', 'synonym'], kind), title
+`
+
+type NodeTitlesRow struct {
+	Kind     string
+	Language *string
+	Title    string
+}
+
+// Every title a node goes by, the likeliest to be searched for first.
+func (q *Queries) NodeTitles(ctx context.Context, nodeID uuid.UUID) ([]NodeTitlesRow, error) {
+	rows, err := q.db.Query(ctx, nodeTitles, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []NodeTitlesRow{}
+	for rows.Next() {
+		var i NodeTitlesRow
+		if err := rows.Scan(&i.Kind, &i.Language, &i.Title); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

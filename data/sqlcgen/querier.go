@@ -6,11 +6,23 @@ package sqlcgen
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 type Querier interface {
-	// An entry by public id, with its format label. The caller checks the slug.
+	// An entry by public id, with its medium and format labels. The caller
+	// checks the slug.
 	EntryByPublicID(ctx context.Context, publicID int64) (EntryByPublicIDRow, error)
+	// Every group a node is in, nearest first, with a cycle guard.
+	NodeGroups(ctx context.Context, memberID uuid.UUID) ([]NodeGroupsRow, error)
+	// Jump-out links: only ids are stored, URLs come from the id_source vocabulary.
+	NodeLinks(ctx context.Context, nodeID uuid.UUID) ([]NodeLinksRow, error)
+	// A node's relations, labelled from its own side.
+	// NOTE: spoilers are left out until there's UI to hide them.
+	NodeRelations(ctx context.Context, nodeID uuid.UUID) ([]NodeRelationsRow, error)
+	// Every title a node goes by, the likeliest to be searched for first.
+	NodeTitles(ctx context.Context, nodeID uuid.UUID) ([]NodeTitlesRow, error)
 }
 
 var _ Querier = (*Queries)(nil)
