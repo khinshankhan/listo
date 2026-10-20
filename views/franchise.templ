@@ -1,0 +1,178 @@
+package views
+
+// FranchisePage is a franchise: its continuities, every entry beneath it, the
+// ways in, and what sits beside it.
+templ FranchisePage(f Franchise) {
+	<div class="flex flex-col gap-8">
+		<header class="flex flex-col gap-3">
+			<nav class="flex flex-wrap items-center gap-[7px]" aria-label="breadcrumb">
+				for i, c := range f.Trail {
+					if i > 0 {
+						<span class="text-12 leading-4 text-border" aria-hidden="true">/</span>
+					}
+					<span class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">{ c.Kind }</span>
+					if c.Href != "" {
+						@Link(LinkProps{Href: c.Href, Class: "text-12 leading-4 font-medium text-accent-11"}) {
+							{ c.Name }
+						}
+					} else {
+						<span class="text-12 leading-4 font-semibold text-foreground-strong" aria-current="page">{ c.Name }</span>
+					}
+				}
+			</nav>
+			<div class="flex flex-wrap items-end justify-between gap-4">
+				<div class="flex flex-col gap-[10px]">
+					<h1 class="font-heading text-44 leading-[44px] font-semibold tracking-tight text-foreground-strong">{ f.Name }</h1>
+					if len(f.Stats) > 0 {
+						<p class="flex flex-wrap items-center gap-[9px] text-14 leading-[18px] text-foreground-muted">
+							for i, s := range f.Stats {
+								if i > 0 {
+									<span class="inline-block size-[3px] shrink-0 rounded-full bg-border" aria-hidden="true"></span>
+								}
+								<span>{ s }</span>
+							}
+						</p>
+					}
+				</div>
+				if f.StartHere != "" {
+					@Link(LinkProps{Href: f.StartHere, Variant: LinkNone, Monochrome: true, Class: "flex h-9 items-center gap-[7px] rounded-lg bg-foreground-strong px-[15px] text-13 leading-4 font-semibold text-background-2 hover:bg-cream-10"}) {
+						<svg width="13" height="13" viewBox="0 0 14 14" class="shrink-0" aria-hidden="true">
+							<path d="M3 7.4l2.6 2.6L11 4.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
+						</svg>
+						start here
+					}
+				}
+			</div>
+		</header>
+		if len(f.Continuities) > 0 {
+			<section id="continuities" class="flex scroll-mt-6 flex-col gap-4">
+				@sectionHead("continuities", "is it canon? to which continuity, and how that continuity stands")
+				<ul class="grid grid-cols-1 gap-4 md:grid-cols-2">
+					for _, c := range f.Continuities {
+						<li class="flex gap-[14px] rounded-[10px] border border-border bg-background-2 p-[18px]">
+							<span class={ "w-[3px] shrink-0 self-stretch rounded-[9px]", standing(c.Standing).Bar } aria-hidden="true"></span>
+							<div class="flex min-w-0 flex-1 flex-col gap-[9px]">
+								<div class="flex flex-wrap items-center gap-[9px]">
+									@Link(LinkProps{Href: c.Href, Variant: LinkNone, Class: "text-15 leading-[18px] font-semibold text-foreground-strong"}) {
+										{ c.Name }
+									}
+									@standingBadge(c.Standing)
+								</div>
+								<p class="font-mono text-11 leading-[14px] text-foreground-muted">{ count(c.Entries, "entry", "entries") }</p>
+							</div>
+						</li>
+					}
+				</ul>
+				<dl class="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-[10px] border border-border-subtle px-[18px] py-[13px]">
+					<dt class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">standing</dt>
+					for _, l := range standingLegend {
+						<dd class="flex items-center gap-[7px]">
+							@standingBadge(l.Standing)
+							<span class="text-12 leading-4 text-foreground-muted">{ l.Meaning }</span>
+						</dd>
+					}
+				</dl>
+			</section>
+		}
+		<section id="entries" class="flex scroll-mt-6 flex-col gap-4">
+			<div class="flex flex-wrap items-baseline justify-between gap-3 border-b border-border pb-[10px]">
+				<h2 class="text-20 leading-6 font-semibold tracking-[-0.025em] text-foreground-strong">entries</h2>
+				<nav class="flex flex-wrap gap-[7px]" aria-label="group entries">
+					for _, s := range f.Sorts {
+						@Link(LinkProps{Href: s.Href, Variant: LinkNone, Monochrome: true, Current: s.Active, Class: sortClass(s.Active)}) {
+							{ s.Label }
+						}
+					}
+				</nav>
+			</div>
+			for _, sec := range f.Sections {
+				if sec.Label != "" {
+					<h3 class="flex items-center gap-[10px] pt-1">
+						<span class={ "h-[14px] w-[3px] shrink-0 rounded-[9px]", standing(sec.Standing).Bar } aria-hidden="true"></span>
+						if sec.Href != "" {
+							@Link(LinkProps{Href: sec.Href, Variant: LinkNone, Class: "text-13 leading-4 font-semibold text-foreground-strong"}) {
+								{ sec.Label }
+							}
+						} else {
+							<span class="text-13 leading-4 font-semibold text-foreground-strong">{ sec.Label }</span>
+						}
+						if sec.Standing != "" {
+							@standingBadge(sec.Standing)
+						}
+					</h3>
+				}
+				<ul class="flex flex-col">
+					for i, row := range sec.Rows {
+						<li class={ "flex items-center gap-4 px-3 py-[11px]", templ.KV("border-b border-border-subtle", i < len(sec.Rows)-1) }>
+							<span class="h-[46px] w-[33px] shrink-0 rounded-sm bg-placeholder" aria-hidden="true"></span>
+							<div class="flex min-w-0 flex-1 flex-col gap-1">
+								<div class="flex flex-wrap items-baseline gap-x-[9px] gap-y-1">
+									@Link(LinkProps{Href: row.Href, Variant: LinkNone, Class: "text-14 leading-[18px] font-semibold text-foreground-strong"}) {
+										{ row.Title }
+									}
+									if row.Role != "" {
+										<span class="font-mono text-[10px] leading-3 tracking-[0.04em] text-foreground-muted uppercase">{ row.Role }</span>
+									}
+								</div>
+								<p class="flex flex-wrap items-center gap-[7px]">
+									<span class="font-mono text-[10px] leading-3 text-foreground-muted uppercase">{ row.Medium }</span>
+									if row.Detail != "" {
+										<span class="inline-block size-[2px] shrink-0 rounded-full bg-border" aria-hidden="true"></span>
+										<span class="text-12 leading-4 text-foreground-muted">{ row.Detail }</span>
+									}
+								</p>
+							</div>
+						</li>
+					}
+				</ul>
+			}
+		</section>
+		if len(f.Orderings) > 0 {
+			<section id="start-here" class="flex scroll-mt-6 flex-col gap-4 [&>section]:mt-0">
+				@sectionHead("start here", "")
+				for _, o := range f.Orderings {
+					@orderingPanel(o)
+				}
+			</section>
+		}
+		if len(f.Siblings) > 0 {
+			<section id="related" class="flex scroll-mt-6 flex-col gap-4">
+				@sectionHead("elsewhere in "+f.Elsewhere, f.ElsewhereAside)
+				<ul class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+					for _, s := range f.Siblings {
+						<li class="flex items-center gap-[13px] rounded-[10px] border border-border bg-background-2 p-[14px]">
+							<span class="h-[52px] w-[37px] shrink-0 rounded-sm bg-placeholder" aria-hidden="true"></span>
+							<div class="flex min-w-0 flex-col gap-[3px]">
+								@Link(LinkProps{Href: s.Href, Variant: LinkNone, Class: "text-14 leading-[18px] font-semibold text-foreground-strong"}) {
+									{ s.Name }
+								}
+								<span class="text-12 leading-4 text-foreground-muted">{ s.Meta }</span>
+								<span class="pt-[2px] font-mono text-[10px] leading-3 tracking-[0.04em] text-foreground-muted uppercase">{ s.Reading }</span>
+							</div>
+						</li>
+					}
+				</ul>
+			</section>
+		}
+	</div>
+}
+
+// sectionHead is a section's title over a rule, with a note to its right.
+templ sectionHead(title, aside string) {
+	<div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border pb-[10px]">
+		<h2 class="text-20 leading-6 font-semibold tracking-[-0.025em] text-foreground-strong">{ title }</h2>
+		if aside != "" {
+			<p class="text-12 leading-4 text-foreground-muted">{ aside }</p>
+		}
+	</div>
+}
+
+// standingBadge is a continuity's standing in its colour.
+templ standingBadge(s string) {
+	if s != "" {
+		<span class={ "flex h-[21px] items-center gap-[5px] rounded-sm px-2", standing(s).Badge }>
+			<span class={ "inline-block size-[5px] shrink-0 rounded-full", standing(s).Dot } aria-hidden="true"></span>
+			<span class={ "font-mono text-[10px] leading-3 tracking-[0.05em] uppercase", standing(s).Text }>{ s }</span>
+		</span>
+	}
+}

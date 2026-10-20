@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 
@@ -36,6 +37,11 @@ func (p *Pages) Group(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if g.Kind == "franchise" {
+		p.franchise(w, r, g, canonical)
+		return
+	}
+
 	v, err := p.groupView(ctx, g)
 	if err != nil {
 		p.serverError(w, r, err)
@@ -53,6 +59,31 @@ func (p *Pages) Group(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.render(w, r, http.StatusOK, head, chrome, views.GroupPage(v))
+}
+
+// franchise renders a franchise's own page, with its sections in the sidebar.
+func (p *Pages) franchise(w http.ResponseWriter, r *http.Request, g sqlcgen.GroupByPublicIDRow, canonical string) {
+	v, anchors, err := p.franchiseView(r.Context(), g, r.URL.Query().Get("by"))
+	if err != nil {
+		p.serverError(w, r, err)
+		return
+	}
+	chrome, err := p.chrome(r, nil, "")
+	if err != nil {
+		p.serverError(w, r, err)
+		return
+	}
+	chrome.Sidebar.OnPage = anchors
+	for i := range chrome.Sidebar.Franchises {
+		chrome.Sidebar.Franchises[i].Active = chrome.Sidebar.Franchises[i].Href == canonical
+	}
+
+	head := views.Head{
+		Title:       fmt.Sprintf("%s | listo", g.Name),
+		Description: fmt.Sprintf("%s, a franchise on listo: %s.", g.Name, strings.Join(v.Stats, ", ")),
+		Canonical:   canonical,
+	}
+	p.render(w, r, http.StatusOK, head, chrome, views.FranchisePage(v))
 }
 
 func (p *Pages) groupView(ctx context.Context, g sqlcgen.GroupByPublicIDRow) (views.Group, error) {

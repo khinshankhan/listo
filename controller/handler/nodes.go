@@ -28,6 +28,8 @@ type Catalog interface {
 	NodeRelations(ctx context.Context, nodeID uuid.UUID) ([]sqlcgen.NodeRelationsRow, error)
 	NodeGroups(ctx context.Context, memberID uuid.UUID) ([]sqlcgen.NodeGroupsRow, error)
 	NodeTags(ctx context.Context, nodeID uuid.UUID) ([]sqlcgen.NodeTagsRow, error)
+	GroupEntries(ctx context.Context, groupID uuid.UUID) ([]sqlcgen.GroupEntriesRow, error)
+	GroupSiblings(ctx context.Context, memberID uuid.UUID) ([]sqlcgen.GroupSiblingsRow, error)
 	SearchNodes(ctx context.Context, arg sqlcgen.SearchNodesParams) ([]sqlcgen.SearchNodesRow, error)
 	TopGroups(ctx context.Context) ([]sqlcgen.TopGroupsRow, error)
 	MediumCounts(ctx context.Context) ([]sqlcgen.MediumCountsRow, error)

@@ -118,6 +118,8 @@ type Chrome struct {
 type Sidebar struct {
 	Media      []MediumLink
 	Franchises []GroupCard
+	// OnPage links to the current page's sections.
+	OnPage []Anchor
 }
 
 // Home is the front page: search, and where browsing starts.
@@ -130,6 +132,8 @@ type Home struct {
 type GroupCard struct {
 	Name, Kind, Href string
 	Entries          int
+	// Active marks the group being shown.
+	Active bool
 }
 
 // MediumLink filters the browse list to one medium; the empty Label is "all".

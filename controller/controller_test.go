@@ -136,10 +136,29 @@ func TestCatalogPages(t *testing.T) {
 				`part of</span> <a href="/groups/2/steins-gate">Steins;Gate</a>`}},
 		{name: "a group's id under /entries moves to its page", path: "/entries/2/steins-gate", status: http.StatusMovedPermanently,
 			location: "/groups/2/steins-gate"},
-		{name: "group", path: "/groups/2/steins-gate", status: http.StatusOK,
-			dontWant: []string{"w-12 shrink-0"},
-			want: []string{`uppercase">franchise`, "Steins;Gate</h1>", `href="/groups/3/steins-gate-main">Main timeline</a>`, ">continuity</span>",
-				`<link rel="canonical" href="/groups/2/steins-gate">`, `content="Steins;Gate, a franchise on listo."`}},
+		{name: "a franchise gets its own page", path: "/groups/2/steins-gate", status: http.StatusOK,
+			want: []string{"Steins;Gate</h1>", `aria-current="page">Steins;Gate</span>`,
+				`uppercase">universe</span> <a href="/groups/1/science-adventure">Science Adventure</a>`, ">1 entry</span>", ">1 medium</span>",
+				">1 continuity</span>", `<link rel="canonical" href="/groups/2/steins-gate">`,
+				`content="Steins;Gate, a franchise on listo: 1 entry, 1 medium, 1 continuity."`},
+			dontWant: []string{">members</h2>"}},
+		{name: "a continuity card says how it stands", path: "/groups/2/steins-gate", status: http.StatusOK,
+			want: []string{`id="continuities"`, `href="/groups/3/steins-gate-main">Main timeline</a>`, ">primary</span>",
+				">the one to start with</span>"}},
+		{name: "entries by continuity, with their part and when", path: "/groups/2/steins-gate", status: http.StatusOK,
+			want: []string{`id="entries"`, `href="/entries/7/steins-gate-anime">Steins;Gate</a>`, ">adaptation of the VN</span>",
+				">spring 2011 · 24 episodes</span>", `href="/groups/2/steins-gate" aria-current="page">by continuity</a>`,
+				`href="/groups/2/steins-gate?by=release">by release</a>`}},
+		{name: "a franchise can group by medium", path: "/groups/2/steins-gate?by=medium", status: http.StatusOK,
+			want: []string{`href="/groups/2/steins-gate?by=medium" aria-current="page">by medium</a>`}},
+		{name: "an unknown grouping is the default", path: "/groups/2/steins-gate?by=vibes", status: http.StatusOK,
+			want: []string{`href="/groups/2/steins-gate" aria-current="page">by continuity</a>`}},
+		{name: "start here jumps to the orderings", path: "/groups/2/steins-gate", status: http.StatusOK,
+			want: []string{`href="#start-here">`, `id="start-here"`, ">recommended order</h2>"}},
+		{name: "what sits beside it", path: "/groups/2/steins-gate", status: http.StatusOK,
+			want: []string{`id="related"`, `href="/groups/5/robotics-notes">Robotics;Notes</a>`, "franchise · 2 entries", ">same universe</span>"}},
+		{name: "the sidebar knows the page's sections", path: "/groups/2/steins-gate", status: http.StatusOK,
+			want: []string{"on this page</p>", `href="#continuities">`, `href="#entries">`, `href="#related">`}},
 		{name: "a universe, not an universe", path: "/groups/1/science-adventure", status: http.StatusOK,
 			want: []string{`content="Science Adventure, a universe on listo."`}},
 		{name: "a continuity shows its standing", path: "/groups/3/steins-gate-main", status: http.StatusOK,
@@ -446,6 +465,9 @@ func (fakeCatalog) NodeRelations(_ context.Context, id uuid.UUID) ([]sqlcgen.Nod
 }
 
 func (fakeCatalog) NodeGroups(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeGroupsRow, error) {
+	if id == sgFranchise {
+		return []sqlcgen.NodeGroupsRow{{PublicID: 1, Slug: "science-adventure", Kind: "universe", Name: "Science Adventure", Depth: 1}}, nil
+	}
 	if id != sgAnime {
 		return nil, nil
 	}
@@ -604,4 +626,26 @@ func TestSearchAPI(t *testing.T) {
 			}
 		})
 	}
+}
+
+func (fakeCatalog) GroupEntries(_ context.Context, id uuid.UUID) ([]sqlcgen.GroupEntriesRow, error) {
+	if id != sgFranchise {
+		return nil, nil
+	}
+	main, continuity, primary, anime, role := "Main timeline", "continuity", "primary", "anime", "adaptation of the VN"
+	month, total := "month", int32(24)
+	start := time.Date(2011, 4, 1, 0, 0, 0, 0, time.UTC)
+	return []sqlcgen.GroupEntriesRow{{
+		PublicID: 7, Slug: "steins-gate-anime", Title: "Steins;Gate", Medium: "anime", MediumLabel: anime, Format: "tv",
+		FormatLabel: anime, StartDate: &start, StartPrecision: &month, UnitKind: "episode", UnitTotal: &total, Role: &role,
+		BranchPublicID: 3, BranchSlug: "steins-gate-main", BranchType: "group", BranchName: &main, BranchKind: &continuity,
+		BranchStanding: &primary,
+	}}, nil
+}
+
+func (fakeCatalog) GroupSiblings(_ context.Context, id uuid.UUID) ([]sqlcgen.GroupSiblingsRow, error) {
+	if id != sgFranchise {
+		return nil, nil
+	}
+	return []sqlcgen.GroupSiblingsRow{{PublicID: 5, Slug: "robotics-notes", Kind: "franchise", Name: "Robotics;Notes", Entries: 2}}, nil
 }
