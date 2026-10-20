@@ -14,9 +14,10 @@ const panel = document.getElementById("site-search-panel");
 const list = document.getElementById("site-search-results");
 const all = document.getElementById("site-search-all");
 const announcer = document.getElementById("site-search-status");
+const note = document.getElementById("site-search-note");
 
-if (input instanceof HTMLInputElement && panel && list && all instanceof HTMLAnchorElement && announcer) {
-  suggest(input, panel, list, all, announcer);
+if (input instanceof HTMLInputElement && panel && list && all instanceof HTMLAnchorElement && announcer && note) {
+  suggest(input, panel, list, all, announcer, note);
 }
 
 function suggest(
@@ -25,6 +26,7 @@ function suggest(
   list: HTMLElement,
   all: HTMLAnchorElement,
   announcer: HTMLElement,
+  note: HTMLElement,
 ): void {
   const form = input.form;
   let hits: Hit[] = [];
@@ -32,9 +34,11 @@ function suggest(
   let timer: ReturnType<typeof setTimeout> | undefined;
   let pending: AbortController | undefined;
 
+  // the combobox is expanded only while it has options to offer; a note alone
+  // isn't a list
   const open = (): void => {
     panel.hidden = false;
-    input.setAttribute("aria-expanded", "true");
+    input.setAttribute("aria-expanded", String(hits.length > 0));
   };
 
   const close = (): void => {
@@ -60,15 +64,14 @@ function suggest(
     }
   };
 
-  // message replaces the list with one line of text: nothing found, still
+  // message shows a note in place of the list: nothing found, still
   // searching, or a failure
   const message = (text: string): void => {
     hits = [];
-    const row = document.createElement("li");
-    row.setAttribute("role", "presentation");
-    row.className = "px-3 py-2.5 text-13 text-foreground-muted";
-    row.textContent = text;
-    list.replaceChildren(row);
+    list.replaceChildren();
+    list.hidden = true;
+    note.textContent = text;
+    note.hidden = false;
     highlight(-1);
     open();
   };
@@ -113,6 +116,8 @@ function suggest(
     if (rows.length === 0) {
       message(`nothing matches “${data.query}” yet`);
     } else {
+      note.hidden = true;
+      list.hidden = false;
       list.replaceChildren(...rows);
     }
     // naming the query makes each announcement differ: screen readers skip a
@@ -177,7 +182,7 @@ function suggest(
   });
 
   input.addEventListener("focus", () => {
-    if (input.value.trim() !== "" && list.childElementCount > 0) {
+    if (input.value.trim() !== "" && (hits.length > 0 || !note.hidden)) {
       open();
     }
   });

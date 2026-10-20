@@ -111,6 +111,9 @@ templ searchPanel() {
 		hidden
 		class="absolute inset-x-0 top-full z-30 border-b border-border bg-background-2 shadow-sm sm:mt-2 sm:rounded-lg sm:border"
 	>
+		// nothing found, still searching, or a failure: a note, never a row in
+		// the listbox, which only ever holds options
+		<p id="site-search-note" hidden class="px-3 py-2.5 text-13 text-foreground-muted"></p>
 		<ul id="site-search-results" role="listbox" aria-label="suggestions" class="max-h-[60vh] overflow-y-auto py-1"></ul>
 		@Link(LinkProps{ID: "site-search-all", Href: "/search", Variant: LinkNone, Class: "block border-t border-border-subtle px-3 py-2.5 text-13 text-accent-11 hover:bg-background-1"}) {
 			see all results
