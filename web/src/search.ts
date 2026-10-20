@@ -5,6 +5,8 @@ type Hit = { title: string; href: string; meta?: string; matched?: string };
 type Suggestions = { query: string; results: Hit[]; all: string };
 
 const DEBOUNCE_MS = 120;
+// a reply slower than this shows "searching", faster ones never flicker it
+const SLOW_MS = 250;
 const LIMIT = 6;
 
 const input = document.getElementById("site-search");
@@ -58,6 +60,19 @@ function suggest(
     }
   };
 
+  // message replaces the list with one line of text: nothing found, still
+  // searching, or a failure
+  const message = (text: string): void => {
+    hits = [];
+    const row = document.createElement("li");
+    row.setAttribute("role", "presentation");
+    row.className = "px-3 py-2.5 text-13 text-foreground-muted";
+    row.textContent = text;
+    list.replaceChildren(row);
+    highlight(-1);
+    open();
+  };
+
   const render = (data: Suggestions): void => {
     hits = data.results;
     const rows = hits.map((hit, i) => {
@@ -96,13 +111,10 @@ function suggest(
     });
 
     if (rows.length === 0) {
-      const empty = document.createElement("li");
-      empty.setAttribute("role", "presentation");
-      empty.className = "px-3 py-2.5 text-13 text-foreground-muted";
-      empty.textContent = `nothing matches “${data.query}” yet`;
-      rows.push(empty);
+      message(`nothing matches “${data.query}” yet`);
+    } else {
+      list.replaceChildren(...rows);
     }
-    list.replaceChildren(...rows);
     announcer.textContent =
       hits.length === 0
         ? "no suggestions"
@@ -123,19 +135,37 @@ function suggest(
     }
     const request = new AbortController();
     pending = request;
+    // keep showing the last results while the next ones load; only an empty
+    // panel needs a "searching" line
+    const slow = setTimeout(() => {
+      list.setAttribute("aria-busy", "true");
+      if (hits.length === 0) {
+        message("searching…");
+      }
+    }, SLOW_MS);
+    // a reply for what the field no longer says is stale
+    const current = (): boolean => !request.signal.aborted && input.value.trim() === q;
     try {
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&limit=${LIMIT}`, { signal: request.signal });
       if (!res.ok) {
-        close();
-        return;
+        throw new Error(`search: ${res.status}`);
       }
       const data = (await res.json()) as Suggestions;
-      // a reply for what the field no longer says is stale
-      if (!request.signal.aborted && input.value.trim() === q) {
+      if (current()) {
         render(data);
       }
     } catch {
-      // aborted, or offline: the form still works
+      // cancelled because the field changed: the newer request answers
+      if (current()) {
+        const text = "couldn't load suggestions, enter still searches";
+        message(text);
+        announcer.textContent = text;
+      }
+    } finally {
+      clearTimeout(slow);
+      if (pending === request) {
+        list.removeAttribute("aria-busy");
+      }
     }
   };
 
