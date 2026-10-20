@@ -242,36 +242,7 @@ templ GroupPage(g Group) {
 		@partOf(g.Groups)
 	</header>
 	for _, o := range g.Orderings {
-		@panel(o.Kind) {
-			<li class="px-4 py-3">
-				<p class="font-semibold text-foreground-strong">{ o.Name }</p>
-				if o.Rationale != "" {
-					<p class="mt-1 text-14 text-foreground-muted">{ o.Rationale }</p>
-				}
-			</li>
-			for _, pos := range o.Positions {
-				if pos.Section != "" {
-					<li class="bg-background-1 px-4 py-2 text-14 font-semibold text-foreground">{ pos.Section }</li>
-				}
-				<li class="flex gap-4 px-4 py-3">
-					<span class="w-8 shrink-0 font-mono text-13 text-foreground-muted">{ pos.Number }</span>
-					<div class="min-w-0 flex-1">
-						if pos.PickOne() {
-							<p class="font-mono text-11 tracking-wide text-foreground-muted uppercase">pick one</p>
-							<ol class="mt-2 space-y-2">
-								for _, c := range pos.Choices {
-									<li class="rounded-md border border-border-subtle px-3 py-2">
-										@steps(c.Steps)
-									</li>
-								}
-							</ol>
-						} else {
-							@steps(pos.Choices[0].Steps)
-						}
-					</div>
-				</li>
-			}
-		}
+		@orderingPanel(o)
 	}
 	if len(g.Members) > 0 {
 		@panel("members") {
@@ -291,6 +262,41 @@ templ GroupPage(g Group) {
 	@relationsPanel(g.Relations)
 	@titlesPanel(g.Titles)
 	@linksPanel(g.Links)
+}
+
+// orderingPanel is one curated path: its name and rationale, then each
+// position, with forks as pick-one choices.
+templ orderingPanel(o Ordering) {
+	@panel(o.Kind) {
+		<li class="px-4 py-3">
+			<p class="font-semibold text-foreground-strong">{ o.Name }</p>
+			if o.Rationale != "" {
+				<p class="mt-1 text-14 text-foreground-muted">{ o.Rationale }</p>
+			}
+		</li>
+		for _, pos := range o.Positions {
+			if pos.Section != "" {
+				<li class="bg-background-1 px-4 py-2 text-14 font-semibold text-foreground">{ pos.Section }</li>
+			}
+			<li class="flex gap-4 px-4 py-3">
+				<span class="w-8 shrink-0 font-mono text-13 text-foreground-muted">{ pos.Number }</span>
+				<div class="min-w-0 flex-1">
+					if pos.PickOne() {
+						<p class="font-mono text-11 tracking-wide text-foreground-muted uppercase">pick one</p>
+						<ol class="mt-2 space-y-2">
+							for _, c := range pos.Choices {
+								<li class="rounded-md border border-border-subtle px-3 py-2">
+									@steps(c.Steps)
+								</li>
+							}
+						</ol>
+					} else {
+						@steps(pos.Choices[0].Steps)
+					}
+				</div>
+			</li>
+		}
+	}
 }
 
 // steps is one choice's entries, in order.
