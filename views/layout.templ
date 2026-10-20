@@ -91,6 +91,8 @@ templ topBar(query string) {
 					/>
 					<kbd class="hidden rounded-sm border border-border px-[5px] py-px font-mono text-11 leading-[14px] text-foreground-muted sm:inline-block" title="press / to search">/</kbd>
 					@searchPanel()
+					// outside the panel: a live region inside a hidden element says nothing
+					<p id="site-search-status" role="status" class="sr-only"></p>
 				</form>
 			</div>
 			<div class="hidden shrink-0 items-center gap-[7px] md:flex">

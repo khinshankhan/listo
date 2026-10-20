@@ -11,12 +11,19 @@ const input = document.getElementById("site-search");
 const panel = document.getElementById("site-search-panel");
 const list = document.getElementById("site-search-results");
 const all = document.getElementById("site-search-all");
+const announcer = document.getElementById("site-search-status");
 
-if (input instanceof HTMLInputElement && panel && list && all instanceof HTMLAnchorElement) {
-  suggest(input, panel, list, all);
+if (input instanceof HTMLInputElement && panel && list && all instanceof HTMLAnchorElement && announcer) {
+  suggest(input, panel, list, all, announcer);
 }
 
-function suggest(input: HTMLInputElement, panel: HTMLElement, list: HTMLElement, all: HTMLAnchorElement): void {
+function suggest(
+  input: HTMLInputElement,
+  panel: HTMLElement,
+  list: HTMLElement,
+  all: HTMLAnchorElement,
+  announcer: HTMLElement,
+): void {
   const form = input.form;
   let hits: Hit[] = [];
   let active = -1;
@@ -59,7 +66,7 @@ function suggest(input: HTMLInputElement, panel: HTMLElement, list: HTMLElement,
       option.setAttribute("role", "option");
       option.setAttribute("aria-selected", "false");
       option.className =
-        "flex cursor-pointer items-baseline gap-3 px-3 py-2 text-14 hover:bg-background-1 data-[active=true]:bg-accent-3";
+        "flex cursor-pointer items-baseline gap-3 px-3 py-2 text-14 hover:bg-background-1 data-[active=true]:bg-accent-3 data-[active=true]:shadow-[inset_3px_0_0_var(--color-accent-9)]";
 
       // the title gets the width; an alias match sits under it
       const names = document.createElement("span");
@@ -96,6 +103,10 @@ function suggest(input: HTMLInputElement, panel: HTMLElement, list: HTMLElement,
       rows.push(empty);
     }
     list.replaceChildren(...rows);
+    announcer.textContent =
+      hits.length === 0
+        ? "no suggestions"
+        : `${hits.length} suggestion${hits.length === 1 ? "" : "s"}, up and down to choose`;
     all.href = data.all;
     all.textContent = `see all results for “${data.query}”`;
     active = -1;
@@ -106,6 +117,7 @@ function suggest(input: HTMLInputElement, panel: HTMLElement, list: HTMLElement,
     const q = input.value.trim();
     pending?.abort();
     if (q === "") {
+      announcer.textContent = "";
       close();
       return;
     }
@@ -174,4 +186,11 @@ function suggest(input: HTMLInputElement, panel: HTMLElement, list: HTMLElement,
     }
   });
   form?.addEventListener("submit", close);
+  // tabbing out of the search closes it; clicks on options keep focus in the
+  // field, and the "see all" link is inside the form
+  form?.addEventListener("focusout", (event) => {
+    if (!(event.relatedTarget instanceof Node && form.contains(event.relatedTarget))) {
+      close();
+    }
+  });
 }
