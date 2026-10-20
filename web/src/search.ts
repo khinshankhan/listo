@@ -115,10 +115,12 @@ function suggest(
     } else {
       list.replaceChildren(...rows);
     }
+    // naming the query makes each announcement differ: screen readers skip a
+    // live region that repeats itself, eg two searches with six hits each
     announcer.textContent =
       hits.length === 0
-        ? "no suggestions"
-        : `${hits.length} suggestion${hits.length === 1 ? "" : "s"}, up and down to choose`;
+        ? `no suggestions for “${data.query}”`
+        : `${hits.length} suggestion${hits.length === 1 ? "" : "s"} for “${data.query}”, up and down to choose`;
     active = -1;
     open();
   };
@@ -158,9 +160,8 @@ function suggest(
     } catch {
       // cancelled because the field changed: the newer request answers
       if (current()) {
-        const text = "couldn't load suggestions, enter still searches";
-        message(text);
-        announcer.textContent = text;
+        message("couldn't load suggestions, enter still searches");
+        announcer.textContent = `couldn't load suggestions for “${q}”, enter still searches`;
       }
     } finally {
       clearTimeout(slow);
