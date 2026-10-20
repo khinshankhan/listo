@@ -56,7 +56,7 @@ templ Layout(head Head, tags web.Tags, chrome Chrome) {
 // topBar is the wordmark corner, browse and search. The corner matches the
 // sidebar's width.
 templ topBar(query string) {
-	<header class="flex shrink-0 border-b border-border bg-background-2 [view-transition-name:top-bar]">
+	<header class="relative flex shrink-0 border-b border-border bg-background-2 [view-transition-name:top-bar]">
 		<div class="flex shrink-0 items-center px-4 sm:w-sidebar sm:border-r sm:border-border sm:px-7">
 			@Wordmark()
 		</div>
@@ -69,7 +69,7 @@ templ topBar(query string) {
 					action="/search"
 					method="get"
 					role="search"
-					class="flex max-w-[420px] min-w-0 flex-1 items-center gap-[9px] rounded-lg border border-border bg-background-1 px-3 py-2 focus-within:outline-2 focus-within:outline-stark-contrast"
+					class="flex max-w-[420px] min-w-0 flex-1 items-center gap-[9px] rounded-lg border border-border bg-background-1 px-3 py-2 focus-within:outline-2 focus-within:outline-stark-contrast sm:relative"
 				>
 					<svg width="15" height="15" viewBox="0 0 18 18" class="shrink-0" aria-hidden="true">
 						<circle cx="8.2" cy="8.2" r="5.4" fill="none" stroke="var(--color-foreground-subtle)" stroke-width="1.5"></circle>
@@ -82,9 +82,15 @@ templ topBar(query string) {
 						type="search"
 						value={ query }
 						placeholder="search the catalog"
+						role="combobox"
+						aria-autocomplete="list"
+						aria-expanded="false"
+						aria-controls="site-search-results"
+						autocomplete="off"
 						class="min-w-0 flex-1 bg-transparent text-13 leading-4 text-foreground-strong outline-none placeholder:text-foreground-muted"
 					/>
 					<kbd class="hidden rounded-sm border border-border px-[5px] py-px font-mono text-11 leading-[14px] text-foreground-muted sm:inline-block" title="press / to search">/</kbd>
+					@searchPanel()
 				</form>
 			</div>
 			<div class="hidden shrink-0 items-center gap-[7px] md:flex">
@@ -93,6 +99,21 @@ templ topBar(query string) {
 			</div>
 		</div>
 	</header>
+}
+
+// searchPanel holds the top bar's suggestions, filled by web/src/search.ts. A
+// drawer under the top bar on phones, a popover under the field from sm up.
+templ searchPanel() {
+	<div
+		id="site-search-panel"
+		hidden
+		class="absolute inset-x-0 top-full z-30 border-b border-border bg-background-2 shadow-sm sm:mt-2 sm:rounded-lg sm:border"
+	>
+		<ul id="site-search-results" role="listbox" aria-label="suggestions" class="max-h-[60vh] overflow-y-auto py-1"></ul>
+		@Link(LinkProps{ID: "site-search-all", Href: "/search", Variant: LinkNone, Class: "block border-t border-border-subtle px-3 py-2.5 text-13 text-accent-11 hover:bg-background-1"}) {
+			see all results
+		}
+	</div>
 }
 
 // sidebar is the catalog nav, hidden on small screens.

@@ -41,6 +41,10 @@ func TestRoutes(t *testing.T) {
 		{"home", up, "/", http.StatusOK, []string{"the 1 list for all your content", "/assets/islands-abc.js"}},
 		{"the demo page is gone", up, "/there", http.StatusNotFound, []string{"back home"}},
 		{"every page has the top bar", up, "/nope", http.StatusNotFound, []string{`role="search"`, `id="site-search"`}},
+		// web/src/search.ts finds these by id and drives the aria attributes
+		{"the search box is a combobox over a hidden panel", up, "/nope", http.StatusNotFound, []string{
+			`role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="site-search-results"`,
+			`<div id="site-search-panel" hidden`, `<ul id="site-search-results" role="listbox"`, `id="site-search-all"`}},
 		{"unknown path is a real 404", up, "/nope", http.StatusNotFound, []string{"back home"}},
 		{"there has no subpaths", up, "/there/x", http.StatusNotFound, []string{"back home"}},
 		{"hashed asset", up, "/assets/app-abc.css", http.StatusOK, []string{"body{}"}},
