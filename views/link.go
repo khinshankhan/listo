@@ -86,6 +86,7 @@ func linkClass(variant LinkVariant, monochrome bool) string {
 
 // LinkProps configures a Link. Class adds to the variant's classes.
 type LinkProps struct {
+	ID         string
 	Href       string
 	Variant    LinkVariant
 	Monochrome bool

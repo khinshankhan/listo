@@ -4,6 +4,9 @@ package views
 // icon; file links get a download icon.
 templ Link(p LinkProps) {
 	<a
+		if p.ID != "" {
+			id={ p.ID }
+		}
 		href={ p.Href }
 		class={ linkClass(p.Variant, p.Monochrome), p.Class }
 		if ResolveLinkKind(p.Href) == LinkExternal {
