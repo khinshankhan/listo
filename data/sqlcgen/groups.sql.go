@@ -42,6 +42,96 @@ func (q *Queries) GroupByPublicID(ctx context.Context, publicID int64) (GroupByP
 	return i, err
 }
 
+const groupEntries = `-- name: GroupEntries :many
+with recursive down (branch, group_id, member_id) as (
+  select ms.member_id, ms.group_id, ms.member_id
+  from catalog.membership ms
+  where ms.group_id = $1
+  union all
+  select down.branch, ms.group_id, ms.member_id
+  from down
+  join catalog.membership ms on ms.group_id = down.member_id
+) cycle member_id set looped using path
+select n.public_id, n.slug, e.title, e.medium, m.label as medium_label, e.format,
+       mf.label as format_label, e.start_date, e.start_precision, e.unit_kind, e.unit_total,
+       ms.role,
+       b.public_id as branch_public_id, b.slug as branch_slug, b.type as branch_type,
+       bg.name as branch_name, bg.kind as branch_kind, bg.standing as branch_standing
+from down
+join catalog.entry e on e.id = down.member_id
+join catalog.node n on n.id = e.id
+join catalog.medium m on m.medium = e.medium
+join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
+join catalog.membership ms on ms.group_id = down.group_id and ms.member_id = down.member_id
+join catalog.node b on b.id = down.branch
+left join catalog.grp bg on bg.id = b.id
+where not down.looped
+order by e.start_date nulls last, e.title
+`
+
+type GroupEntriesRow struct {
+	PublicID       int64
+	Slug           string
+	Title          string
+	Medium         string
+	MediumLabel    string
+	Format         string
+	FormatLabel    string
+	StartDate      *time.Time
+	StartPrecision *string
+	UnitKind       string
+	UnitTotal      *int32
+	Role           *string
+	BranchPublicID int64
+	BranchSlug     string
+	BranchType     string
+	BranchName     *string
+	BranchKind     *string
+	BranchStanding *string
+}
+
+// Every entry under a group at any depth, with the branch it sits under (the
+// group's direct member it was reached through) and its role in its own
+// group. An entry under two branches comes back once for each.
+func (q *Queries) GroupEntries(ctx context.Context, groupID uuid.UUID) ([]GroupEntriesRow, error) {
+	rows, err := q.db.Query(ctx, groupEntries, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GroupEntriesRow{}
+	for rows.Next() {
+		var i GroupEntriesRow
+		if err := rows.Scan(
+			&i.PublicID,
+			&i.Slug,
+			&i.Title,
+			&i.Medium,
+			&i.MediumLabel,
+			&i.Format,
+			&i.FormatLabel,
+			&i.StartDate,
+			&i.StartPrecision,
+			&i.UnitKind,
+			&i.UnitTotal,
+			&i.Role,
+			&i.BranchPublicID,
+			&i.BranchSlug,
+			&i.BranchType,
+			&i.BranchName,
+			&i.BranchKind,
+			&i.BranchStanding,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const groupMembers = `-- name: GroupMembers :many
 select n.public_id, n.slug, n.type,
        coalesce(e.title, g.name)::text as title,
@@ -159,6 +249,62 @@ func (q *Queries) GroupOrderings(ctx context.Context, groupID uuid.UUID) ([]Grou
 			&i.UnitTo,
 			&i.Necessity,
 			&i.Note,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const groupSiblings = `-- name: GroupSiblings :many
+with recursive down (root, id) as (
+  select s.member_id, s.member_id
+  from catalog.membership p
+  join catalog.membership s on s.group_id = p.group_id
+  where p.member_id = $1 and s.member_id <> $1
+  union
+  select down.root, ms.member_id
+  from down
+  join catalog.membership ms on ms.group_id = down.id
+)
+select n.public_id, n.slug, g.kind, g.name, count(e.id)::int as entries
+from down
+join catalog.grp g on g.id = down.root
+join catalog.node n on n.id = g.id
+left join catalog.entry e on e.id = down.id
+group by n.public_id, n.slug, g.kind, g.name
+order by g.name
+`
+
+type GroupSiblingsRow struct {
+	PublicID int64
+	Slug     string
+	Kind     string
+	Name     string
+	Entries  int32
+}
+
+// The other groups that share a parent with this one, with every entry
+// beneath each counted.
+func (q *Queries) GroupSiblings(ctx context.Context, memberID uuid.UUID) ([]GroupSiblingsRow, error) {
+	rows, err := q.db.Query(ctx, groupSiblings, memberID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GroupSiblingsRow{}
+	for rows.Next() {
+		var i GroupSiblingsRow
+		if err := rows.Scan(
+			&i.PublicID,
+			&i.Slug,
+			&i.Kind,
+			&i.Name,
+			&i.Entries,
 		); err != nil {
 			return nil, err
 		}

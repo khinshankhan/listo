@@ -17,10 +17,17 @@ type Querier interface {
 	// checks the slug.
 	EntryByPublicID(ctx context.Context, publicID int64) (EntryByPublicIDRow, error)
 	GroupByPublicID(ctx context.Context, publicID int64) (GroupByPublicIDRow, error)
+	// Every entry under a group at any depth, with the branch it sits under (the
+	// group's direct member it was reached through) and its role in its own
+	// group. An entry under two branches comes back once for each.
+	GroupEntries(ctx context.Context, groupID uuid.UUID) ([]GroupEntriesRow, error)
 	// A group's direct members: subgroups first, then entries in release order.
 	GroupMembers(ctx context.Context, groupID uuid.UUID) ([]GroupMembersRow, error)
 	// A group's orderings, one row per step.
 	GroupOrderings(ctx context.Context, groupID uuid.UUID) ([]GroupOrderingsRow, error)
+	// The other groups that share a parent with this one, with every entry
+	// beneath each counted.
+	GroupSiblings(ctx context.Context, memberID uuid.UUID) ([]GroupSiblingsRow, error)
 	// How many entries each medium has, for the browse filters.
 	MediumCounts(ctx context.Context) ([]MediumCountsRow, error)
 	// A node's type, to redirect an id used under the wrong path.

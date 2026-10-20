@@ -128,3 +128,107 @@ func TestGroupPageQueries(t *testing.T) {
 		}
 	})
 }
+
+func TestFranchiseQueries(t *testing.T) {
+	tx := testTx(t)
+	ctx := context.Background()
+
+	run := fmt.Sprint(time.Now().UnixNano())
+	medium := "test_medium_" + run
+	exec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := tx.Exec(ctx, q, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	node := func(typ, name string) uuid.UUID {
+		t.Helper()
+		var id uuid.UUID
+		if err := tx.QueryRow(ctx, `insert into catalog.node (type, slug) values ($1, $2) returning id`,
+			typ, fmt.Sprintf("test-%s-%s", name, run)).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	group := func(name, kind string, standing any) uuid.UUID {
+		t.Helper()
+		id := node("group", name)
+		exec(`insert into catalog.grp (id, kind, name, standing) values ($1, $2, $3, $4)`, id, kind, name, standing)
+		return id
+	}
+	entry := func(name string) uuid.UUID {
+		t.Helper()
+		id := node("entry", name)
+		exec(`insert into catalog.entry (id, medium, format, title) values ($1, $2, 'tv', $3)`, id, medium, name)
+		return id
+	}
+	member := func(g, m uuid.UUID, role any) {
+		t.Helper()
+		exec(`insert into catalog.membership (group_id, member_id, role) values ($1, $2, $3)`, g, m, role)
+	}
+
+	exec(`insert into catalog.medium (medium, label, verb_current, verb_planning, verb_repeating)
+	      values ($1, 'test medium', 'watching', 'plan to watch', 'rewatching')`, medium)
+	exec(`insert into catalog.medium_format (medium, format, label) values ($1, 'tv', 'tv')`, medium)
+
+	// universe > franchise > {main > series > nested, main > shared, alt > shared, loose}
+	universe := group("universe", "universe", nil)
+	franchise := group("franchise", "franchise", nil)
+	main := group("main", "continuity", "primary")
+	alt := group("alt", "continuity", "concluded")
+	series := group("series", "series", nil)
+	nested, shared, loose := entry("nested"), entry("shared"), entry("loose")
+	member(universe, franchise, nil)
+	member(franchise, main, nil)
+	member(franchise, alt, nil)
+	member(franchise, loose, nil)
+	member(main, series, nil)
+	member(series, nested, nil)
+	member(main, shared, "source material")
+	member(alt, shared, "retold")
+	// a sibling franchise with two entries, one nested
+	sibling := group("sibling", "franchise", nil)
+	sibSeries := group("sibling-series", "series", nil)
+	member(universe, sibling, nil)
+	member(sibling, entry("sibling-a"), nil)
+	member(sibling, sibSeries, nil)
+	member(sibSeries, entry("sibling-b"), nil)
+
+	q := sqlcgen.New(tx)
+
+	t.Run("entries by branch", func(t *testing.T) {
+		rows, err := q.GroupEntries(ctx, franchise)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := map[string]string{}
+		for _, r := range rows {
+			key := strings.TrimSuffix(strings.TrimPrefix(r.Slug, "test-"), "-"+run) + "@" + strings.TrimSuffix(strings.TrimPrefix(r.BranchSlug, "test-"), "-"+run)
+			got[key] = deref(r.Role)
+		}
+		want := map[string]string{
+			"nested@main": "",                // a series inside a continuity counts under the continuity
+			"shared@main": "source material", // an entry in two continuities shows in both,
+			"shared@alt":  "retold",          // with the role it has in each
+			"loose@loose": "",                // directly in the franchise: its own branch
+		}
+		if len(got) != len(want) {
+			t.Fatalf("got %v, want %v", got, want)
+		}
+		for k, v := range want {
+			if r, ok := got[k]; !ok || r != v {
+				t.Errorf("%s: role %q (present %v), want %q", k, r, ok, v)
+			}
+		}
+	})
+
+	t.Run("siblings count every entry beneath", func(t *testing.T) {
+		sibs, err := q.GroupSiblings(ctx, franchise)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(sibs) != 1 || sibs[0].Name != "sibling" || sibs[0].Entries != 2 {
+			t.Errorf("got %+v, want only the sibling, with 2 entries", sibs)
+		}
+	})
+}
