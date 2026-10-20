@@ -28,7 +28,8 @@ insert into catalog.relation_kind (kind, label, inverse_label, is_symmetric, fam
   ('recap_of',               'recap of',               'recapped by',             false, 'version'),
   ('alternative_version_of', 'alternative version of', null,                      true,  'version'),
   ('crossover_with',         'crossover with',         null,                      true,  'setting'),
-  ('same_setting_as',        'same setting as',        null,                      true,  'setting');
+  ('same_setting_as',        'same setting as',        null,                      true,  'setting'),
+  ('references',             'references',             'referenced by',           false, 'setting');
 
 insert into catalog.id_source (source, site, url_template) values
   ('wikidata',      'Wikidata',    'https://www.wikidata.org/wiki/{id}'),
