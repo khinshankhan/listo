@@ -119,8 +119,6 @@ function suggest(
       hits.length === 0
         ? "no suggestions"
         : `${hits.length} suggestion${hits.length === 1 ? "" : "s"}, up and down to choose`;
-    all.href = data.all;
-    all.textContent = `see all results for “${data.query}”`;
     active = -1;
     open();
   };
@@ -133,6 +131,9 @@ function suggest(
       close();
       return;
     }
+    // the full search follows the field, whatever state the panel is in
+    all.href = `/search?q=${encodeURIComponent(q)}`;
+    all.textContent = `see all results for “${q}”`;
     const request = new AbortController();
     pending = request;
     // keep showing the last results while the next ones load; only an empty
