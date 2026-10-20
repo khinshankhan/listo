@@ -111,6 +111,17 @@ language sql as $$
   select catalog.id(p_group), catalog.id(m) from unnest(p_members) m
 $$;
 
+-- a member's role in its group, eg "source material"
+create function catalog.set_role(p_group text, p_member text, p_role text) returns void
+language plpgsql as $$
+begin
+  update catalog.membership set role = p_role
+  where group_id = catalog.id(p_group) and member_id = catalog.id(p_member);
+  if not found then
+    raise exception '% is not in %', p_member, p_group;
+  end if;
+end $$;
+
 -- Symmetric kinds are stored once, smaller id first, so callers never pick a
 -- direction for them.
 create function catalog.relate(p_from text, p_kind text, p_to text,

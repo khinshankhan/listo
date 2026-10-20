@@ -27,6 +27,12 @@ select catalog.add_entry('robotics-notes-dash', 'visual_novel', 'full', 'Robotic
 
 select catalog.member('steins-gate-main', 'steins-gate-vn', 'steins-gate-anime', 'steins-gate-movie', 'steins-gate-elite');
 select catalog.member('steins-gate-zero', 'steins-gate-0-vn', 'steins-gate-0-anime');
+select catalog.set_role('steins-gate-main', 'steins-gate-vn', 'source material');
+select catalog.set_role('steins-gate-main', 'steins-gate-anime', 'adaptation of the VN');
+select catalog.set_role('steins-gate-main', 'steins-gate-movie', 'sequel to the anime');
+select catalog.set_role('steins-gate-main', 'steins-gate-elite', 'remake of the VN');
+select catalog.set_role('steins-gate-zero', 'steins-gate-0-vn', 'sequel from another worldline');
+select catalog.set_role('steins-gate-zero', 'steins-gate-0-anime', 'adaptation of 0');
 select catalog.member('robotics-notes', 'robotics-notes-vn', 'robotics-notes-dash');
 
 select catalog.ext('steins-gate-vn', 'wikidata', 'Q482494');
