@@ -41,7 +41,7 @@ type httpServer struct {
 }
 
 func newHTTPServer(addr string, bundle *web.Bundle, db handler.Pinger, catalog handler.Catalog) *httpServer {
-	api := handler.NewAPI(db)
+	api := handler.NewAPI(db, catalog)
 	pages := handler.NewPages(bundle.Tags, catalog)
 
 	// first listed is outermost

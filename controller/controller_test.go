@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -466,6 +467,13 @@ func (fakeCatalog) SearchNodes(_ context.Context, arg sqlcgen.SearchNodesParams)
 		}, nil
 	case "boom":
 		return nil, errors.New("connection reset")
+	case "many":
+		// as many hits as asked for, to check the limit
+		hits := make([]sqlcgen.SearchNodesRow, arg.MaxResults)
+		for i := range hits {
+			hits[i] = sqlcgen.SearchNodesRow{PublicID: int64(100 + i), Slug: "x", Type: "entry", Title: "Many", Matched: "Many", MediumLabel: &anime}
+		}
+		return hits, nil
 	}
 	return nil, nil
 }
@@ -518,4 +526,77 @@ func plainLinks(body string) string {
 		}
 		return fmt.Sprintf(`<a href="%s">`, m[1])
 	})
+}
+
+func TestSearchAPI(t *testing.T) {
+	srv := httptest.NewServer(newHTTPServer("", &web.Bundle{Files: fstest.MapFS{}}, fakeDB{}, fakeCatalog{}).srv.Handler)
+	t.Cleanup(srv.Close)
+
+	type hit struct {
+		Title, Href, Meta, Matched string
+	}
+	type response struct {
+		Query   string
+		Results []hit
+		All     string
+	}
+
+	cases := []struct {
+		name     string
+		path     string
+		status   int
+		hits     int
+		first    hit
+		all      string
+		resultsJ string // how the results array is encoded, when it matters
+	}{
+		{name: "hits shaped like the search page", path: "/api/search?q=steins", status: http.StatusOK, hits: 2,
+			first: hit{Title: "Steins;Gate", Href: "/groups/2/steins-gate", Meta: "franchise"}, all: "/search?q=steins"},
+		{name: "an alias match says so", path: "/api/search?q=sg", status: http.StatusOK, hits: 1,
+			first: hit{Title: "Steins;Gate", Href: "/entries/7/steins-gate-anime", Meta: "anime", Matched: "S;G"}, all: "/search?q=sg"},
+		{name: "a handful by default", path: "/api/search?q=many", status: http.StatusOK, hits: 6, all: "/search?q=many"},
+		{name: "a smaller limit", path: "/api/search?q=many&limit=3", status: http.StatusOK, hits: 3, all: "/search?q=many"},
+		{name: "a limit is capped", path: "/api/search?q=many&limit=500", status: http.StatusOK, hits: 10, all: "/search?q=many"},
+		{name: "a bad limit is the default", path: "/api/search?q=many&limit=lots", status: http.StatusOK, hits: 6, all: "/search?q=many"},
+		{name: "no query, no hits, and an empty list not null", path: "/api/search?q=+", status: http.StatusOK, hits: 0,
+			all: "/search?q=", resultsJ: `"results":[]`},
+		{name: "the full search link is escaped", path: "/api/search?q=a%26b%3Dc", status: http.StatusOK, hits: 0,
+			all: "/search?q=a%26b%3Dc"},
+		{name: "a failed search is a 500", path: "/api/search?q=boom", status: http.StatusInternalServerError},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := http.Get(srv.URL + tc.path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer res.Body.Close()
+			raw, err := io.ReadAll(res.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res.StatusCode != tc.status {
+				t.Fatalf("status = %d, want %d", res.StatusCode, tc.status)
+			}
+			if ct, cc := res.Header.Get("Content-Type"), res.Header.Get("Cache-Control"); ct != "application/json" || cc != "no-store" {
+				t.Errorf("Content-Type %q, Cache-Control %q", ct, cc)
+			}
+			if tc.status != http.StatusOK {
+				return
+			}
+			if tc.resultsJ != "" && !strings.Contains(string(raw), tc.resultsJ) {
+				t.Errorf("body %s, want %s", raw, tc.resultsJ)
+			}
+			var got response
+			if err := json.Unmarshal(raw, &got); err != nil {
+				t.Fatal(err)
+			}
+			if len(got.Results) != tc.hits || got.All != tc.all {
+				t.Errorf("got %d hits, all %q; want %d, %q", len(got.Results), got.All, tc.hits, tc.all)
+			}
+			if tc.first != (hit{}) && (len(got.Results) == 0 || got.Results[0] != tc.first) {
+				t.Errorf("first = %+v, want %+v", got.Results, tc.first)
+			}
+		})
+	}
 }

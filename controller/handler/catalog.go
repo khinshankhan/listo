@@ -61,20 +61,7 @@ func (p *Pages) Search(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		v.Searched = true
-		for _, h := range hits {
-			res := views.Result{
-				Title: h.Title,
-				Href:  NodePath(h.Type, h.PublicID, h.Slug),
-				Meta:  deref(h.GroupKind),
-			}
-			if h.Type == "entry" {
-				res.Meta = withYear(deref(h.MediumLabel), h.StartDate)
-			}
-			if h.Matched != h.Title {
-				res.Matched = h.Matched
-			}
-			v.Results = append(v.Results, res)
-		}
+		v.Results = resultsFor(hits)
 	}
 
 	title := "search | listo"
@@ -198,4 +185,24 @@ func clampQuery(q string) string {
 		return q
 	}
 	return string([]rune(q)[:maxQuery])
+}
+
+// resultsFor is how hits show, on the search page and in the top bar.
+func resultsFor(hits []sqlcgen.SearchNodesRow) []views.Result {
+	results := make([]views.Result, 0, len(hits))
+	for _, h := range hits {
+		res := views.Result{
+			Title: h.Title,
+			Href:  NodePath(h.Type, h.PublicID, h.Slug),
+			Meta:  deref(h.GroupKind),
+		}
+		if h.Type == "entry" {
+			res.Meta = withYear(deref(h.MediumLabel), h.StartDate)
+		}
+		if h.Matched != h.Title {
+			res.Matched = h.Matched
+		}
+		results = append(results, res)
+	}
+	return results
 }
