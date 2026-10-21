@@ -15,6 +15,12 @@ const (
 	// searchResults is how many hits a search page shows.
 	searchResults = 30
 
+	// suggestions is how many nearby titles a search that found nothing
+	// offers, and nearTitle how close one has to be. Titles we don't have
+	// score up to about 0.27 against the catalog; real near misses, 0.3 up.
+	suggestions = 3
+	nearTitle   = 0.3
+
 	// maxQuery caps what's searched, in characters; a title is never longer.
 	maxQuery = 200
 )
@@ -55,13 +61,27 @@ func (p *Pages) Search(w http.ResponseWriter, r *http.Request) {
 	v := views.Search{Query: q}
 
 	if q != "" {
-		hits, err := p.catalog.SearchNodes(r.Context(), sqlcgen.SearchNodesParams{Q: q, MaxResults: searchResults})
+		ctx := r.Context()
+		hits, err := p.catalog.SearchNodes(ctx, sqlcgen.SearchNodesParams{Q: q, MaxResults: searchResults})
 		if err != nil {
 			p.serverError(w, r, err)
 			return
 		}
 		v.Searched = true
+		v.AniList = "https://anilist.co/search/anime?search=" + strings.ReplaceAll(url.QueryEscape(q), "+", "%20")
+		v.Media, hits = searchFilters(q, r.URL.Query().Get("medium"), hits)
 		v.Results = resultsFor(hits)
+
+		if len(hits) == 0 {
+			near, err := p.catalog.TitleSuggestions(ctx, sqlcgen.TitleSuggestionsParams{Q: q, AtLeast: nearTitle, MaxResults: suggestions})
+			if err != nil {
+				p.serverError(w, r, err)
+				return
+			}
+			for _, t := range near {
+				v.Suggestions = append(v.Suggestions, views.Suggestion{Title: t, Href: searchPath(t, "")})
+			}
+		}
 	}
 
 	title := "search | listo"
@@ -70,12 +90,62 @@ func (p *Pages) Search(w http.ResponseWriter, r *http.Request) {
 	}
 	// results pages stay out of search engines
 	head := views.Head{Title: title, Description: "Search listo's catalog.", NoIndex: true}
-	chrome, err := p.chrome(r, nil, q)
+	// the page has its own search box, so the top bar's stays empty
+	chrome, err := p.chrome(r, nil, "")
 	if err != nil {
 		p.serverError(w, r, err)
 		return
 	}
 	p.render(w, r, http.StatusOK, head, chrome, views.SearchPage(v))
+}
+
+// searchFilters is a link per medium among the hits, and the hits the chosen
+// one keeps. There are no links when filtering wouldn't change anything, and
+// a medium that isn't among the hits shows them all.
+func searchFilters(q, medium string, hits []sqlcgen.SearchNodesRow) ([]views.MediumLink, []sqlcgen.SearchNodesRow) {
+	var order []string
+	labels, counts := map[string]string{}, map[string]int{}
+	groups := 0
+	for _, h := range hits {
+		if h.Medium == nil {
+			groups++
+			continue
+		}
+		if counts[*h.Medium] == 0 {
+			order = append(order, *h.Medium)
+			labels[*h.Medium] = deref(h.MediumLabel)
+		}
+		counts[*h.Medium]++
+	}
+	if len(order) < 2 && (len(order) == 0 || groups == 0) {
+		return nil, hits
+	}
+	if counts[medium] == 0 {
+		medium = ""
+	}
+
+	links := []views.MediumLink{{Label: "all", Href: searchPath(q, ""), Count: len(hits), Active: medium == ""}}
+	for _, m := range order {
+		links = append(links, views.MediumLink{Label: labels[m], Href: searchPath(q, m), Count: counts[m], Active: m == medium})
+	}
+	if medium == "" {
+		return links, hits
+	}
+	kept := make([]sqlcgen.SearchNodesRow, 0, counts[medium])
+	for _, h := range hits {
+		if h.Medium != nil && *h.Medium == medium {
+			kept = append(kept, h)
+		}
+	}
+	return links, kept
+}
+
+func searchPath(q, medium string) string {
+	v := url.Values{"q": {q}}
+	if medium != "" {
+		v.Set("medium", medium)
+	}
+	return "/search?" + v.Encode()
 }
 
 // Entries lists every entry, or one medium's with ?medium=. An unknown or
@@ -192,17 +262,43 @@ func resultsFor(hits []sqlcgen.SearchNodesRow) []views.Result {
 	results := make([]views.Result, 0, len(hits))
 	for _, h := range hits {
 		res := views.Result{
-			Title: h.Title,
-			Href:  NodePath(h.Type, h.PublicID, h.Slug),
-			Meta:  deref(h.GroupKind),
+			Title:  h.Title,
+			Href:   NodePath(h.Type, h.PublicID, h.Slug),
+			Meta:   deref(h.GroupKind),
+			Medium: deref(h.GroupKind),
 		}
 		if h.Type == "entry" {
 			res.Meta = withYear(deref(h.MediumLabel), h.StartDate)
+			res.Medium = deref(h.FormatLabel)
+			res.Detail = hitDetail(h)
 		}
 		if h.Matched != h.Title {
 			res.Matched = h.Matched
+			res.MatchedAs = matchedAs(h.MatchedKind)
 		}
 		results = append(results, res)
 	}
 	return results
+}
+
+// hitDetail is when an entry came out and how long it is: "spring 2011, 24
+// episodes".
+func hitDetail(h sqlcgen.SearchNodesRow) string {
+	var parts []string
+	if h.StartDate != nil && h.StartPrecision != nil {
+		parts = append(parts, when(deref(h.Medium), deref(h.Format), *h.StartDate, *h.StartPrecision))
+	}
+	if kind := deref(h.UnitKind); h.UnitTotal != nil && kind != "none" && kind != "" {
+		parts = append(parts, plural(int(*h.UnitTotal), kind, kind+"s"))
+	}
+	return strings.Join(parts, " · ")
+}
+
+// matchedAs names the kind of title a search matched.
+func matchedAs(kind string) string {
+	switch kind {
+	case "native", "romanized", "english", "localized":
+		return kind + " title"
+	}
+	return "alias"
 }

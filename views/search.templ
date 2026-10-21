@@ -1,0 +1,119 @@
+package views
+
+// SearchPage is a GET form over the catalog and what it found: results with
+// a medium filter, or nearby titles and other places to look.
+templ SearchPage(s Search) {
+	<div class="flex flex-col gap-6">
+		<header class="flex flex-col gap-3">
+			<p class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">catalog</p>
+			<h1 class="font-heading text-44 leading-12 font-semibold tracking-tight text-foreground-strong">search</h1>
+		</header>
+		<form action="/search" method="get" role="search" class="flex items-center gap-3 rounded-[10px] border border-accent-9 bg-background-2 px-[18px] py-[14px] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-stark-contrast">
+			<svg width="15" height="15" viewBox="0 0 18 18" class="shrink-0 text-accent-9" aria-hidden="true">
+				<circle cx="8.2" cy="8.2" r="5.4" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+				<path d="M12.3 12.3l3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+			</svg>
+			<label for="q" class="sr-only">search titles</label>
+			<input
+				id="q"
+				name="q"
+				type="search"
+				value={ s.Query }
+				placeholder="search titles, in any language"
+				class="min-w-0 flex-1 bg-transparent text-15 leading-[18px] font-medium text-foreground-strong outline-none placeholder:font-normal placeholder:text-foreground-muted [&::-webkit-search-cancel-button]:hidden"
+			/>
+			<button type="submit" class="sr-only">search</button>
+			if s.Query != "" {
+				@Link(LinkProps{Href: "/search", Variant: LinkNone, Class: "shrink-0 text-12 leading-4 text-foreground-muted hover:text-foreground-strong"}) {
+					clear
+				}
+			}
+		</form>
+		if !s.Searched {
+			<p class="text-14 text-foreground-muted">search every title an entry or franchise goes by, in any language.</p>
+		} else if len(s.Results) == 0 {
+			@noResults(s)
+		} else {
+			<section class="flex flex-col gap-6" aria-labelledby="results">
+				<div class="flex flex-wrap items-center justify-between gap-3">
+					<p class="flex items-baseline gap-[9px]">
+						<span id="results" class="text-20 leading-6 font-semibold tracking-[-0.025em] text-foreground-strong">{ count(len(s.Results), "result", "results") }</span>
+						<span class="text-13 leading-4 text-foreground-muted">in the listo catalog</span>
+					</p>
+					if len(s.Media) > 0 {
+						<nav class="flex flex-wrap gap-[7px]" aria-label="filter by medium">
+							for _, m := range s.Media {
+								@Link(LinkProps{Href: m.Href, Variant: LinkNone, Monochrome: true, Current: m.Active, Class: sortClass(m.Active)}) {
+									{ m.Label }
+								}
+							}
+						</nav>
+					}
+				</div>
+				<ul class="flex flex-col border-t border-border">
+					for i, res := range s.Results {
+						<li class={ "flex items-center gap-4 p-3", templ.KV("border-b border-border-subtle", i < len(s.Results)-1) }>
+							<span class="h-14 w-10 shrink-0 rounded-sm bg-placeholder" aria-hidden="true"></span>
+							<div class="flex min-w-0 flex-1 flex-col gap-1">
+								@Link(LinkProps{Href: res.Href, Variant: LinkNone, Class: "text-15 leading-[18px] font-semibold text-foreground-strong"}) {
+									{ res.Title }
+								}
+								<p class="flex flex-wrap items-center gap-[7px]">
+									<span class="font-mono text-[10px] leading-3 text-foreground-muted uppercase">{ res.Medium }</span>
+									if res.Detail != "" {
+										<span class="inline-block size-[3px] shrink-0 rounded-full bg-border" aria-hidden="true"></span>
+										<span class="text-12 leading-4 text-foreground-muted">{ res.Detail }</span>
+									}
+								</p>
+								if res.Matched != "" {
+									<p class="text-11 leading-[14px] text-foreground-muted">matched { res.MatchedAs }: { res.Matched }</p>
+								}
+							</div>
+						</li>
+					}
+				</ul>
+				<aside class="flex flex-wrap items-center gap-[14px] rounded-[10px] border border-dashed border-border px-[18px] py-4">
+					<div class="flex min-w-[240px] flex-1 flex-col gap-1">
+						<p class="text-14 leading-[18px] font-semibold text-foreground-strong">not finding it?</p>
+						<p class="text-13 leading-[19px] text-foreground-muted">This searched listo's own catalog, which only has what's been added so far. AniList knows far more.</p>
+					</div>
+					@Link(LinkProps{Href: s.AniList, Variant: LinkNone, Class: "flex h-[34px] shrink-0 items-center rounded-lg border border-border bg-background-2 px-[14px] text-13 leading-4 font-semibold text-foreground-strong hover:border-accent-7"}) {
+						search AniList
+					}
+				</aside>
+			</section>
+		}
+	</div>
+}
+
+// noResults is a search that found nothing: what else to try.
+templ noResults(s Search) {
+	<section class="flex flex-col items-center gap-5 px-4 py-12 text-center sm:px-10 sm:py-[88px]" aria-labelledby="no-results">
+		<div class="flex max-w-[460px] flex-col items-center gap-[9px]">
+			<h2 id="no-results" class="text-24 leading-[30px] font-semibold tracking-[-0.02em] text-foreground-strong">nothing in the catalog yet</h2>
+			<p class="text-14 leading-[22px] text-foreground-muted">No entry matches &ldquo;{ s.Query }&rdquo;. listo only knows what's been added so far, and the catalog grows one entry at a time.</p>
+		</div>
+		<div class="flex flex-wrap justify-center gap-[10px]">
+			@Link(LinkProps{Href: s.AniList, Variant: LinkNone, Monochrome: true, Class: "flex h-9 items-center rounded-lg bg-foreground-strong px-4 text-13 leading-4 font-semibold text-background-2 hover:bg-cream-10"}) {
+				search AniList instead
+			}
+			@Link(LinkProps{Href: "/entries", Variant: LinkNone, Class: "flex h-9 items-center rounded-lg border border-border bg-background-2 px-4 text-13 leading-4 font-semibold text-foreground-strong hover:border-accent-7"}) {
+				browse the catalog
+			}
+		</div>
+		if len(s.Suggestions) > 0 {
+			<div class="flex flex-col items-center gap-2 pt-2">
+				<p id="or-try" class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">or try</p>
+				<ul class="flex flex-wrap justify-center gap-[7px]" aria-labelledby="or-try">
+					for _, sug := range s.Suggestions {
+						<li>
+							@Link(LinkProps{Href: sug.Href, Variant: LinkNone, Class: "flex h-[27px] items-center rounded-full border border-border bg-background-2 px-3 text-12 leading-4 text-foreground-strong hover:border-accent-7"}) {
+								{ sug.Title }
+							}
+						</li>
+					}
+				</ul>
+			</div>
+		}
+	</section>
+}

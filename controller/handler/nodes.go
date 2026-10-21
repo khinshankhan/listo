@@ -32,6 +32,7 @@ type Catalog interface {
 	GroupEntries(ctx context.Context, groupID uuid.UUID) ([]sqlcgen.GroupEntriesRow, error)
 	GroupSiblings(ctx context.Context, memberID uuid.UUID) ([]sqlcgen.GroupSiblingsRow, error)
 	SearchNodes(ctx context.Context, arg sqlcgen.SearchNodesParams) ([]sqlcgen.SearchNodesRow, error)
+	TitleSuggestions(ctx context.Context, arg sqlcgen.TitleSuggestionsParams) ([]string, error)
 	TopGroups(ctx context.Context) ([]sqlcgen.TopGroupsRow, error)
 	MediumCounts(ctx context.Context) ([]sqlcgen.MediumCountsRow, error)
 	BrowseEntries(ctx context.Context, medium *string) ([]sqlcgen.BrowseEntriesRow, error)

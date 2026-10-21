@@ -26,38 +26,6 @@ templ HomePage(h Home) {
 	@mediumNav(h.Media)
 }
 
-// SearchPage is a GET form and its results.
-templ SearchPage(s Search) {
-	<h1 class="font-heading text-32 font-semibold tracking-tight text-foreground-strong">
-		if s.Query != "" {
-			{ s.Query }
-		} else {
-			search
-		}
-	</h1>
-	if !s.Searched {
-		<p class="mt-2 text-14 text-foreground-muted">search every title an entry or franchise goes by, in any language, from the box above.</p>
-	} else {
-		if len(s.Results) == 0 {
-			<p class="mt-8 text-foreground-muted">nothing matches &ldquo;{ s.Query }&rdquo; yet.</p>
-		} else {
-			@panel("results") {
-				for _, res := range s.Results {
-					<li class="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-4">
-						@Link(LinkProps{Href: res.Href, Variant: LinkNone, Class: "font-semibold text-foreground-strong"}) {
-							{ res.Title }
-						}
-						if res.Matched != "" {
-							<span class="text-14 text-foreground-muted">as { res.Matched }</span>
-						}
-						<span class="font-mono text-13 text-foreground-muted sm:ml-auto">{ res.Meta }</span>
-					</li>
-				}
-			}
-		}
-	}
-}
-
 // BrowsePage is every entry, or one medium's.
 templ BrowsePage(b Browse) {
 	<h1 class="font-heading text-32 font-semibold tracking-tight text-foreground-strong">browse</h1>

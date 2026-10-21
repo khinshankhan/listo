@@ -285,12 +285,36 @@ func TestFrontPages(t *testing.T) {
 			// no medium is current while searching
 			dontWant: []string{">results</h2>", `aria-current`}},
 		{name: "search finds groups and entries", path: "/search?q=steins", status: http.StatusOK,
-			want: []string{`value="steins"`, ">results</h2>", `href="/groups/2/steins-gate">Steins;Gate</a>`,
-				`href="/entries/7/steins-gate-anime">Steins;Gate</a>`, "anime · 2011", ">franchise</span>"}},
+			want: []string{`id="q" name="q" type="search" value="steins"`, ">3 results</span>",
+				`href="/groups/2/steins-gate">Steins;Gate</a>`, `href="/entries/7/steins-gate-anime">Steins;Gate</a>`,
+				">franchise</span>", ">anime</span>", ">spring 2011 · 24 episodes</span>",
+				`<a href="/search">clear</a>`},
+			// the page has the box, so the top bar's stays empty
+			dontWant: []string{`id="site-search" name="q" type="search" value="steins"`, "matched"}},
 		{name: "a hit on an alias says so", path: "/search?q=sg", status: http.StatusOK,
-			want: []string{"as S;G</span>"}},
+			want: []string{"matched alias: S;G</p>"}},
+		{name: "results filter by medium", path: "/search?q=steins", status: http.StatusOK,
+			want: []string{`href="/search?q=steins" aria-current="page">all</a>`, `href="/search?medium=anime&amp;q=steins">anime</a>`,
+				`href="/search?medium=visual_novel&amp;q=steins">visual novel</a>`}},
+		{name: "a medium keeps only its hits", path: "/search?q=steins&medium=anime", status: http.StatusOK,
+			want:     []string{">1 result</span>", `href="/search?medium=anime&amp;q=steins" aria-current="page">anime</a>`},
+			dontWant: []string{">franchise</span>", `href="/entries/6/steins-gate-vn">`}},
+		{name: "a medium not among the hits shows them all", path: "/search?q=steins&medium=manga", status: http.StatusOK,
+			want: []string{">3 results</span>", `href="/search?q=steins" aria-current="page">all</a>`}},
+		{name: "one kind of hit has nothing to filter", path: "/search?q=just+one", status: http.StatusOK,
+			want: []string{">1 result</span>"}, dontWant: []string{`aria-label="filter by medium"`}},
+		{name: "results point past the catalog", path: "/search?q=steins", status: http.StatusOK,
+			want: []string{"not finding it?", `href="https://anilist.co/search/anime?search=steins"`}},
 		{name: "no hits", path: "/search?q=nothing", status: http.StatusOK,
-			want: []string{"nothing matches &ldquo;nothing&rdquo; yet."}},
+			want: []string{">nothing in the catalog yet</h2>", "No entry matches &ldquo;nothing&rdquo;.",
+				`href="/entries">browse the catalog</a>`, `href="https://anilist.co/search/anime?search=nothing"`},
+			dontWant: []string{"or try", "results</span>"}},
+		{name: "no hits, but titles nearby", path: "/search?q=toaru+index+s3", status: http.StatusOK,
+			want: []string{">or try</p>", `href="/search?q=Toaru+Majutsu+no+Index">Toaru Majutsu no Index</a>`,
+				`href="/search?q=A+Certain+Magical+Index">A Certain Magical Index</a>`,
+				// spaces as %20: AniList reads a + literally
+				`href="https://anilist.co/search/anime?search=toaru%20index%20s3"`}},
+		{name: "a failed suggestion is a 500", path: "/search?q=near+boom", status: http.StatusInternalServerError},
 		{name: "the query is escaped", path: "/search?q=%3Cscript%3E", status: http.StatusOK,
 			want: []string{"&lt;script&gt;"}, dontWant: []string{`value="<script>`, "&ldquo;<script>"}},
 		{name: "search error is a 500", path: "/search?q=boom", status: http.StatusInternalServerError},
@@ -506,19 +530,27 @@ func (fakeCatalog) NodeGroups(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeGr
 }
 
 func (fakeCatalog) SearchNodes(_ context.Context, arg sqlcgen.SearchNodesParams) ([]sqlcgen.SearchNodesRow, error) {
-	franchise, anime := "franchise", "anime"
+	franchise, anime, tv, vn, full, month, episode := "franchise", "anime", "tv", "visual_novel", "full", "month", "episode"
+	vnLabel, total := "visual novel", int32(24)
 	start := time.Date(2011, 4, 6, 0, 0, 0, 0, time.UTC)
+	sgAnimeHit := sqlcgen.SearchNodesRow{PublicID: 7, Slug: "steins-gate-anime", Type: "entry", Title: "Steins;Gate",
+		Matched: "Steins;Gate", MatchedKind: "english", Medium: &anime, MediumLabel: &anime, Format: &tv, FormatLabel: &anime,
+		StartDate: &start, StartPrecision: &month, UnitKind: &episode, UnitTotal: &total, Score: 0.976}
 	switch arg.Q {
 	case "steins":
 		return []sqlcgen.SearchNodesRow{
-			{PublicID: 2, Slug: "steins-gate", Type: "group", Title: "Steins;Gate", Matched: "Steins;Gate", GroupKind: &franchise},
-			{PublicID: 7, Slug: "steins-gate-anime", Type: "entry", Title: "Steins;Gate", Matched: "Steins;Gate",
-				MediumLabel: &anime, StartDate: &start},
+			{PublicID: 2, Slug: "steins-gate", Type: "group", Title: "Steins;Gate", Matched: "Steins;Gate",
+				MatchedKind: "english", GroupKind: &franchise, Score: 1},
+			sgAnimeHit,
+			{PublicID: 6, Slug: "steins-gate-vn", Type: "entry", Title: "Steins;Gate", Matched: "Steins;Gate",
+				MatchedKind: "english", Medium: &vn, MediumLabel: &vnLabel, Format: &full, FormatLabel: &vnLabel, Score: 0.9},
 		}, nil
 	case "sg":
-		return []sqlcgen.SearchNodesRow{
-			{PublicID: 7, Slug: "steins-gate-anime", Type: "entry", Title: "Steins;Gate", Matched: "S;G", MediumLabel: &anime},
-		}, nil
+		alias := sgAnimeHit
+		alias.Matched, alias.MatchedKind = "S;G", "synonym"
+		return []sqlcgen.SearchNodesRow{alias}, nil
+	case "just one":
+		return []sqlcgen.SearchNodesRow{sgAnimeHit}, nil
 	case "boom":
 		return nil, errors.New("connection reset")
 	case "many":
@@ -604,10 +636,10 @@ func TestSearchAPI(t *testing.T) {
 		all      string
 		resultsJ string // how the results array is encoded, when it matters
 	}{
-		{name: "hits shaped like the search page", path: "/api/search?q=steins", status: http.StatusOK, hits: 2,
+		{name: "hits shaped like the search page", path: "/api/search?q=steins", status: http.StatusOK, hits: 3,
 			first: hit{Title: "Steins;Gate", Href: "/groups/2/steins-gate", Meta: "franchise"}, all: "/search?q=steins"},
 		{name: "an alias match says so", path: "/api/search?q=sg", status: http.StatusOK, hits: 1,
-			first: hit{Title: "Steins;Gate", Href: "/entries/7/steins-gate-anime", Meta: "anime", Matched: "S;G"}, all: "/search?q=sg"},
+			first: hit{Title: "Steins;Gate", Href: "/entries/7/steins-gate-anime", Meta: "anime · 2011", Matched: "S;G"}, all: "/search?q=sg"},
 		{name: "a handful by default", path: "/api/search?q=many", status: http.StatusOK, hits: 6, all: "/search?q=many"},
 		{name: "a smaller limit", path: "/api/search?q=many&limit=3", status: http.StatusOK, hits: 3, all: "/search?q=many"},
 		{name: "a limit is capped", path: "/api/search?q=many&limit=500", status: http.StatusOK, hits: 10, all: "/search?q=many"},
@@ -653,6 +685,16 @@ func TestSearchAPI(t *testing.T) {
 			}
 		})
 	}
+}
+
+func (fakeCatalog) TitleSuggestions(_ context.Context, arg sqlcgen.TitleSuggestionsParams) ([]string, error) {
+	switch arg.Q {
+	case "toaru index s3":
+		return []string{"Toaru Majutsu no Index", "A Certain Magical Index"}, nil
+	case "near boom":
+		return nil, errors.New("connection reset")
+	}
+	return nil, nil
 }
 
 func (fakeCatalog) GroupEntries(_ context.Context, id uuid.UUID) ([]sqlcgen.GroupEntriesRow, error) {

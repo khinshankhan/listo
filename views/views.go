@@ -175,11 +175,25 @@ type Search struct {
 	Query    string
 	Searched bool
 	Results  []Result
+	// Media filters the results, when there's more than one kind to filter.
+	Media []MediumLink
+	// Suggestions are nearby titles, after a search that found nothing.
+	Suggestions []Suggestion
+	// AniList searches the same query there.
+	AniList string
 }
 
-// Result is one search hit. Matched is set when an alias matched.
+// Suggestion is a title to search for instead.
+type Suggestion struct {
+	Title, Href string
+}
+
+// Result is one search hit. Matched is set when an alias matched, and
+// MatchedAs says which kind, eg "romanized title". Meta is the one-line
+// summary the top bar shows; the search page uses Medium and Detail.
 type Result struct {
 	Title, Href, Meta, Matched string
+	MatchedAs, Medium, Detail  string
 }
 
 // Browse is every entry, or one medium's.
