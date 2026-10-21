@@ -46,6 +46,11 @@ type Querier interface {
 	// Fuzzy title search over entries and groups, one hit per node by its best
 	// matching title.
 	SearchNodes(ctx context.Context, arg SearchNodesParams) ([]SearchNodesRow, error)
+	// Titles near a query that found nothing, closest first, scored both ways
+	// round: the query within a title, and a title within the query. It scans
+	// every title, which is fine while the catalog is small and it only runs on
+	// a miss.
+	TitleSuggestions(ctx context.Context, arg TitleSuggestionsParams) ([]string, error)
 	// Top-level groups with every entry beneath them counted.
 	// NOTE: union, not union all, so a membership cycle ends.
 	TopGroups(ctx context.Context) ([]TopGroupsRow, error)

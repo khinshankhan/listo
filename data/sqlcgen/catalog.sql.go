@@ -92,11 +92,12 @@ func (q *Queries) MediumCounts(ctx context.Context) ([]MediumCountsRow, error) {
 const searchNodes = `-- name: SearchNodes :many
 select n.public_id, n.slug, n.type,
        coalesce(e.title, g.name)::text as title,
-       hit.matched::text as matched,
-       g.kind as group_kind, m.label as medium_label, e.start_date,
+       hit.matched::text as matched, hit.matched_kind::text as matched_kind,
+       g.kind as group_kind, e.medium, m.label as medium_label, e.format, mf.label as format_label,
+       e.start_date, e.start_precision, e.unit_kind, e.unit_total,
        hit.score::float8 as score
 from (
-  select distinct on (t.node_id) t.node_id, t.title as matched,
+  select distinct on (t.node_id) t.node_id, t.title as matched, t.kind as matched_kind,
          greatest(similarity(t.title_norm, catalog.norm($1::text)),
                   word_similarity(catalog.norm($1::text), t.title_norm)) as score
   from catalog.title t
@@ -108,6 +109,7 @@ join catalog.node n on n.id = hit.node_id
 left join catalog.entry e on e.id = n.id
 left join catalog.grp g on g.id = n.id
 left join catalog.medium m on m.medium = e.medium
+left join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
 order by hit.score desc, title
 limit $2::int
 `
@@ -118,15 +120,22 @@ type SearchNodesParams struct {
 }
 
 type SearchNodesRow struct {
-	PublicID    int64
-	Slug        string
-	Type        string
-	Title       string
-	Matched     string
-	GroupKind   *string
-	MediumLabel *string
-	StartDate   *time.Time
-	Score       float64
+	PublicID       int64
+	Slug           string
+	Type           string
+	Title          string
+	Matched        string
+	MatchedKind    string
+	GroupKind      *string
+	Medium         *string
+	MediumLabel    *string
+	Format         *string
+	FormatLabel    *string
+	StartDate      *time.Time
+	StartPrecision *string
+	UnitKind       *string
+	UnitTotal      *int32
+	Score          float64
 }
 
 // Fuzzy title search over entries and groups, one hit per node by its best
@@ -146,14 +155,66 @@ func (q *Queries) SearchNodes(ctx context.Context, arg SearchNodesParams) ([]Sea
 			&i.Type,
 			&i.Title,
 			&i.Matched,
+			&i.MatchedKind,
 			&i.GroupKind,
+			&i.Medium,
 			&i.MediumLabel,
+			&i.Format,
+			&i.FormatLabel,
 			&i.StartDate,
+			&i.StartPrecision,
+			&i.UnitKind,
+			&i.UnitTotal,
 			&i.Score,
 		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const titleSuggestions = `-- name: TitleSuggestions :many
+select near.title
+from (
+  select t.title,
+         greatest(similarity(t.title_norm, catalog.norm($1::text)),
+                  word_similarity(catalog.norm($1::text), t.title_norm),
+                  word_similarity(t.title_norm, catalog.norm($1::text))) as score
+  from catalog.title t
+) near
+where near.score >= $2::float8
+group by near.title
+order by max(near.score) desc, near.title
+limit $3::int
+`
+
+type TitleSuggestionsParams struct {
+	Q          string
+	AtLeast    float64
+	MaxResults int32
+}
+
+// Titles near a query that found nothing, closest first, scored both ways
+// round: the query within a title, and a title within the query. It scans
+// every title, which is fine while the catalog is small and it only runs on
+// a miss.
+func (q *Queries) TitleSuggestions(ctx context.Context, arg TitleSuggestionsParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, titleSuggestions, arg.Q, arg.AtLeast, arg.MaxResults)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var title string
+		if err := rows.Scan(&title); err != nil {
+			return nil, err
+		}
+		items = append(items, title)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

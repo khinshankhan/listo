@@ -3,11 +3,12 @@
 -- matching title.
 select n.public_id, n.slug, n.type,
        coalesce(e.title, g.name)::text as title,
-       hit.matched::text as matched,
-       g.kind as group_kind, m.label as medium_label, e.start_date,
+       hit.matched::text as matched, hit.matched_kind::text as matched_kind,
+       g.kind as group_kind, e.medium, m.label as medium_label, e.format, mf.label as format_label,
+       e.start_date, e.start_precision, e.unit_kind, e.unit_total,
        hit.score::float8 as score
 from (
-  select distinct on (t.node_id) t.node_id, t.title as matched,
+  select distinct on (t.node_id) t.node_id, t.title as matched, t.kind as matched_kind,
          greatest(similarity(t.title_norm, catalog.norm(sqlc.arg(q)::text)),
                   word_similarity(catalog.norm(sqlc.arg(q)::text), t.title_norm)) as score
   from catalog.title t
@@ -19,7 +20,26 @@ join catalog.node n on n.id = hit.node_id
 left join catalog.entry e on e.id = n.id
 left join catalog.grp g on g.id = n.id
 left join catalog.medium m on m.medium = e.medium
+left join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
 order by hit.score desc, title
+limit sqlc.arg(max_results)::int;
+
+-- name: TitleSuggestions :many
+-- Titles near a query that found nothing, closest first, scored both ways
+-- round: the query within a title, and a title within the query. It scans
+-- every title, which is fine while the catalog is small and it only runs on
+-- a miss.
+select near.title
+from (
+  select t.title,
+         greatest(similarity(t.title_norm, catalog.norm(sqlc.arg(q)::text)),
+                  word_similarity(catalog.norm(sqlc.arg(q)::text), t.title_norm),
+                  word_similarity(t.title_norm, catalog.norm(sqlc.arg(q)::text))) as score
+  from catalog.title t
+) near
+where near.score >= sqlc.arg(at_least)::float8
+group by near.title
+order by max(near.score) desc, near.title
 limit sqlc.arg(max_results)::int;
 
 -- name: TopGroups :many
