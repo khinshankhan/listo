@@ -23,20 +23,23 @@ where ms.group_id = $1
 order by n.type desc, e.start_date nulls last, title;
 
 -- name: GroupOrderings :many
--- A group's orderings, one row per step.
-select o.id as ordering_id, o.kind, o.name, o.rationale,
+-- A group's orderings, recommended first, one row per step.
+select o.id as ordering_id, o.kind, o.name, o.rationale, o.origin,
        oi.position, oi.branch, oi.step, oi.section,
-       n.public_id, n.slug, e.title,
-       uf.label as unit_from, ut.label as unit_to,
+       n.public_id, n.slug, e.title, e.medium, e.format, mf.label as format_label,
+       e.start_date, e.start_precision, e.unit_kind, e.unit_total,
+       uf.label as unit_from, ut.label as unit_to, uf.ordinal as from_ordinal, ut.ordinal as to_ordinal,
        oi.necessity, oi.note
 from catalog.ordering o
 join catalog.ordering_item oi on oi.ordering_id = o.id
 join catalog.entry e on e.id = oi.entry_id
 join catalog.node n on n.id = e.id
+join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
 left join catalog.unit uf on uf.id = oi.unit_from
 left join catalog.unit ut on ut.id = oi.unit_to
 where o.group_id = $1
-order by o.name, oi.position, oi.branch, oi.step;
+order by case o.kind when 'recommended' then 0 when 'release' then 1 else 2 end,
+         o.name, oi.position, oi.branch, oi.step;
 
 -- name: GroupEntries :many
 -- Every entry under a group at any depth, with the branch it sits under (the

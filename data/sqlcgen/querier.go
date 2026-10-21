@@ -23,7 +23,7 @@ type Querier interface {
 	GroupEntries(ctx context.Context, groupID uuid.UUID) ([]GroupEntriesRow, error)
 	// A group's direct members: subgroups first, then entries in release order.
 	GroupMembers(ctx context.Context, groupID uuid.UUID) ([]GroupMembersRow, error)
-	// A group's orderings, one row per step.
+	// A group's orderings, recommended first, one row per step.
 	GroupOrderings(ctx context.Context, groupID uuid.UUID) ([]GroupOrderingsRow, error)
 	// The other groups that share a parent with this one, with every entry
 	// beneath each counted.
