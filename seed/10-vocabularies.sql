@@ -12,7 +12,7 @@ insert into catalog.medium (medium, label, verb_current, verb_planning, verb_rep
   ('game',         'game',         'playing',  'plan to play',  'replaying',  null);
 
 insert into catalog.medium_format (medium, format, label) values
-  ('anime', 'tv', 'anime'), ('anime', 'movie', 'film'), ('anime', 'ova', 'OVA'),
+  ('anime', 'tv', 'anime'), ('anime', 'movie', 'film'), ('anime', 'ova', 'OVA'), ('anime', 'ona', 'ONA'),
   ('tv', 'series', 'TV'), ('film', 'feature', 'film'),
   ('manga', 'serial', 'manga'), ('book', 'novel', 'novel'), ('book', 'light_novel', 'light novel'),
   ('visual_novel', 'full', 'visual novel'), ('game', 'full', 'game');

@@ -156,13 +156,13 @@ $$;
 create function catalog.add_step(p_ordering uuid, p_position int, p_entry text,
     p_from text default null, p_to text default null,
     p_necessity text default 'required', p_note text default null,
-    p_branch int default 1, p_step int default 1)
+    p_branch int default 1, p_step int default 1, p_section text default null)
 returns void language sql as $$
-  insert into catalog.ordering_item (ordering_id, position, branch, step, entry_id, unit_from, unit_to, necessity, note)
+  insert into catalog.ordering_item (ordering_id, position, branch, step, entry_id, unit_from, unit_to, necessity, section, note)
   values (p_ordering, p_position, p_branch, p_step, catalog.id(p_entry),
           case when p_from is not null then catalog.unit_id(p_entry, p_from) end,
           case when p_to is not null then catalog.unit_id(p_entry, p_to) end,
-          p_necessity, p_note)
+          p_necessity, p_section, p_note)
 $$;
 
 create function catalog.tag_with(p_kind text, p_name text, variadic p_slugs text[]) returns void
