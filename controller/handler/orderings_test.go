@@ -21,6 +21,8 @@ func TestEpisodes(t *testing.T) {
 	fork.Branch = 2
 	filmFork := film
 	filmFork.Branch = 2
+	skipped := whole(n(12))
+	skipped.Necessity = "skip_first_time"
 	other := whole(n(50))
 	other.Name = "another"
 
@@ -39,6 +41,7 @@ func TestEpisodes(t *testing.T) {
 		{"a fork of films is still a fork", []sqlcgen.GroupOrderingsRow{whole(n(12)), filmFork}, 12, true},
 		{"an unknown total is a guess", []sqlcgen.GroupOrderingsRow{whole(n(24)), whole(nil)}, 24, true},
 		{"other orderings don't count", []sqlcgen.GroupOrderingsRow{whole(n(24)), other}, 24, false},
+		{"what a first watch skips doesn't count", []sqlcgen.GroupOrderingsRow{whole(n(24)), skipped}, 24, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -133,8 +133,9 @@ func orderingView(o views.Ordering, all []views.Ordering, rows []sqlcgen.GroupOr
 	return v
 }
 
-// episodes totals the episodes an ordering covers, taking the first way
-// through each fork. It's rough when there's a fork or a count is missing.
+// episodes totals the episodes a first watch of an ordering covers, taking
+// the first way through each fork. It's rough when there's a fork or a count
+// is missing.
 func episodes(rows []sqlcgen.GroupOrderingsRow, ordering string) (int, bool) {
 	total, rough := 0, false
 	for _, r := range rows {
@@ -145,7 +146,7 @@ func episodes(rows []sqlcgen.GroupOrderingsRow, ordering string) (int, bool) {
 			rough = true
 			continue
 		}
-		if r.UnitKind != "episode" {
+		if r.UnitKind != "episode" || r.Necessity == "skip_first_time" {
 			continue
 		}
 		last := r.UnitTotal
