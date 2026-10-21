@@ -36,10 +36,10 @@ templ SearchPage(s Search) {
 		} else {
 			<section class="flex flex-col gap-6" aria-labelledby="results">
 				<div class="flex flex-wrap items-center justify-between gap-3">
-					<p class="flex items-baseline gap-[9px]">
+					<h2 class="flex items-baseline gap-[9px]">
 						<span id="results" class="text-20 leading-6 font-semibold tracking-[-0.025em] text-foreground-strong">{ count(len(s.Results), "result", "results") }</span>
-						<span class="text-13 leading-4 text-foreground-muted">in the listo catalog</span>
-					</p>
+						<span class="text-13 leading-4 font-normal text-foreground-muted">in the listo catalog</span>
+					</h2>
 					if len(s.Media) > 0 {
 						<nav class="flex flex-wrap gap-[7px]" aria-label="filter by medium">
 							for _, m := range s.Media {
@@ -72,7 +72,7 @@ templ SearchPage(s Search) {
 						</li>
 					}
 				</ul>
-				<aside class="flex flex-wrap items-center gap-[14px] rounded-[10px] border border-dashed border-border px-[18px] py-4">
+				<div class="flex flex-wrap items-center gap-[14px] rounded-[10px] border border-dashed border-border px-[18px] py-4">
 					<div class="flex min-w-[240px] flex-1 flex-col gap-1">
 						<p class="text-14 leading-[18px] font-semibold text-foreground-strong">not finding it?</p>
 						<p class="text-13 leading-[19px] text-foreground-muted">This searched listo's own catalog, which only has what's been added so far. AniList knows far more.</p>
@@ -80,7 +80,7 @@ templ SearchPage(s Search) {
 					@Link(LinkProps{Href: s.AniList, Variant: LinkNone, Class: "flex h-[34px] shrink-0 items-center rounded-lg border border-border bg-background-2 px-[14px] text-13 leading-4 font-semibold text-foreground-strong hover:border-accent-7"}) {
 						search AniList
 					}
-				</aside>
+				</div>
 			</section>
 		}
 	</div>

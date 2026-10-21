@@ -41,6 +41,8 @@ func TestRoutes(t *testing.T) {
 		{"home", up, "/", http.StatusOK, []string{"keep one list for everything you watch, read and play.", "/assets/islands-abc.js"}},
 		{"the demo page is gone", up, "/there", http.StatusNotFound, []string{"back home"}},
 		{"every page has the top bar", up, "/nope", http.StatusNotFound, []string{`role="search"`, `id="site-search"`}},
+		// the first stop for a keyboard, past the top bar and sidebar
+		{"every page skips to its content", up, "/nope", http.StatusNotFound, []string{`<a href="#content">skip to content</a>`, `<main id="content"`}},
 		// web/src/search.ts finds these by id and drives the aria attributes
 		{"the search box is a combobox over a hidden panel", up, "/nope", http.StatusNotFound, []string{
 			`role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="site-search-results"`,
@@ -633,6 +635,31 @@ func plainLinks(body string) string {
 		}
 		return fmt.Sprintf(`<a href="%s">`, m[1])
 	})
+}
+
+// A landmark inside main reads as a page region it isn't, so the sidebar is
+// the only aside on any page.
+func TestOneAsidePerPage(t *testing.T) {
+	srv := httptest.NewServer(newHTTPServer("", &web.Bundle{Files: fstest.MapFS{}}, fakeDB{}, fakeCatalog{}).srv.Handler)
+	t.Cleanup(srv.Close)
+	for _, path := range []string{"/", "/search?q=steins", "/search?q=nothing", "/entries", "/entries/7/steins-gate-anime",
+		"/groups/2/steins-gate", "/groups/3/steins-gate-main", "/groups/2/steins-gate/orderings/first-timer-order",
+		"/groups/2/steins-gate/orderings/release-order"} {
+		t.Run(path, func(t *testing.T) {
+			res, err := http.Get(srv.URL + path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer res.Body.Close()
+			body, err := io.ReadAll(res.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if n := strings.Count(string(body), "<aside"); n > 1 {
+				t.Errorf("%d asides, want at most 1", n)
+			}
+		})
+	}
 }
 
 func TestSearchAPI(t *testing.T) {

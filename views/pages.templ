@@ -33,7 +33,7 @@ templ mediumNav(media []MediumLink) {
 					} else {
 						{ m.Label }
 					}
-					<span class="font-mono text-12 text-foreground-muted">{ fmt.Sprint(m.Count) }</span>
+					<span class={ "font-mono text-12", templ.KV("text-accent-11", m.Active), templ.KV("text-foreground-muted", !m.Active) }>{ fmt.Sprint(m.Count) }</span>
 				}
 			}
 		</nav>
@@ -89,7 +89,7 @@ templ EntryPage(e Entry) {
 							<span class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">{ part }</span>
 						}
 					</p>
-					<h1 class="font-heading text-44 leading-12 font-semibold tracking-tight text-foreground-strong">{ e.Title }</h1>
+					<h1 class="font-heading text-32 leading-10 font-semibold tracking-tight wrap-break-word text-foreground-strong sm:text-44 sm:leading-12">{ e.Title }</h1>
 					if len(e.Titles) > 0 {
 						<dl class="flex flex-col gap-[3px]">
 							for _, t := range e.Titles {
@@ -255,7 +255,7 @@ templ steps(steps []Step) {
 }
 
 templ heading(title, native, nativeLang string) {
-	<h1 class="mt-2 font-heading text-44 leading-snug font-semibold tracking-tight text-foreground-strong">{ title }</h1>
+	<h1 class="mt-2 font-heading text-32 leading-snug font-semibold wrap-break-word sm:text-44 tracking-tight text-foreground-strong">{ title }</h1>
 	if native != "" {
 		<p class="mt-1 text-18 text-foreground-muted" lang={ nativeLang }>{ native }</p>
 	}
@@ -336,9 +336,10 @@ templ linksPanel(links []SiteLink) {
 // cover is a text placeholder until cover images are cached.
 templ cover(medium, title, year string) {
 	<div class="flex h-[296px] w-[210px] shrink-0 flex-col justify-between rounded-md bg-placeholder p-4" aria-hidden="true">
-		<span class="font-mono text-11 tracking-wide text-foreground-muted uppercase">{ medium }</span>
-		<span class="text-18 leading-snug font-semibold text-foreground-muted">{ title }</span>
-		<span class="font-mono text-12 text-foreground-muted">{ year }</span>
+		// muted is under 4.5:1 on the placeholder, so plain foreground here
+		<span class="font-mono text-11 tracking-wide text-foreground uppercase">{ medium }</span>
+		<span class="text-18 leading-snug font-semibold text-foreground">{ title }</span>
+		<span class="font-mono text-12 text-foreground">{ year }</span>
 	</div>
 }
 

@@ -38,12 +38,14 @@ templ Layout(head Head, tags web.Tags, chrome Chrome) {
 			}
 		</head>
 		<body class="flex min-h-screen flex-col bg-background-1 font-body text-foreground antialiased">
+			// first stop for a keyboard, past the top bar and sidebar
+			<a href="#content" class="sr-only rounded-md bg-foreground-strong px-4 py-2 text-14 font-semibold text-background-2 focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast">skip to content</a>
 			@topBar(chrome.Query, chrome.HideSearch)
 			<div class="flex flex-1">
 				if chrome.Sidebar != nil {
 					@sidebar(*chrome.Sidebar)
 				}
-				<main class="min-w-0 flex-1 px-4 pt-9 pb-12 sm:px-10">
+				<main id="content" class="min-w-0 flex-1 px-4 pt-9 pb-12 sm:px-10">
 					<div class={ "max-w-content", templ.KV("mx-auto", chrome.Sidebar == nil) }>
 						{ children... }
 					</div>
@@ -60,8 +62,9 @@ templ topBar(query string, hideSearch bool) {
 		<div class="flex shrink-0 items-center px-4 sm:w-sidebar sm:border-r sm:border-border sm:px-7">
 			@Wordmark()
 		</div>
-		<div class="flex flex-1 items-center justify-between gap-[22px] py-[14px] pr-4 sm:px-10">
-			<div class="flex flex-1 items-center gap-[22px]">
+		<div class="flex min-w-0 flex-1 items-center justify-between gap-[22px] py-[14px] pr-4 sm:px-10">
+			// min-w-0 down the row, so the search shrinks on a 320px screen
+			<div class="flex min-w-0 flex-1 items-center gap-[14px] sm:gap-[22px]">
 				@Link(LinkProps{Href: "/entries", Variant: LinkNav, Class: "text-14 leading-[18px] font-semibold text-accent-11"}) {
 					browse
 				}

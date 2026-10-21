@@ -9,7 +9,7 @@ templ OrderingPage(o OrderingDetail) {
 		<header class="flex flex-col gap-3">
 			@trail(o.Trail)
 			<div class="flex flex-col gap-[10px]">
-				<h1 class="font-heading text-44 leading-[44px] font-semibold tracking-tight text-foreground-strong">{ o.Name }</h1>
+				<h1 class="font-heading text-32 leading-10 font-semibold wrap-break-word sm:text-44 sm:leading-[44px] tracking-tight text-foreground-strong">{ o.Name }</h1>
 				<p class="flex flex-wrap items-center gap-[9px] text-14 leading-[18px] text-foreground-muted">
 					for i, s := range o.Stats {
 						if i > 0 {
@@ -53,7 +53,7 @@ templ OrderingPage(o OrderingDetail) {
 			}
 		</div>
 		if o.Alternative != nil {
-			<aside class="mt-2 flex flex-wrap items-center gap-[14px] rounded-[10px] border border-border p-[18px]">
+			<div class="mt-2 flex flex-wrap items-center gap-[14px] rounded-[10px] border border-border p-[18px]">
 				<div class="flex min-w-[240px] flex-1 flex-col gap-[5px]">
 					<p class="text-14 leading-[18px] font-semibold text-foreground-strong">{ o.Alternative.Title }</p>
 					<p class="text-13 leading-[19px] text-foreground-muted">{ o.Alternative.Body }</p>
@@ -61,7 +61,7 @@ templ OrderingPage(o OrderingDetail) {
 				@Link(LinkProps{Href: o.Alternative.Href, Variant: LinkNone, Class: "flex h-[34px] shrink-0 items-center rounded-lg border border-border bg-background-2 px-[14px] text-13 leading-4 font-semibold text-foreground-strong hover:border-accent-7"}) {
 					{ o.Alternative.Label }
 				}
-			</aside>
+			</div>
 		}
 	</div>
 }

@@ -8,7 +8,7 @@ templ FranchisePage(f Franchise) {
 			@trail(f.Trail)
 			<div class="flex flex-wrap items-end justify-between gap-4">
 				<div class="flex flex-col gap-[10px]">
-					<h1 class="font-heading text-44 leading-[44px] font-semibold tracking-tight text-foreground-strong">{ f.Name }</h1>
+					<h1 class="font-heading text-32 leading-10 font-semibold wrap-break-word sm:text-44 sm:leading-[44px] tracking-tight text-foreground-strong">{ f.Name }</h1>
 					if len(f.Stats) > 0 {
 						<p class="flex flex-wrap items-center gap-[9px] text-14 leading-[18px] text-foreground-muted">
 							for i, s := range f.Stats {

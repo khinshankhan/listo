@@ -94,7 +94,7 @@ var standingLegend = []struct{ Standing, Meaning string }{
 
 func sortClass(active bool) string {
 	if active {
-		return "flex h-[27px] items-center rounded-full bg-foreground-strong px-[11px] text-12 leading-4 font-semibold text-background-2"
+		return "flex h-[27px] items-center rounded-full bg-foreground-strong px-[11px] text-12 leading-4 font-semibold text-background-2 " + forcedCurrent
 	}
 	return "flex h-[27px] items-center rounded-full border border-border bg-background-2 px-[11px] text-12 leading-4 font-medium text-foreground-strong hover:border-accent-7"
 }

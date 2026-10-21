@@ -70,13 +70,13 @@ func linkClass(variant LinkVariant, monochrome bool) string {
 		focusRing,
 		// links have no radius of their own; soften the ring without a pill
 		"focus-visible:rounded-sm",
-		"transition-[color] duration-500",
+		"transition-[color] duration-500 motion-reduce:transition-none",
 	}
 	switch variant {
 	case LinkDefault:
 		classes = append(classes, "bg-linear-to-r from-accent-11 to-accent-11 subtle-underline show-underline bg-no-repeat hover:from-accent-8 hover:to-accent-8 hover:drastic-underline")
 	case LinkNav:
-		classes = append(classes, "bg-linear-to-r from-accent-11 to-accent-11 link-hide bg-right-bottom bg-no-repeat transition-[color,background-size] hover:link-show hover:bg-left-bottom data-[active=true]:link-show data-[active=true]:bg-left-bottom")
+		classes = append(classes, "bg-linear-to-r from-accent-11 to-accent-11 link-hide bg-right-bottom bg-no-repeat transition-[color,background-size] motion-reduce:transition-none hover:link-show hover:bg-left-bottom data-[active=true]:link-show data-[active=true]:bg-left-bottom")
 	}
 	if !monochrome {
 		classes = append(classes, "hover:text-accent-11")
@@ -103,9 +103,12 @@ type LinkProps struct {
 
 const breadcrumbClass = "font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase"
 
+// forcedCurrent marks the current item where forced colours drop its tint.
+const forcedCurrent = "forced-colors:outline-solid forced-colors:outline-2 forced-colors:-outline-offset-2 forced-colors:outline-[CanvasText]"
+
 func sideLinkClass(active bool) string {
 	if active {
-		return "flex items-center gap-[11px] rounded-lg bg-accent-3 px-2.5 py-[9px]"
+		return "flex items-center gap-[11px] rounded-lg bg-accent-3 px-2.5 py-[9px] " + forcedCurrent
 	}
 	return "flex items-center gap-[11px] rounded-lg px-2.5 py-[9px] hover:bg-background-1"
 }

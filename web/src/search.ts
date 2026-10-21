@@ -83,8 +83,10 @@ function suggest(
       option.id = `site-search-option-${i}`;
       option.setAttribute("role", "option");
       option.setAttribute("aria-selected", "false");
+      // muted is under 4.5:1 on the highlight, so the active row's small text
+      // darkens to the accent
       option.className =
-        "flex cursor-pointer items-baseline gap-3 px-3 py-2 text-14 hover:bg-background-1 data-[active=true]:bg-accent-3 data-[active=true]:shadow-[inset_3px_0_0_var(--color-accent-9)]";
+        "group flex cursor-pointer items-baseline gap-3 px-3 py-2 text-14 hover:bg-background-1 data-[active=true]:bg-accent-3 data-[active=true]:shadow-[inset_3px_0_0_var(--color-accent-9)]";
 
       // the title gets the width; an alias match sits under it
       const names = document.createElement("span");
@@ -95,14 +97,14 @@ function suggest(
       names.append(title);
       if (hit.matched) {
         const matched = document.createElement("span");
-        matched.className = "truncate text-12 text-foreground-muted";
+        matched.className = "truncate text-12 text-foreground-muted group-data-[active=true]:text-accent-11";
         matched.textContent = `as ${hit.matched}`;
         names.append(matched);
       }
       option.append(names);
       if (hit.meta) {
         const meta = document.createElement("span");
-        meta.className = "ml-auto shrink-0 font-mono text-12 text-foreground-muted";
+        meta.className = "ml-auto shrink-0 font-mono text-12 text-foreground-muted group-data-[active=true]:text-accent-11";
         meta.textContent = hit.meta;
         option.append(meta);
       }
