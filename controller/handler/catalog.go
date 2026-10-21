@@ -209,6 +209,10 @@ func (p *Pages) mediumLinks(r *http.Request, active *string) ([]views.MediumLink
 	all := views.MediumLink{Href: "/entries", Active: active != nil && *active == ""}
 	links := []views.MediumLink{all}
 	for _, c := range counts {
+		// nothing to browse yet
+		if c.Entries == 0 {
+			continue
+		}
 		links[0].Count += int(c.Entries)
 		links = append(links, views.MediumLink{
 			Label:  c.Label,

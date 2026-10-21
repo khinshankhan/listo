@@ -63,10 +63,10 @@ group by n.public_id, n.slug, g.kind, g.name
 order by g.name;
 
 -- name: MediumCounts :many
--- How many entries each medium has, for the browse filters.
+-- How many entries each medium has, none included.
 select m.medium, m.label, count(e.id)::int as entries
 from catalog.medium m
-join catalog.entry e on e.medium = m.medium
+left join catalog.entry e on e.medium = m.medium
 group by m.medium, m.label
 order by entries desc, m.label;
 

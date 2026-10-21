@@ -57,7 +57,7 @@ func (q *Queries) BrowseEntries(ctx context.Context, medium *string) ([]BrowseEn
 const mediumCounts = `-- name: MediumCounts :many
 select m.medium, m.label, count(e.id)::int as entries
 from catalog.medium m
-join catalog.entry e on e.medium = m.medium
+left join catalog.entry e on e.medium = m.medium
 group by m.medium, m.label
 order by entries desc, m.label
 `
@@ -68,7 +68,7 @@ type MediumCountsRow struct {
 	Entries int32
 }
 
-// How many entries each medium has, for the browse filters.
+// How many entries each medium has, none included.
 func (q *Queries) MediumCounts(ctx context.Context) ([]MediumCountsRow, error) {
 	rows, err := q.db.Query(ctx, mediumCounts)
 	if err != nil {

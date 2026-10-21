@@ -28,7 +28,7 @@ type Querier interface {
 	// The other groups that share a parent with this one, with every entry
 	// beneath each counted.
 	GroupSiblings(ctx context.Context, memberID uuid.UUID) ([]GroupSiblingsRow, error)
-	// How many entries each medium has, for the browse filters.
+	// How many entries each medium has, none included.
 	MediumCounts(ctx context.Context) ([]MediumCountsRow, error)
 	// A node's type, to redirect an id used under the wrong path.
 	NodeByPublicID(ctx context.Context, publicID int64) (NodeByPublicIDRow, error)
