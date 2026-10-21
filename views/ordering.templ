@@ -1,0 +1,157 @@
+package views
+
+import "fmt"
+
+// OrderingPage is one ordering, a numbered path of steps, with a long one
+// folded after the first few.
+templ OrderingPage(o OrderingDetail) {
+	<div class="flex flex-col gap-7">
+		<header class="flex flex-col gap-3">
+			@trail(o.Trail)
+			<div class="flex flex-col gap-[10px]">
+				<h1 class="font-heading text-44 leading-[44px] font-semibold tracking-tight text-foreground-strong">{ o.Name }</h1>
+				<p class="flex flex-wrap items-center gap-[9px] text-14 leading-[18px] text-foreground-muted">
+					for i, s := range o.Stats {
+						if i > 0 {
+							<span class="inline-block size-[3px] shrink-0 rounded-full bg-border" aria-hidden="true"></span>
+						}
+						<span>{ s }</span>
+					}
+					if o.Origin != "" {
+						<span class="inline-block size-[3px] shrink-0 rounded-full bg-border" aria-hidden="true"></span>
+						<span class="font-mono text-11 leading-[14px] tracking-wide uppercase">{ o.Origin }</span>
+					}
+				</p>
+			</div>
+			if o.Rationale != "" {
+				<div class="flex flex-col gap-1.5 border-l-[3px] border-accent-9 py-0.5 pl-4">
+					<p class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">why this order</p>
+					<p class="max-w-[760px] text-14 leading-[23px] text-foreground-muted">{ o.Rationale }</p>
+				</div>
+			}
+		</header>
+		<div class="flex flex-col gap-[18px] pt-1">
+			<ol class="flex flex-col gap-[18px]">
+				for i, pos := range o.Positions[:o.Shown] {
+					@position(pos, i < len(o.Positions)-1)
+				}
+			</ol>
+			if o.Shown < len(o.Positions) {
+				<details class="group">
+					<summary class="ml-[46px] flex cursor-pointer list-none items-center justify-center gap-[7px] rounded-[10px] border border-dashed border-border py-[13px] text-13 leading-4 font-semibold text-foreground-muted group-open:sr-only hover:border-accent-7 [&::-webkit-details-marker]:hidden">
+						show { count(len(o.Positions)-o.Shown, "more step", "more steps") }
+						<svg width="12" height="12" viewBox="0 0 12 12" class="shrink-0" aria-hidden="true">
+							<path d="M2.8 4.5L6 7.8l3.2-3.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+						</svg>
+					</summary>
+					<ol class="flex flex-col gap-[18px]" start={ fmt.Sprint(o.Shown + 1) }>
+						for i, pos := range o.Positions[o.Shown:] {
+							@position(pos, o.Shown+i < len(o.Positions)-1)
+						}
+					</ol>
+				</details>
+			}
+		</div>
+		if o.Alternative != nil {
+			<aside class="mt-2 flex flex-wrap items-center gap-[14px] rounded-[10px] border border-border p-[18px]">
+				<div class="flex min-w-[240px] flex-1 flex-col gap-[5px]">
+					<p class="text-14 leading-[18px] font-semibold text-foreground-strong">{ o.Alternative.Title }</p>
+					<p class="text-13 leading-[19px] text-foreground-muted">{ o.Alternative.Body }</p>
+				</div>
+				@Link(LinkProps{Href: o.Alternative.Href, Variant: LinkNone, Class: "flex h-[34px] shrink-0 items-center rounded-lg border border-border bg-background-2 px-[14px] text-13 leading-4 font-semibold text-foreground-strong hover:border-accent-7"}) {
+					{ o.Alternative.Label }
+				}
+			</aside>
+		}
+	</div>
+}
+
+// position is one numbered stop. A line runs down to the next unless it's the
+// last; a fork lists its choices, any one of which will do.
+templ position(pos Position, more bool) {
+	<li class="flex gap-[14px]">
+		<div class="flex w-8 shrink-0 flex-col items-center" aria-hidden="true">
+			if pos.Skip() {
+				<span class="flex size-8 shrink-0 items-center justify-center rounded-full border-[1.5px] border-dashed border-border bg-background-1 font-mono text-12 leading-4 font-medium text-foreground-muted">{ fmt.Sprint(pos.Ordinal) }</span>
+			} else {
+				<span class="flex size-8 shrink-0 items-center justify-center rounded-full border-[1.5px] border-border bg-background-2 font-mono text-12 leading-4 font-medium text-foreground-muted">{ fmt.Sprint(pos.Ordinal) }</span>
+			}
+			if more {
+				<span class="w-[2px] flex-1 bg-border-subtle"></span>
+			}
+		</div>
+		<div class={ "flex min-w-0 flex-1 flex-col gap-3 rounded-[10px] border p-[14px]", templ.KV("border-dashed border-border", pos.Skip()), templ.KV("border-border-subtle bg-background-2", !pos.Skip()) }>
+			if pos.PickOne() {
+				<p class="font-mono text-[10px] leading-3 tracking-[0.05em] text-foreground-muted uppercase">pick one</p>
+			}
+			for i, c := range pos.Choices {
+				if i > 0 {
+					<p class="flex items-center gap-3 font-mono text-[10px] leading-3 tracking-[0.05em] text-foreground-muted uppercase">
+						<span class="h-px flex-1 bg-border-subtle" aria-hidden="true"></span>
+						or
+						<span class="h-px flex-1 bg-border-subtle" aria-hidden="true"></span>
+					</p>
+				}
+				for j, st := range c.Steps {
+					if i == 0 && j == 0 {
+						@stepRow(st, pos.Section)
+					} else {
+						@stepRow(st, "")
+					}
+				}
+			}
+		</div>
+	</li>
+}
+
+// stepRow is one entry in a step: what it is, whether it's needed, and any
+// note on why it's here.
+templ stepRow(st Step, aside string) {
+	<div class="flex items-start gap-[14px]">
+		<span class={ "h-[58px] w-[41px] shrink-0 rounded-sm bg-placeholder", templ.KV("opacity-60", st.Skip) } aria-hidden="true"></span>
+		<div class="flex min-w-0 flex-1 flex-col gap-[5px]">
+			<div class="flex flex-wrap items-center gap-x-[9px] gap-y-1">
+				if st.Skip {
+					@Link(LinkProps{Href: st.Href, Variant: LinkNone, Class: "text-15 leading-[18px] font-medium text-foreground-muted"}) {
+						{ st.Title }
+					}
+				} else {
+					@Link(LinkProps{Href: st.Href, Variant: LinkNone, Class: "text-15 leading-[18px] font-semibold text-foreground-strong"}) {
+						{ st.Title }
+					}
+				}
+				@necessityBadge(st)
+			</div>
+			<p class="flex flex-wrap items-center gap-[7px]">
+				<span class="font-mono text-[10px] leading-3 text-foreground-muted uppercase">{ st.Medium }</span>
+				if st.Detail != "" {
+					<span class="inline-block size-[2px] shrink-0 rounded-full bg-border" aria-hidden="true"></span>
+					<span class="text-12 leading-4 text-foreground-muted">{ st.Detail }</span>
+				}
+			</p>
+		</div>
+		if aside != "" {
+			<span class="shrink-0 text-11 leading-[14px] text-foreground-muted">{ aside }</span>
+		}
+	</div>
+	if st.Note != "" {
+		<p class="flex gap-[9px] rounded-lg bg-accent-3 px-[13px] py-[11px] text-12 leading-[18px] text-accent-11">
+			<svg width="14" height="14" viewBox="0 0 14 14" class="mt-0.5 shrink-0" aria-hidden="true">
+				<circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.4"></circle>
+				<path d="M7 4.2v3.4M7 9.6v.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path>
+			</svg>
+			<span>{ st.Note }</span>
+		</p>
+	}
+}
+
+templ necessityBadge(st Step) {
+	switch  {
+		case st.Necessity == "":
+			<span class="flex h-5 items-center rounded-sm bg-moss-3 px-[7px] font-mono text-[10px] leading-3 tracking-[0.05em] text-moss-11 uppercase">required</span>
+		case st.Skip:
+			<span class="flex h-5 items-center rounded-sm border border-dashed border-border px-[7px] font-mono text-[10px] leading-3 tracking-[0.05em] text-foreground-muted uppercase">{ st.Necessity }</span>
+		default:
+			<span class="flex h-5 items-center rounded-sm border border-border px-[7px] font-mono text-[10px] leading-3 tracking-[0.05em] text-foreground-muted uppercase">{ st.Necessity }</span>
+	}
+}

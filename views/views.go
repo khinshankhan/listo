@@ -77,15 +77,30 @@ type Member struct {
 
 // Ordering is a curated path through a group. Names render as typed.
 type Ordering struct {
+	// Kind is "recommended", "release" or "chronological".
 	Kind, Name, Rationale string
+	Origin, Href          string
 	Positions             []Position
 }
 
 // Position is one stop on the path; more than one choice is a fork. Section
 // is set where a new section starts.
 type Position struct {
+	Ordinal         int
 	Number, Section string
 	Choices         []Choice
+}
+
+// Skip is a position the first time through can pass over.
+func (p Position) Skip() bool {
+	for _, c := range p.Choices {
+		for _, s := range c.Steps {
+			if !s.Skip {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (p Position) PickOne() bool {
@@ -98,8 +113,12 @@ type Choice struct {
 }
 
 // Step is one entry in a choice. Necessity is empty when it's required.
+// Medium and Detail describe the entry, eg "anime", "spring 2011, 24
+// episodes".
 type Step struct {
 	Title, Href, Units, Necessity, Note string
+	Medium, Detail                      string
+	Skip                                bool
 }
 
 // SiteLink is a jump-out link to another site's page for the same work.
@@ -120,6 +139,14 @@ type Sidebar struct {
 	Franchises []GroupCard
 	// OnPage links to the current page's sections.
 	OnPage []Anchor
+	// Orderings are the current group's orderings.
+	Orderings []OrderingLink
+}
+
+// OrderingLink is an ordering in the sidebar; Meta is its kind and origin.
+type OrderingLink struct {
+	Name, Meta, Href string
+	Active           bool
 }
 
 // Home is the front page: search, and where browsing starts.

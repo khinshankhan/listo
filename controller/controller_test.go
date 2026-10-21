@@ -172,6 +172,30 @@ func TestCatalogPages(t *testing.T) {
 				`href="/entries/8/steins-gate-movie">Steins;Gate: The Movie</a>`,
 				`href="/entries/11/steins-gate-0-anime">Steins;Gate 0</a>`},
 			dontWant: []string{">or</span>"}},
+		{name: "an ordering links to its own page", path: "/groups/2/steins-gate", status: http.StatusOK,
+			want: []string{`href="/groups/2/steins-gate/orderings/first-timer-order">first-timer order</a>`}},
+		{name: "an ordering's page", path: "/groups/2/steins-gate/orderings/first-timer-order", status: http.StatusOK,
+			want: []string{"first-timer order</h1>", `<link rel="canonical" href="/groups/2/steins-gate/orderings/first-timer-order">`,
+				`<a href="/groups/2/steins-gate">Steins;Gate</a>`, `aria-current="page">ordering</span>`,
+				">2 steps</span>", ">2 required</span>", ">maintained by staff</span>",
+				">why this order</p>", "Watch the series, then the branch"}},
+		{name: "an ordering's steps, forks and notes", path: "/groups/2/steins-gate/orderings/first-timer-order", status: http.StatusOK,
+			want: []string{">pick one</p>", ">optional</span>", "<span>epilogue</span>", ">the branch</span>",
+				`href="/entries/11/steins-gate-0-anime">Steins;Gate 0</a>`, ">required</span>"},
+			dontWant: []string{"more steps"}},
+		{name: "a first-timer's ordering points rewatchers elsewhere", path: "/groups/2/steins-gate/orderings/first-timer-order", status: http.StatusOK,
+			want: []string{"rewatching, or already know the story?", "release order goes in the order they came out.",
+				`href="/groups/2/steins-gate/orderings/release-order">view release order</a>`}},
+		{name: "and the others point first-timers back", path: "/groups/2/steins-gate/orderings/release-order", status: http.StatusOK,
+			want: []string{"watching for the first time?", `href="/groups/2/steins-gate/orderings/first-timer-order">view first-timer order</a>`,
+				">auto-seeded</span>"}},
+		{name: "the sidebar lists the group's orderings", path: "/groups/2/steins-gate/orderings/release-order", status: http.StatusOK,
+			want: []string{"orderings</p>", ">recommended · staff</span>", `href="/groups/2/steins-gate/orderings/release-order" aria-current="page"`,
+				`href="/groups/2/steins-gate" aria-current="page"`}},
+		{name: "an ordering follows its group's slug", path: "/groups/2/wrong/orderings/first-timer-order", status: http.StatusMovedPermanently,
+			location: "/groups/2/steins-gate/orderings/first-timer-order"},
+		{name: "an ordering the group doesn't have", path: "/groups/2/steins-gate/orderings/vibes", status: http.StatusNotFound},
+		{name: "an ordering of no group", path: "/groups/999/x/orderings/first-timer-order", status: http.StatusNotFound},
 		{name: "a relation says where it attaches", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
 			want: []string{">here at Ep. 23</span>"}},
 		{name: "group wrong slug redirects", path: "/groups/2/sg?x=1", status: http.StatusMovedPermanently,
@@ -319,6 +343,7 @@ var (
 	sgFranchise = uuid.MustParse("01a151f2-0000-7000-8000-000000000002")
 	sgMain      = uuid.MustParse("01a151f2-0000-7000-8000-000000000003")
 	sgOrder     = uuid.MustParse("01a151f2-0000-7000-8000-00000000f001")
+	sgRelease   = uuid.MustParse("01a151f2-0000-7000-8000-00000000f002")
 	sgAnime     = uuid.MustParse("01a151f2-0000-7000-8000-000000000007")
 	sgMovie     = uuid.MustParse("01a151f2-0000-7000-8000-000000000008")
 	broken      = uuid.MustParse("01a151f2-0000-7000-8000-000000000501")
@@ -407,7 +432,7 @@ func (fakeCatalog) GroupOrderings(_ context.Context, id uuid.UUID) ([]sqlcgen.Gr
 	rationale, note := "Watch the series, then the branch the sequel follows.", "epilogue"
 	step := func(pos, branch int32, publicID int64, slug, title string) sqlcgen.GroupOrderingsRow {
 		return sqlcgen.GroupOrderingsRow{OrderingID: sgOrder, Kind: "recommended", Name: "first-timer order",
-			Rationale: &rationale, Position: pos, Branch: branch, Step: 1, PublicID: publicID, Slug: slug,
+			Rationale: &rationale, Origin: "staff", Position: pos, Branch: branch, Step: 1, PublicID: publicID, Slug: slug,
 			Title: title, Necessity: "required"}
 	}
 	section := "the branch"
@@ -420,7 +445,9 @@ func (fakeCatalog) GroupOrderings(_ context.Context, id uuid.UUID) ([]sqlcgen.Gr
 	film.Necessity, film.Note, film.Section = "optional", &note, &section
 	sequel := step(2, 2, 11, "steins-gate-0-anime", "Steins;Gate 0")
 	sequel.Step, sequel.Section = 2, &section
-	return []sqlcgen.GroupOrderingsRow{first, second, film, sequel}, nil
+	release := step(1, 1, 7, "steins-gate-anime", "Steins;Gate")
+	release.OrderingID, release.Kind, release.Name, release.Rationale, release.Origin = sgRelease, "release", "release order", nil, "auto"
+	return []sqlcgen.GroupOrderingsRow{first, second, film, sequel, release}, nil
 }
 
 func (fakeCatalog) NodeTitles(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeTitlesRow, error) {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -44,6 +45,30 @@ func EntryPath(publicID int64, slug string) string {
 // GroupPath is a group's canonical URL, shaped like EntryPath.
 func GroupPath(publicID int64, slug string) string {
 	return fmt.Sprintf("/groups/%d/%s", publicID, slug)
+}
+
+// OrderingPath is an ordering's URL, under its group's: orderings have no id
+// of their own, and their names are unique within a group.
+func OrderingPath(group, name string) string {
+	return group + "/orderings/" + slugify(name)
+}
+
+// slugify is "first-timer order" as "first-timer-order".
+func slugify(s string) string {
+	var b strings.Builder
+	dash := false
+	for _, r := range strings.ToLower(s) {
+		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
+			if dash && b.Len() > 0 {
+				b.WriteByte('-')
+			}
+			b.WriteRune(r)
+			dash = false
+			continue
+		}
+		dash = true
+	}
+	return b.String()
 }
 
 // NodePath is the canonical URL of a node of either type.

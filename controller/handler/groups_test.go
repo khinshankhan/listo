@@ -28,27 +28,43 @@ func TestOrderingsKeepTheirShape(t *testing.T) {
 		row(first, "start here", 3, 1, 1, 5, "Sequel", &arc),
 		// a new ordering starts its sections over
 		row(second, "release order", 1, 1, 1, 2, "Film", &arc),
-	})
+	}, "/groups/9/g")
 
 	step := func(id, title string) views.Step {
 		return views.Step{Title: title, Href: "/entries/" + id + "/s"}
 	}
 	want := []views.Ordering{
-		{Kind: "recommended order", Name: "start here", Positions: []views.Position{
-			{Number: "01", Choices: []views.Choice{{Steps: []views.Step{step("1", "Series")}}}},
-			{Number: "02", Section: "the movie arc", Choices: []views.Choice{
+		{Kind: "recommended", Name: "start here", Href: "/groups/9/g/orderings/start-here", Positions: []views.Position{
+			{Ordinal: 1, Number: "01", Choices: []views.Choice{{Steps: []views.Step{step("1", "Series")}}}},
+			{Ordinal: 2, Number: "02", Section: "the movie arc", Choices: []views.Choice{
 				{Steps: []views.Step{step("2", "Film")}},
 				{Steps: []views.Step{step("3", "Recap I"), step("4", "Recap II")}},
 			}},
-			{Number: "03", Choices: []views.Choice{{Steps: []views.Step{step("5", "Sequel")}}}},
+			{Ordinal: 3, Number: "03", Choices: []views.Choice{{Steps: []views.Step{step("5", "Sequel")}}}},
 		}},
-		{Kind: "recommended order", Name: "release order", Positions: []views.Position{
-			{Number: "01", Section: "the movie arc", Choices: []views.Choice{{Steps: []views.Step{step("2", "Film")}}}},
+		{Kind: "recommended", Name: "release order", Href: "/groups/9/g/orderings/release-order", Positions: []views.Position{
+			{Ordinal: 1, Number: "01", Section: "the movie arc", Choices: []views.Choice{{Steps: []views.Step{step("2", "Film")}}}},
 		}},
 	}
 
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got  %+v\nwant %+v", got, want)
+	}
+}
+
+func TestSlugify(t *testing.T) {
+	cases := []struct{ name, want string }{
+		{"first-timer order", "first-timer-order"},
+		{"chronological (shape test)", "chronological-shape-test"},
+		{"  Anime-only, no VN!  ", "anime-only-no-vn"},
+		{"23β cut", "23-cut"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := slugify(tc.name); got != tc.want {
+				t.Errorf("slugify = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
 

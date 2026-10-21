@@ -70,7 +70,7 @@ func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow,
 	if err != nil {
 		return v, nil, fmt.Errorf("orderings: %w", err)
 	}
-	v.Orderings = orderings(steps)
+	v.Orderings = orderings(steps, canonical)
 	if len(v.Orderings) > 0 {
 		v.StartHere = "#start-here"
 	}

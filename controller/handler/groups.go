@@ -110,7 +110,7 @@ func (p *Pages) groupView(ctx context.Context, g sqlcgen.GroupByPublicIDRow) (vi
 	if err != nil {
 		return v, fmt.Errorf("orderings: %w", err)
 	}
-	v.Orderings = orderings(steps)
+	v.Orderings = orderings(steps, GroupPath(g.PublicID, g.Slug))
 
 	parts, err := p.nodeParts(ctx, g.ID, "")
 	if err != nil {
@@ -123,23 +123,27 @@ func (p *Pages) groupView(ctx context.Context, g sqlcgen.GroupByPublicIDRow) (vi
 
 // orderings folds the step rows back into orderings, positions, choices and
 // steps. Rows arrive sorted by ordering, position, branch, step.
-func orderings(rows []sqlcgen.GroupOrderingsRow) []views.Ordering {
+// orderings folds a group's ordering rows into paths. group is the group's
+// page, which each ordering's lives under.
+func orderings(rows []sqlcgen.GroupOrderingsRow, group string) []views.Ordering {
 	var out []views.Ordering
 	var section string
 	for i, row := range rows {
 		newOrdering := i == 0 || row.OrderingID != rows[i-1].OrderingID
 		if newOrdering {
 			out = append(out, views.Ordering{
-				Kind:      row.Kind + " order",
+				Kind:      row.Kind,
 				Name:      row.Name,
 				Rationale: deref(row.Rationale),
+				Origin:    row.Origin,
+				Href:      OrderingPath(group, row.Name),
 			})
 			section = ""
 		}
 		o := &out[len(out)-1]
 
 		if newOrdering || row.Position != rows[i-1].Position {
-			pos := views.Position{Number: fmt.Sprintf("%02d", row.Position)}
+			pos := views.Position{Ordinal: int(row.Position), Number: fmt.Sprintf("%02d", row.Position)}
 			// heading only where the section changes
 			if s := deref(row.Section); s != section {
 				pos.Section, section = s, s
@@ -154,10 +158,13 @@ func orderings(rows []sqlcgen.GroupOrderingsRow) []views.Ordering {
 		choice := &pos.Choices[len(pos.Choices)-1]
 
 		step := views.Step{
-			Title: row.Title,
-			Href:  EntryPath(row.PublicID, row.Slug),
-			Units: unitRange(row.UnitFrom, row.UnitTo),
-			Note:  deref(row.Note),
+			Title:  row.Title,
+			Href:   EntryPath(row.PublicID, row.Slug),
+			Units:  unitRange(row.UnitFrom, row.UnitTo),
+			Note:   deref(row.Note),
+			Medium: row.FormatLabel,
+			Detail: stepDetail(row),
+			Skip:   row.Necessity == "skip_first_time",
 		}
 		if row.Necessity != "required" {
 			step.Necessity = necessity(row.Necessity)
@@ -165,6 +172,21 @@ func orderings(rows []sqlcgen.GroupOrderingsRow) []views.Ordering {
 		choice.Steps = append(choice.Steps, step)
 	}
 	return out
+}
+
+// stepDetail is when the entry came out and how much of it the step covers:
+// "spring 2011, Ep. 1 to Ep. 22", "2013".
+func stepDetail(row sqlcgen.GroupOrderingsRow) string {
+	var parts []string
+	if row.StartDate != nil && row.StartPrecision != nil {
+		parts = append(parts, when(row.Medium, row.Format, *row.StartDate, *row.StartPrecision))
+	}
+	if units := unitRange(row.UnitFrom, row.UnitTo); units != "" {
+		parts = append(parts, units)
+	} else if row.UnitTotal != nil && row.UnitKind != "none" {
+		parts = append(parts, plural(int(*row.UnitTotal), row.UnitKind, row.UnitKind+"s"))
+	}
+	return strings.Join(parts, " · ")
 }
 
 // unitRange is "Ep. 1 to Ep. 22", "23β" when it starts and ends on one unit,

@@ -5,21 +5,7 @@ package views
 templ FranchisePage(f Franchise) {
 	<div class="flex flex-col gap-8">
 		<header class="flex flex-col gap-3">
-			<nav class="flex flex-wrap items-center gap-[7px]" aria-label="breadcrumb">
-				for i, c := range f.Trail {
-					if i > 0 {
-						<span class="text-12 leading-4 text-border" aria-hidden="true">/</span>
-					}
-					<span class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">{ c.Kind }</span>
-					if c.Href != "" {
-						@Link(LinkProps{Href: c.Href, Class: "text-12 leading-4 font-medium text-accent-11"}) {
-							{ c.Name }
-						}
-					} else {
-						<span class="text-12 leading-4 font-semibold text-foreground-strong" aria-current="page">{ c.Name }</span>
-					}
-				}
-			</nav>
+			@trail(f.Trail)
 			<div class="flex flex-wrap items-end justify-between gap-4">
 				<div class="flex flex-col gap-[10px]">
 					<h1 class="font-heading text-44 leading-[44px] font-semibold tracking-tight text-foreground-strong">{ f.Name }</h1>
@@ -175,4 +161,28 @@ templ standingBadge(s string) {
 			<span class={ "font-mono text-[10px] leading-3 tracking-[0.05em] uppercase", standing(s).Text }>{ s }</span>
 		</span>
 	}
+}
+
+// trail is a breadcrumb of kinds and names. The last crumb is this page: no
+// link, and maybe only a kind.
+templ trail(crumbs []Crumb) {
+	<nav class="flex flex-wrap items-center gap-[7px]" aria-label="breadcrumb">
+		for i, c := range crumbs {
+			if i > 0 {
+				<span class="text-12 leading-4 text-border" aria-hidden="true">/</span>
+			}
+			if c.Name == "" {
+				<span class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase" aria-current="page">{ c.Kind }</span>
+			} else {
+				<span class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">{ c.Kind }</span>
+			}
+			if c.Href != "" {
+				@Link(LinkProps{Href: c.Href, Class: "text-12 leading-4 font-medium text-accent-11"}) {
+					{ c.Name }
+				}
+			} else if c.Name != "" {
+				<span class="text-12 leading-4 font-semibold text-foreground-strong" aria-current="page">{ c.Name }</span>
+			}
+		}
+	</nav>
 }

@@ -267,9 +267,13 @@ templ GroupPage(g Group) {
 // orderingPanel is one curated path: its name and rationale, then each
 // position, with forks as pick-one choices.
 templ orderingPanel(o Ordering) {
-	@panel(o.Kind) {
+	@panel(o.Kind + " order") {
 		<li class="px-4 py-3">
-			<p class="font-semibold text-foreground-strong">{ o.Name }</p>
+			<p>
+				@Link(LinkProps{Href: o.Href, Variant: LinkNone, Class: "font-semibold text-foreground-strong"}) {
+					{ o.Name }
+				}
+			</p>
 			if o.Rationale != "" {
 				<p class="mt-1 text-14 text-foreground-muted">{ o.Rationale }</p>
 			}
