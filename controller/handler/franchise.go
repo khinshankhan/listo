@@ -41,12 +41,7 @@ func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow,
 	}
 	v.Continuities = continuityCards(rows)
 
-	entries, media := map[int64]bool{}, map[string]bool{}
-	for _, r := range rows {
-		entries[r.PublicID] = true
-		media[r.Medium] = true
-	}
-	v.Stats = []string{plural(len(entries), "entry", "entries"), plural(len(media), "medium", "media")}
+	v.Stats = entryStats(rows)
 	if len(v.Continuities) > 0 {
 		v.Stats = append(v.Stats, plural(len(v.Continuities), "continuity", "continuities"))
 	}
@@ -107,6 +102,17 @@ func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow,
 		anchors = append(anchors, views.Anchor{Label: "related", Href: "#related"})
 	}
 	return v, anchors, nil
+}
+
+// entryStats is "6 entries", "2 media": each entry once, however many
+// branches it sits under.
+func entryStats(rows []sqlcgen.GroupEntriesRow) []string {
+	entries, media := map[int64]bool{}, map[string]bool{}
+	for _, r := range rows {
+		entries[r.PublicID] = true
+		media[r.Medium] = true
+	}
+	return []string{plural(len(entries), "entry", "entries"), plural(len(media), "medium", "media")}
 }
 
 func validSort(by string) bool {

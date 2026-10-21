@@ -131,6 +131,15 @@ type Chrome struct {
 	// Query fills the top bar's search box, on a results page.
 	Query   string
 	Sidebar *Sidebar
+	// HideSearch leaves search out of the top bar, for a page that has it.
+	HideSearch bool
+}
+
+func searchIconSize(hero bool) string {
+	if hero {
+		return "17"
+	}
+	return "15"
 }
 
 // Sidebar is the catalog nav: media, then franchises.
@@ -147,12 +156,6 @@ type Sidebar struct {
 type OrderingLink struct {
 	Name, Meta, Href string
 	Active           bool
-}
-
-// Home is the front page: search, and where browsing starts.
-type Home struct {
-	Groups []GroupCard
-	Media  []MediumLink
 }
 
 // GroupCard is a top-level group, with how many entries sit beneath it.

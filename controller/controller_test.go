@@ -38,7 +38,7 @@ func TestRoutes(t *testing.T) {
 		status int
 		want   []string
 	}{
-		{"home", up, "/", http.StatusOK, []string{"the 1 list for all your content", "/assets/islands-abc.js"}},
+		{"home", up, "/", http.StatusOK, []string{"keep one list for everything you watch, read and play.", "/assets/islands-abc.js"}},
 		{"the demo page is gone", up, "/there", http.StatusNotFound, []string{"back home"}},
 		{"every page has the top bar", up, "/nope", http.StatusNotFound, []string{`role="search"`, `id="site-search"`}},
 		// web/src/search.ts finds these by id and drives the aria attributes
@@ -274,12 +274,25 @@ func TestFrontPages(t *testing.T) {
 		want     []string
 		dontWant []string
 	}{
-		{name: "home searches and starts browsing", path: "/", status: http.StatusOK,
-			want: []string{`<form action="/search" method="get" role="search"`,
-				`href="/groups/2/steins-gate">Steins;Gate</a>`, "franchise &middot; 14 entries",
-				`href="/entries?medium=anime"`, `href="/entries"`},
-			// home is top bar only
-			dontWant: []string{"data-island", "noindex", `aria-label="catalog"`}},
+		{name: "home says what listo is", path: "/", status: http.StatusOK,
+			want: []string{"keep one list for everything you watch, read and play.</h1>",
+				`<form action="/search" method="get" role="search" class="flex min-w-0 items-center rounded-lg border border-border focus-within:outline-2 focus-within:outline-stark-contrast relative h-[52px]`},
+			// top bar only, and the one search is the hero's
+			dontWant: []string{"data-island", "noindex", `aria-label="catalog"`, "max-w-[420px]"}},
+		{name: "home's media: browsable, or coming soon", path: "/", status: http.StatusOK,
+			want: []string{`href="/entries?medium=anime">anime</a>`, `href="/entries?medium=visual_novel">visual novel</a>`,
+				`book<span class="sr-only">, coming soon</span>`}},
+		{name: "home previews a franchise guide", path: "/", status: http.StatusOK,
+			want: []string{`<a href="/groups/2/steins-gate">Steins;Gate</a></h3>`, "<span>1 entry</span>", "alternate episode 23β",
+				">Main timeline</span>", `href="/entries/7/steins-gate-anime">Steins;Gate</a>`, ">anime · 2011</span>"}},
+		{name: "home previews an ordering guide", path: "/", status: http.StatusOK,
+			want: []string{`<a href="/groups/103/monogatari/orderings/first-timer-order">Monogatari</a></h3>`,
+				"<span>6 steps</span>", "<span>68 episodes</span>", `href="/entries/104/bakemonogatari">Bakemonogatari</a>`,
+				"a prequel, but not first</span>", ">recommended</span>", "preview · 5 of 6 steps"},
+			// the sixth step stays on the ordering's page
+			dontWant: []string{"Owarimonogatari"}},
+		{name: "a medium with no entries isn't browsable yet", path: "/entries", status: http.StatusOK,
+			dontWant: []string{"medium=book"}},
 		{name: "empty search points at the box", path: "/search", status: http.StatusOK,
 			want: []string{`id="site-search" name="q"`, `<meta name="robots" content="noindex">`, `aria-label="catalog"`},
 			// no medium is current while searching
@@ -368,6 +381,8 @@ var (
 	sgMain      = uuid.MustParse("01a151f2-0000-7000-8000-000000000003")
 	sgOrder     = uuid.MustParse("01a151f2-0000-7000-8000-00000000f001")
 	sgRelease   = uuid.MustParse("01a151f2-0000-7000-8000-00000000f002")
+	monoSeries  = uuid.MustParse("01a151f2-0000-7000-8000-000000000103")
+	monoOrder   = uuid.MustParse("01a151f2-0000-7000-8000-00000000f103")
 	sgAnime     = uuid.MustParse("01a151f2-0000-7000-8000-000000000007")
 	sgMovie     = uuid.MustParse("01a151f2-0000-7000-8000-000000000008")
 	broken      = uuid.MustParse("01a151f2-0000-7000-8000-000000000501")
@@ -425,6 +440,8 @@ func (fakeCatalog) GroupByPublicID(_ context.Context, id int64) (sqlcgen.GroupBy
 	case 3:
 		return sqlcgen.GroupByPublicIDRow{ID: sgMain, PublicID: 3, Slug: "steins-gate-main", Kind: "continuity",
 			Name: "Main timeline", Standing: &primary}, nil
+	case 103:
+		return sqlcgen.GroupByPublicIDRow{ID: monoSeries, PublicID: 103, Slug: "monogatari", Kind: "series", Name: "Monogatari"}, nil
 	case 500:
 		return sqlcgen.GroupByPublicIDRow{}, errors.New("connection reset")
 	}
@@ -449,6 +466,9 @@ func (fakeCatalog) GroupMembers(_ context.Context, id uuid.UUID) ([]sqlcgen.Grou
 }
 
 func (fakeCatalog) GroupOrderings(_ context.Context, id uuid.UUID) ([]sqlcgen.GroupOrderingsRow, error) {
+	if id == monoSeries {
+		return monogatariOrder(), nil
+	}
 	if id != sgFranchise {
 		return nil, nil
 	}
@@ -572,6 +592,7 @@ func (fakeCatalog) MediumCounts(context.Context) ([]sqlcgen.MediumCountsRow, err
 	return []sqlcgen.MediumCountsRow{
 		{Medium: "anime", Label: "anime", Entries: 1},
 		{Medium: "visual_novel", Label: "visual novel", Entries: 1},
+		{Medium: "book", Label: "book", Entries: 0},
 	}, nil
 }
 
@@ -717,4 +738,30 @@ func (fakeCatalog) GroupSiblings(_ context.Context, id uuid.UUID) ([]sqlcgen.Gro
 		return nil, nil
 	}
 	return []sqlcgen.GroupSiblingsRow{{PublicID: 5, Slug: "robotics-notes", Kind: "franchise", Name: "Robotics;Notes", Entries: 2}}, nil
+}
+
+// monogatariOrder is six steps, so a five-step preview leaves one out. The
+// film has no episodes; the rest add up to 68.
+func monogatariOrder() []sqlcgen.GroupOrderingsRow {
+	note := "a prequel, but not first"
+	step := func(pos int32, publicID int64, slug, title string, eps int32) sqlcgen.GroupOrderingsRow {
+		r := sqlcgen.GroupOrderingsRow{OrderingID: monoOrder, Kind: "recommended", Name: "first-timer order", Origin: "staff",
+			Position: pos, Branch: 1, Step: 1, PublicID: publicID, Slug: slug, Title: title, Necessity: "required", UnitKind: "none"}
+		if eps > 0 {
+			r.UnitKind, r.UnitTotal = "episode", &eps
+		}
+		return r
+	}
+	kizu := step(3, 112, "kizumonogatari-1", "Kizumonogatari I: Tekketsu", 0)
+	kizu.Note = &note
+	neko := step(4, 106, "nekomonogatari-black", "Nekomonogatari (Black)", 4)
+	neko.Necessity = "recommended"
+	return []sqlcgen.GroupOrderingsRow{
+		step(1, 104, "bakemonogatari", "Bakemonogatari", 15),
+		step(2, 105, "nisemonogatari", "Nisemonogatari", 11),
+		kizu,
+		neko,
+		step(5, 107, "monogatari-second-season", "Monogatari Series: Second Season", 26),
+		step(6, 110, "owarimonogatari", "Owarimonogatari", 12),
+	}
 }

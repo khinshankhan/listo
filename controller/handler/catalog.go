@@ -25,36 +25,6 @@ const (
 	maxQuery = 200
 )
 
-// Home is search, the top-level groups, and the media.
-func (p *Pages) Home(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	groups, err := p.catalog.TopGroups(ctx)
-	if err != nil {
-		p.serverError(w, r, err)
-		return
-	}
-	media, err := p.mediumLinks(r, nil)
-	if err != nil {
-		p.serverError(w, r, err)
-		return
-	}
-
-	v := views.Home{Media: media}
-	for _, g := range groups {
-		v.Groups = append(v.Groups, views.GroupCard{
-			Name:    g.Name,
-			Kind:    g.Kind,
-			Href:    GroupPath(g.PublicID, g.Slug),
-			Entries: int(g.Entries),
-		})
-	}
-
-	head := views.Head{Title: "listo", Description: "The 1 list for all your content: anime, manga, games, books and more."}
-	// the home page is top bar only: its body is the catalog
-	p.render(w, r, http.StatusOK, head, views.Chrome{}, views.HomePage(v))
-}
-
 // Search serves /search?q=, fuzzy over every title in the local catalog.
 func (p *Pages) Search(w http.ResponseWriter, r *http.Request) {
 	q := clampQuery(r.URL.Query().Get("q"))

@@ -38,7 +38,7 @@ templ Layout(head Head, tags web.Tags, chrome Chrome) {
 			}
 		</head>
 		<body class="flex min-h-screen flex-col bg-background-1 font-body text-foreground antialiased">
-			@topBar(chrome.Query)
+			@topBar(chrome.Query, chrome.HideSearch)
 			<div class="flex flex-1">
 				if chrome.Sidebar != nil {
 					@sidebar(*chrome.Sidebar)
@@ -54,8 +54,8 @@ templ Layout(head Head, tags web.Tags, chrome Chrome) {
 }
 
 // topBar is the wordmark corner, browse and search. The corner matches the
-// sidebar's width.
-templ topBar(query string) {
+// sidebar's width. A page that hosts the search itself hides it here.
+templ topBar(query string, hideSearch bool) {
 	<header class="relative flex shrink-0 border-b border-border bg-background-2 [view-transition-name:top-bar]">
 		<div class="flex shrink-0 items-center px-4 sm:w-sidebar sm:border-r sm:border-border sm:px-7">
 			@Wordmark()
@@ -65,35 +65,9 @@ templ topBar(query string) {
 				@Link(LinkProps{Href: "/entries", Variant: LinkNav, Class: "text-14 leading-[18px] font-semibold text-accent-11"}) {
 					browse
 				}
-				<form
-					action="/search"
-					method="get"
-					role="search"
-					class="flex max-w-[420px] min-w-0 flex-1 items-center gap-[9px] rounded-lg border border-border bg-background-1 px-3 py-2 focus-within:outline-2 focus-within:outline-stark-contrast sm:relative"
-				>
-					<svg width="15" height="15" viewBox="0 0 18 18" class="shrink-0" aria-hidden="true">
-						<circle cx="8.2" cy="8.2" r="5.4" fill="none" stroke="var(--color-foreground-subtle)" stroke-width="1.5"></circle>
-						<path d="M12.3 12.3l3 3" fill="none" stroke="var(--color-foreground-subtle)" stroke-width="1.5" stroke-linecap="round"></path>
-					</svg>
-					<label for="site-search" class="sr-only">search the catalog</label>
-					<input
-						id="site-search"
-						name="q"
-						type="search"
-						value={ query }
-						placeholder="search the catalog"
-						role="combobox"
-						aria-autocomplete="list"
-						aria-expanded="false"
-						aria-controls="site-search-results"
-						autocomplete="off"
-						class="min-w-0 flex-1 bg-transparent text-13 leading-4 text-foreground-strong outline-none placeholder:text-foreground-muted"
-					/>
-					<kbd class="hidden rounded-sm border border-border px-[5px] py-px font-mono text-11 leading-[14px] text-foreground-muted sm:inline-block" title="press / to search">/</kbd>
-					@searchPanel()
-					// outside the panel: a live region inside a hidden element says nothing
-					<p id="site-search-status" role="status" class="sr-only"></p>
-				</form>
+				if !hideSearch {
+					@siteSearch(query, false)
+				}
 			</div>
 			<div class="hidden shrink-0 items-center gap-[7px] md:flex">
 				<span class="text-14 leading-[18px] font-medium text-foreground-muted">API</span>
@@ -103,13 +77,53 @@ templ topBar(query string) {
 	</header>
 }
 
-// searchPanel holds the top bar's suggestions, filled by web/src/search.ts. A
-// drawer under the top bar on phones, a popover under the field from sm up.
-templ searchPanel() {
+// siteSearch is the catalog search with suggestions from web/src/search.ts:
+// compact in the top bar, or large in a page's hero. Only one may be on a
+// page, since the script finds it by id.
+templ siteSearch(query string, hero bool) {
+	<form
+		action="/search"
+		method="get"
+		role="search"
+		class={ "flex min-w-0 items-center rounded-lg border border-border focus-within:outline-2 focus-within:outline-stark-contrast",
+			templ.KV("max-w-[420px] flex-1 gap-[9px] bg-background-1 px-3 py-2 sm:relative", !hero),
+			templ.KV("relative h-[52px] w-full max-w-[560px] gap-[10px] rounded-[10px] bg-background-2 px-[14px]", hero) }
+	>
+		<svg width={ searchIconSize(hero) } height={ searchIconSize(hero) } viewBox="0 0 18 18" class="shrink-0" aria-hidden="true">
+			<circle cx="8.2" cy="8.2" r="5.4" fill="none" stroke="var(--color-foreground-subtle)" stroke-width="1.5"></circle>
+			<path d="M12.3 12.3l3 3" fill="none" stroke="var(--color-foreground-subtle)" stroke-width="1.5" stroke-linecap="round"></path>
+		</svg>
+		<label for="site-search" class="sr-only">search the catalog</label>
+		<input
+			id="site-search"
+			name="q"
+			type="search"
+			value={ query }
+			placeholder="search the catalog"
+			role="combobox"
+			aria-autocomplete="list"
+			aria-expanded="false"
+			aria-controls="site-search-results"
+			autocomplete="off"
+			class={ "min-w-0 flex-1 bg-transparent text-foreground-strong outline-none placeholder:text-foreground-muted",
+				templ.KV("text-13 leading-4", !hero), templ.KV("text-15 leading-[18px]", hero) }
+		/>
+		<kbd class="hidden rounded-sm border border-border px-[5px] py-px font-mono text-11 leading-[14px] text-foreground-muted sm:inline-block" title="press / to search">/</kbd>
+		@searchPanel(hero)
+		// outside the panel: a live region inside a hidden element says nothing
+		<p id="site-search-status" role="status" class="sr-only"></p>
+	</form>
+}
+
+// searchPanel holds the suggestions, filled by web/src/search.ts. In the top
+// bar it's a drawer under the bar on phones and a popover under the field from
+// sm up; in a hero, always a popover.
+templ searchPanel(hero bool) {
 	<div
 		id="site-search-panel"
 		hidden
-		class="absolute inset-x-0 top-full z-30 border-b border-border bg-background-2 shadow-sm sm:mt-2 sm:rounded-lg sm:border"
+		class={ "absolute inset-x-0 top-full z-30 border-border bg-background-2 shadow-sm",
+			templ.KV("border-b sm:mt-2 sm:rounded-lg sm:border", !hero), templ.KV("mt-2 rounded-lg border text-left", hero) }
 	>
 		// nothing found, still searching, or a failure: a note, never a row in
 		// the listbox, which only ever holds options

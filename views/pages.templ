@@ -2,30 +2,6 @@ package views
 
 import "fmt"
 
-// HomePage is search, then places to start browsing.
-templ HomePage(h Home) {
-	<h1 class="font-heading text-44 leading-snug font-semibold tracking-tight text-foreground-strong">
-		the 1 list for all your content
-	</h1>
-	<p class="mt-2 text-18 text-foreground-muted">anime, manga, films, games and books, and how they fit together.</p>
-	<div class="mt-8">
-		@searchForm("")
-	</div>
-	if len(h.Groups) > 0 {
-		@panel("start somewhere") {
-			for _, g := range h.Groups {
-				<li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
-					@Link(LinkProps{Href: g.Href, Variant: LinkNone, Class: "font-semibold text-foreground-strong"}) {
-						{ g.Name }
-					}
-					<span class="ml-auto font-mono text-13 text-foreground-muted">{ g.Kind } &middot; { count(g.Entries, "entry", "entries") }</span>
-				</li>
-			}
-		}
-	}
-	@mediumNav(h.Media)
-}
-
 // BrowsePage is every entry, or one medium's.
 templ BrowsePage(b Browse) {
 	<h1 class="font-heading text-32 font-semibold tracking-tight text-foreground-strong">browse</h1>
@@ -44,23 +20,6 @@ templ BrowsePage(b Browse) {
 			}
 		}
 	}
-}
-
-templ searchForm(q string) {
-	<form action="/search" method="get" role="search" class="flex gap-2">
-		<label for="q" class="sr-only">search titles</label>
-		<input
-			id="q"
-			name="q"
-			type="search"
-			value={ q }
-			placeholder="search titles, in any language"
-			class="h-11 min-w-0 flex-1 rounded-md border border-border bg-background-1 px-3 text-16 text-foreground-strong placeholder:text-foreground-muted focus-visible:outline-2 focus-visible:outline-stark-contrast"
-		/>
-		<button type="submit" class="h-11 shrink-0 cursor-pointer rounded-md bg-accent-9 px-4 text-14 font-semibold text-accent-1 hover:bg-accent-10 focus-visible:outline-2 focus-visible:outline-stark-contrast">
-			search
-		</button>
-	</form>
 }
 
 // mediumNav is the browse filters: all, then each medium with entries.

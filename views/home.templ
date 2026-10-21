@@ -1,0 +1,354 @@
+package views
+
+import "fmt"
+
+// HomePage says what listo is: search first, then one list, connections and
+// guides, each shown rather than told.
+templ HomePage(h Home) {
+	<div class="mx-auto flex max-w-[992px] flex-col gap-[72px] pt-4 sm:pt-7">
+		<section class="flex flex-col items-center gap-5 text-center">
+			<h1 class="max-w-[760px] font-heading text-[36px] leading-10 font-bold tracking-[-0.035em] text-foreground-strong sm:text-[52px] sm:leading-[56px]">
+				keep one list for everything you watch, read and play.
+			</h1>
+			<p class="max-w-[600px] text-16 leading-[26px] text-foreground-muted">
+				Track everything on one scale, see how it all connects across media, and find out where to start with the franchises that make it hard.
+			</p>
+			@siteSearch("", true)
+			if len(h.Media) > 0 {
+				<ul class="flex flex-wrap justify-center gap-2" aria-label="media">
+					for _, m := range h.Media {
+						<li>
+							if m.Href != "" {
+								@Link(LinkProps{Href: m.Href, Variant: LinkNone, Class: "flex rounded-full border border-border bg-background-2 px-[11px] py-1 text-12 leading-4 text-foreground-muted hover:border-accent-7 hover:text-foreground-strong"}) {
+									{ m.Label }
+								}
+							} else {
+								<span class="flex rounded-full border border-dashed border-border px-[11px] py-1 text-12 leading-4 text-foreground-muted">
+									{ m.Label }<span class="sr-only">, coming soon</span>
+								</span>
+							}
+						</li>
+					}
+					if hasSoon(h.Media) {
+						<li class="flex px-0.5 py-1 text-12 leading-4 text-foreground-muted" aria-hidden="true">coming soon</li>
+					}
+				</ul>
+			}
+		</section>
+		@oneList()
+		@connections()
+		if h.Franchise != nil || h.Ordering != nil {
+			@guides(h)
+		}
+		<section class="flex flex-col gap-[18px]" aria-labelledby="keep">
+			<h2 id="keep" class="text-[22px] leading-7 font-semibold tracking-[-0.02em] text-foreground-strong">yours to keep</h2>
+			<ul class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+				@keep("export everything", "Download your whole list as JSON or CSV, whenever you like.", true)
+				@keep("a public API", "The site runs on the same API anyone can read from. Build on it.", true)
+				@keep("open source", "Apache-2.0, so you can read the code, run it or fork it.", false)
+			</ul>
+		</section>
+		<footer class="flex items-center justify-between border-t border-border pt-[22px]">
+			<span class="font-heading text-14 leading-[18px] font-extrabold tracking-[-0.045em] text-foreground-strong">listo<span class="text-accent-9">.</span></span>
+			<nav class="flex gap-[18px]" aria-label="about listo">
+				<span class="text-12 leading-4 text-foreground-muted">API soon</span>
+				@Link(LinkProps{Href: "https://github.com/khinshankhan/listo", Variant: LinkNone, Class: "text-12 leading-4 text-foreground-muted hover:text-foreground-strong"}) {
+					source code
+				}
+			</nav>
+		</footer>
+	</div>
+}
+
+// sectionIntro is a numbered section's label, title and lead.
+templ sectionIntro(id, label, title, lead string) {
+	<div class="flex max-w-[640px] flex-col gap-1.5">
+		<p class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">{ label }</p>
+		<h2 id={ id } class="text-[22px] leading-7 font-semibold tracking-[-0.02em] text-foreground-strong">{ title }</h2>
+		if lead != "" {
+			<p class="text-14 leading-[22px] text-foreground-muted">{ lead }</p>
+		}
+	</div>
+}
+
+// oneList shows one list across media with an example, not real data.
+templ oneList() {
+	<section class="flex flex-col gap-7 lg:flex-row lg:items-center" aria-labelledby="one-list">
+		<div class="flex flex-col gap-3 lg:w-[448px] lg:shrink-0">
+			<p class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">01 one list</p>
+			<h2 id="one-list" class="text-[22px] leading-7 font-semibold tracking-[-0.02em] text-foreground-strong">every medium, one scale</h2>
+			<p class="text-14 leading-[22px] text-foreground-muted">
+				Watching Edgerunners, playing Cyberpunk 2077 and reading the Witcher books means three sites and three rating scales today. In listo, it's one list, with progress in whatever unit fits: episodes, pages or percent complete.
+			</p>
+		</div>
+		<figure class="flex min-w-0 flex-1 flex-col overflow-clip rounded-xl border border-border bg-background-2">
+			<figcaption class="flex justify-between border-b border-border px-4 py-3 font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">
+				<span>example</span>
+				<span>in progress</span>
+			</figcaption>
+			<ul>
+				@exampleRow("Cyberpunk: Edgerunners", "anime", "w-[70%]", "7/10", "watching")
+				@exampleRow("Cyberpunk 2077", "game", "w-[45%]", "45%", "playing")
+				@exampleRow("The Last Wish", "book", "w-[34%]", "p. 98/288", "reading")
+			</ul>
+			<p class="flex items-center gap-[10px] bg-background-1 px-4 py-[11px] text-12 leading-[18px] text-foreground-muted">
+				<svg width="15" height="15" viewBox="0 0 16 16" class="shrink-0" aria-hidden="true">
+					<circle cx="3.5" cy="8" r="2" fill="none" stroke="currentColor" stroke-width="1.3"></circle>
+					<circle cx="12.5" cy="8" r="2" fill="none" stroke="currentColor" stroke-width="1.3"></circle>
+					<path d="M5.5 8h5" fill="none" stroke="currentColor" stroke-width="1.3"></path>
+				</svg>
+				Edgerunners is set in the world of Cyberpunk 2077. Three sites couldn't tell you that; one list can.
+			</p>
+		</figure>
+	</section>
+}
+
+// exampleRow is one made-up list row; done is its bar's width class.
+templ exampleRow(title, medium, done, progress, status string) {
+	<li class="flex items-center gap-3 border-b border-border-subtle px-4 py-[11px]">
+		<span class="h-[42px] w-[30px] shrink-0 rounded-sm bg-placeholder" aria-hidden="true"></span>
+		<span class="flex min-w-0 flex-1 flex-col gap-0.5">
+			<span class="text-13 leading-4 font-semibold text-foreground-strong">{ title }</span>
+			<span class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">{ medium }</span>
+		</span>
+		<span class="flex w-24 shrink-0 flex-col gap-1">
+			<span class="flex h-1 rounded-full bg-border-subtle" aria-hidden="true">
+				<span class={ "h-1 rounded-full bg-accent-9", done }></span>
+			</span>
+			<span class="text-right font-mono text-11 leading-[14px] text-foreground-muted">{ progress }</span>
+		</span>
+		<span class="hidden w-[72px] shrink-0 text-right text-12 leading-4 text-foreground-muted sm:block">{ status }</span>
+	</li>
+}
+
+// connections is a picture of one universe's links, drawn by hand: most of
+// its works aren't in the catalog yet. On phones it scrolls sideways rather
+// than shrinking its labels to nothing.
+templ connections() {
+	<section class="flex flex-col gap-[18px]" aria-labelledby="connections">
+		@sectionIntro("connections", "02 connections · always growing", "see how it all connects",
+			"Chaos;Head and Robotics;Notes aren't sequels or prequels of each other, but they share a world, and its series cross over. Links also arrive late: Robotics;Notes DaSH tied Robotics;Notes to Steins;Gate in 2019, ten years after Steins;Gate. We add them as they're made.")
+		<figure class="flex flex-col gap-[14px] rounded-xl border border-border bg-background-2 px-[19px] pt-5 pb-[18px]">
+			<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Science Adventure timeline, scrolls sideways">
+				@scienceAdventure()
+			</div>
+			<figcaption class="flex flex-wrap gap-x-[22px] gap-y-2 px-4 text-12 leading-4 text-foreground-muted">
+				<span class="flex items-center gap-2">
+					<svg width="34" height="10" viewBox="0 0 34 10" class="shrink-0" aria-hidden="true">
+						<line x1="1" y1="5" x2="27" y2="5" stroke="var(--color-foreground-muted)" stroke-width="1.25"></line>
+						<path d="M26 1.5 32 5 26 8.5z" fill="var(--color-foreground-muted)"></path>
+					</svg>
+					sequel
+				</span>
+				<span class="flex items-center gap-2">
+					<svg width="34" height="10" viewBox="0 0 34 10" class="shrink-0" aria-hidden="true">
+						<path d="M1 5 C12 -2 22 12 33 5" fill="none" stroke="var(--color-foreground-subtle)" stroke-width="1.25" stroke-linecap="round" stroke-dasharray="1.5 4"></path>
+					</svg>
+					crossover or shared character, drawn from the year it was made
+				</span>
+				<span class="flex items-center gap-2">
+					<svg width="34" height="10" viewBox="0 0 34 10" class="shrink-0" aria-hidden="true">
+						<rect x="1" y="1" width="32" height="8" rx="2" fill="none" stroke="var(--color-border)" stroke-dasharray="5 4"></rect>
+					</svg>
+					shared universe
+				</span>
+				<span class="flex items-center gap-2">
+					<svg width="34" height="10" viewBox="0 0 34 10" class="shrink-0" aria-hidden="true">
+						<line x1="4" y1="5" x2="30" y2="5" stroke="var(--color-foreground-strong)" stroke-width="3" stroke-linecap="round"></line>
+						<circle cx="4" cy="5" r="3.5" fill="var(--color-background-2)" stroke="var(--color-foreground-strong)" stroke-width="1.5"></circle>
+						<circle cx="30" cy="5" r="3.5" fill="var(--color-background-2)" stroke="var(--color-foreground-strong)" stroke-width="1.5"></circle>
+					</svg>
+					one work, a release in each medium
+				</span>
+			</figcaption>
+		</figure>
+	</section>
+}
+
+// scienceAdventure is the timeline itself, 2008 to 2022. Screen readers get
+// the description instead of the drawing.
+templ scienceAdventure() {
+	<svg viewBox="0 0 960 420" class="block h-auto w-full min-w-[720px] font-body" role="img" aria-labelledby="sa-title sa-desc">
+		<title id="sa-title">Science Adventure, 2008 to 2022</title>
+		<desc id="sa-desc">
+			Eight works in five series. Chaos;Head (2008) is followed by Chaos;Child (VN 2014, anime 2017). Steins;Gate (VN 2009, anime 2011, film 2013) is followed by Steins;Gate 0 (VN 2015, anime 2018), and Chaos;Child shares a character with it from 2014. Robotics;Notes (2012) is followed by Robotics;Notes DaSH (2019), which crosses over with Steins;Gate. Occultic;Nine runs from 2014 to 2017, and Anonymous;Code arrives in 2022.
+		</desc>
+		<rect x="16" y="24" width="928" height="360" rx="12" fill="none" stroke="var(--color-border)" stroke-dasharray="5 4"></rect>
+		<text x="34" y="52" font-size="14" font-weight="700" fill="var(--color-foreground-strong)">Science Adventure</text>
+		<text x="926" y="52" text-anchor="end" font-size="12" fill="var(--color-foreground-muted)">8 works in 5 series, 2008 to 2022</text>
+		// sequels
+		<line x1="58" y1="90" x2="404" y2="90" stroke="var(--color-foreground-muted)" stroke-width="1.25"></line>
+		<path d="M402 86.5 409 90 402 93.5z" fill="var(--color-foreground-muted)"></path>
+		<line x1="367" y1="156" x2="466" y2="156" stroke="var(--color-foreground-muted)" stroke-width="1.25"></line>
+		<path d="M464 152.5 471 156 464 159.5z" fill="var(--color-foreground-muted)"></path>
+		<line x1="305" y1="222" x2="713" y2="222" stroke="var(--color-foreground-muted)" stroke-width="1.25"></line>
+		<path d="M711 218.5 718 222 711 225.5z" fill="var(--color-foreground-muted)"></path>
+		// crossovers, from the year they were made
+		<path d="M418 112 C418 122 357 122 357 132" fill="none" stroke="var(--color-foreground-subtle)" stroke-width="1.25" stroke-linecap="round" stroke-dasharray="1.5 4"></path>
+		<text x="349" y="130" text-anchor="end" font-size="12" fill="var(--color-foreground-muted)">shared character, 2014</text>
+		<path d="M727 196 C727 187 295 187 295 178" fill="none" stroke="var(--color-foreground-subtle)" stroke-width="1.25" stroke-linecap="round" stroke-dasharray="1.5 4"></path>
+		<rect x="466" y="182" width="90" height="16" fill="var(--color-background-2)"></rect>
+		<text x="511" y="194" text-anchor="middle" font-size="12" fill="var(--color-foreground-muted)">crossover, 2019</text>
+		// works: a dot per release, joined when it's one work in several media
+		@work("Chaos;Head", 43, 76, false)
+		@release(48, 90, "VN, anime")
+		@span(418, 603, 90)
+		@work("Chaos;Child", 413, 76, false)
+		@release(418, 90, "VN")
+		@release(603, 90, "anime")
+		@span(110, 357, 156)
+		@work("Steins;Gate", 105, 142, false)
+		@release(110, 156, "VN")
+		@release(233, 156, "anime")
+		@release(357, 156, "film")
+		@span(480, 665, 156)
+		@work("Steins;Gate 0", 475, 142, false)
+		@release(480, 156, "VN")
+		@release(665, 156, "anime")
+		@work("Robotics;Notes", 290, 208, false)
+		@release(295, 222, "VN, anime")
+		@work("Robotics;Notes DaSH", 722, 208, false)
+		@release(727, 222, "VN")
+		@span(418, 603, 288)
+		@work("Occultic;Nine", 413, 274, false)
+		@release(418, 288, "LN")
+		@release(542, 288, "anime")
+		@release(603, 288, "VN")
+		@work("Anonymous;Code", 918, 340, true)
+		@release(912, 354, "VN")
+		// a tick every other year, 2008 on
+		for i, x := range []int{48, 171, 295, 418, 542, 665, 789, 912} {
+			<text x={ fmt.Sprint(x) } y="408" text-anchor="middle" font-size="10" class="font-mono" fill="var(--color-foreground-muted)">{ fmt.Sprint(2008 + 2*i) }</text>
+		}
+	</svg>
+}
+
+templ work(name string, x, y int, alignEnd bool) {
+	if alignEnd {
+		<text x={ fmt.Sprint(x) } y={ fmt.Sprint(y) } text-anchor="end" font-size="13" font-weight="600" fill="var(--color-foreground-strong)">{ name }</text>
+	} else {
+		<text x={ fmt.Sprint(x) } y={ fmt.Sprint(y) } font-size="13" font-weight="600" fill="var(--color-foreground-strong)">{ name }</text>
+	}
+}
+
+templ span(x1, x2, y int) {
+	<line x1={ fmt.Sprint(x1) } y1={ fmt.Sprint(y) } x2={ fmt.Sprint(x2) } y2={ fmt.Sprint(y) } stroke="var(--color-foreground-strong)" stroke-width="3" stroke-linecap="round"></line>
+}
+
+templ release(x, y int, media string) {
+	<circle cx={ fmt.Sprint(x) } cy={ fmt.Sprint(y) } r="4.5" fill="var(--color-background-2)" stroke="var(--color-foreground-strong)" stroke-width="1.5"></circle>
+	<text x={ fmt.Sprint(x) } y={ fmt.Sprint(y + 19) } text-anchor="middle" font-size="11" fill="var(--color-foreground-muted)">{ media }</text>
+}
+
+// guides previews the first franchise and ordering guides from the catalog.
+templ guides(h Home) {
+	<section class="flex flex-col gap-[18px]" aria-labelledby="guides">
+		@sectionIntro("guides", "03 guides · in progress", "where do I start?",
+			"We're writing curated guides to franchises where the order matters. Here's a preview of the first two.")
+		<ul class="grid grid-cols-1 gap-4 md:grid-cols-2">
+			if f := h.Franchise; f != nil {
+				<li class="flex flex-col gap-4 rounded-xl border border-border bg-background-2 p-5">
+					@guideHead("franchise", f.Name, f.Href, f.Stats)
+					if f.Blurb != "" {
+						<p class="text-14 leading-[21px] text-foreground-muted">{ f.Blurb }</p>
+					}
+					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+						for _, c := range f.Continuities {
+							<div class="flex flex-col items-start gap-2">
+								@standingBadgeNamed(c.Standing, c.Name)
+								<ul class="flex w-full flex-col gap-[5px]">
+									for _, row := range c.Rows {
+										<li class="flex justify-between gap-2 border-b border-border-subtle pb-[5px]">
+											@Link(LinkProps{Href: row.Href, Variant: LinkNone, Class: "min-w-0 text-13 leading-4 text-foreground-strong"}) {
+												{ row.Title }
+											}
+											<span class="shrink-0 font-mono text-[10px] leading-3 tracking-[0.04em] text-foreground-muted">{ row.Meta }</span>
+										</li>
+									}
+								</ul>
+							</div>
+						}
+					</div>
+					<p class="mt-auto font-mono text-[10px] leading-3 tracking-[0.06em] text-foreground-muted uppercase">preview</p>
+				</li>
+			}
+			if o := h.Ordering; o != nil {
+				<li class="flex flex-col gap-4 rounded-xl border border-border bg-background-2 p-5">
+					@guideHead("ordering", o.Name, o.Href, o.Stats)
+					<ol class="flex flex-col border-t border-border-subtle">
+						for _, st := range o.Steps {
+							<li class="flex items-center gap-3 border-b border-border-subtle py-[9px]">
+								<span class="flex size-[22px] shrink-0 items-center justify-center rounded-full border border-border font-mono text-11 leading-[14px] text-foreground-muted">{ fmt.Sprint(st.Number) }</span>
+								<span class="flex min-w-0 flex-1 flex-col gap-0.5">
+									@Link(LinkProps{Href: st.Href, Variant: LinkNone, Class: "text-13 leading-4 text-foreground-strong"}) {
+										{ st.Title }
+									}
+									if st.Note != "" {
+										<span class="truncate text-12 leading-4 text-foreground-muted">{ st.Note }</span>
+									}
+								</span>
+								<span class={ "flex shrink-0 rounded-sm px-[7px] py-[3px] font-mono text-[10px] leading-3 tracking-[0.05em] uppercase", necessityClass(st.Necessity) }>{ st.Necessity }</span>
+							</li>
+						}
+					</ol>
+					<p class="mt-auto font-mono text-[10px] leading-3 tracking-[0.06em] text-foreground-muted uppercase">
+						preview · { fmt.Sprint(len(o.Steps)) } of { count(o.Total, "step", "steps") }
+					</p>
+				</li>
+			}
+		</ul>
+		<p class="flex items-center gap-3 rounded-xl border border-dashed border-border px-[18px] py-[14px] text-13 leading-[19px] text-foreground-muted">
+			<svg width="16" height="16" viewBox="0 0 18 18" class="shrink-0" aria-hidden="true">
+				<path d="M9 4v10M4 9h10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+			</svg>
+			Guides take time to get right, so they'll arrive a few at a time. We would rather write a few thorough ones than many shallow ones.
+		</p>
+	</section>
+}
+
+// guideHead is a guide card's stacked covers, kind, linked name and stats.
+templ guideHead(kind, name, href string, stats []string) {
+	<div class="flex gap-4">
+		<span class="relative h-[92px] w-[86px] shrink-0" aria-hidden="true">
+			<span class="absolute top-2 left-0 h-20 w-14 rounded-sm border-2 border-background-2 bg-placeholder"></span>
+			<span class="absolute top-1 left-[15px] h-20 w-14 rounded-sm border-2 border-background-2 bg-placeholder"></span>
+			<span class="absolute top-0 left-[30px] h-20 w-14 rounded-sm border-2 border-background-2 bg-placeholder"></span>
+		</span>
+		<div class="flex flex-col gap-[7px]">
+			<p class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">{ kind }</p>
+			<h3 class="text-[19px] leading-6 font-semibold tracking-[-0.02em] text-foreground-strong">
+				@Link(LinkProps{Href: href, Variant: LinkNone}) {
+					{ name }
+				}
+			</h3>
+			<p class="flex flex-wrap items-center gap-[7px] font-mono text-11 leading-[14px] text-foreground-muted">
+				for i, s := range stats {
+					if i > 0 {
+						<span class="inline-block size-[3px] shrink-0 rounded-full bg-border" aria-hidden="true"></span>
+					}
+					<span>{ s }</span>
+				}
+			</p>
+		</div>
+	</div>
+}
+
+// standingBadgeNamed is a continuity's name in its standing's colours.
+templ standingBadgeNamed(s, name string) {
+	<span class={ "flex h-[21px] items-center gap-[5px] rounded-sm px-2", standing(s).Badge }>
+		<span class={ "inline-block size-[5px] shrink-0 rounded-full", standing(s).Dot } aria-hidden="true"></span>
+		<span class={ "font-mono text-[10px] leading-3 tracking-[0.05em]", standing(s).Text, templ.KV("text-foreground-strong", s == "") }>{ name }</span>
+	</span>
+}
+
+templ keep(title, body string, soon bool) {
+	<li class="flex flex-col gap-1.5 border-t border-border pt-[14px]">
+		<p class="flex items-baseline gap-[7px] text-15 leading-[18px] font-semibold text-foreground-strong">
+			{ title }
+			if soon {
+				<span class="font-mono text-[10px] leading-[14px] font-normal tracking-[0.04em] text-foreground-muted uppercase">soon</span>
+			}
+		</p>
+		<p class="text-13 leading-5 text-foreground-muted">{ body }</p>
+	</li>
+}
