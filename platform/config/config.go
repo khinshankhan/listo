@@ -20,6 +20,9 @@ const (
 
 	// EnvLogSource adds the calling file and line to each log line.
 	EnvLogSource = "LISTO_LOG_SOURCE"
+
+	// EnvDev marks a development server: nothing it sends is cached.
+	EnvDev = "LISTO_DEV"
 )
 
 // DefaultAddr is where the server listens without EnvAddr.
@@ -46,6 +49,11 @@ func JSONLogs() bool {
 // LogSource reports whether to include caller information.
 func LogSource() bool {
 	return truthy(os.Getenv(EnvLogSource))
+}
+
+// Dev reports whether this is a development server.
+func Dev() bool {
+	return truthy(os.Getenv(EnvDev))
 }
 
 func truthy(s string) bool {

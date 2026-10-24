@@ -54,6 +54,7 @@ func TestWrappersPassCapabilitiesThrough(t *testing.T) {
 	wrapped := map[string]Middleware{
 		"Recover":   Recover,
 		"BlackHole": BlackHole(nil, "/api"),
+		"NoStore":   NoStore,
 	}
 
 	for name, mw := range wrapped {

@@ -33,7 +33,12 @@ func RunHTTPServer(ctx context.Context) error {
 	}
 	defer db.Close()
 
-	return newHTTPServer(config.Addr(), bundle, db, sqlcgen.New(db)).run(ctx)
+	s := newHTTPServer(config.Addr(), bundle, db, sqlcgen.New(db))
+	// so a rebuild shows on the next click, not a minute later
+	if config.Dev() {
+		s.srv.Handler = middleware.NoStore(s.srv.Handler)
+	}
+	return s.run(ctx)
 }
 
 type httpServer struct {
