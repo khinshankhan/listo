@@ -34,15 +34,24 @@
   stroke-dasharray: 1.5 4;
 }
 
-/* a hovered card's links stand out, the rest step back */
-.timeline .react-flow__edge,
-.timeline .timeline-label {
+/* a hovered or focused card's line, before and after it, stands out; the
+   rest steps back. Dim lines change colour rather than fade, so where a
+   few share a trunk they don't stack up darker. */
+.timeline .timeline-label,
+.timeline .react-flow__node-work {
   transition: opacity 120ms;
 }
 
-.timeline .react-flow__edge.is-dim,
+.timeline .react-flow__edge.is-dim .react-flow__edge-path {
+  stroke: var(--color-border);
+}
+
 .timeline .timeline-label.is-dim {
   opacity: 0.25;
+}
+
+.timeline .react-flow__node-work.is-dim {
+  opacity: 0.4;
 }
 
 .timeline .react-flow__node:hover .timeline-card {
@@ -50,8 +59,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .timeline .react-flow__edge,
-  .timeline .timeline-label {
+  .timeline .timeline-label,
+  .timeline .react-flow__node-work {
     transition: none;
   }
 }

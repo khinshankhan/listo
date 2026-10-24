@@ -66,12 +66,12 @@ const gap = 10;
 const offset = 14;
 const radius = 10;
 
-type WorkNode = Node<{ work: Work }, "work">;
+type WorkNode = Node<{ work: Work; light: (id: string | null) => void }, "work">;
 type BoxNode = Node<{ name: string }, "box">;
 type TickNode = Node<{ label: string }, "tick">;
 type LinkEdge = Edge<{ label: string; trunkX: number | null; turn: number; spoiler: boolean; dim: boolean }, "link">;
 
-const WorkCard = ({ data: { work } }: NodeProps<WorkNode>): ReactNode => {
+const WorkCard = ({ id, data: { work, light } }: NodeProps<WorkNode>): ReactNode => {
   const left = work.left - pad;
   const first = work.dots[0].x - left;
   const last = work.dots[work.dots.length - 1].x - left;
@@ -79,6 +79,8 @@ const WorkCard = ({ data: { work } }: NodeProps<WorkNode>): ReactNode => {
     <div className="timeline-card relative rounded-lg border border-border bg-background-2" style={{ width: work.right - work.left + 2 * pad, height: cardHeight }}>
       <a
         href={work.href}
+        onFocus={() => light(id)}
+        onBlur={() => light(null)}
         className="absolute top-[7px] right-[10px] left-[10px] truncate text-13 leading-4 font-semibold text-foreground-strong after:absolute after:inset-[-7px_-10px_-27px] hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stark-contrast"
       >
         {work.name}
@@ -154,17 +156,54 @@ const Link = ({ id, sourceX, sourceY, sourcePosition, targetX, targetY, targetPo
 };
 
 const nodeTypes = { work: WorkCard, box: Box, tick: Tick };
+
+// lineage is a work and every work before or after it along the links, as
+// the works up to it and the works down from it, each including it
+const lineage = (id: string, links: Props["links"], spoilers: boolean): [Set<string>, Set<string>] => {
+  const shown = (links ?? []).filter((l) => spoilers || !l.spoiler);
+  const walk = (from: "source" | "target", to: "source" | "target"): Set<string> => {
+    const seen = new Set([id]);
+    const next = [id];
+    for (let at = next.pop(); at !== undefined; at = next.pop()) {
+      for (const l of shown) {
+        const other = String(l[to]);
+        if (String(l[from]) === at && !seen.has(other)) {
+          seen.add(other);
+          next.push(other);
+        }
+      }
+    }
+    return seen;
+  };
+  return [walk("target", "source"), walk("source", "target")];
+};
 const edgeTypes = { link: Link };
 
 const Timeline = ({ width, height, ticks, boxes, works, links }: Props): ReactNode => {
-  const [hovered, setHovered] = useState<string | null>(null);
+  const [lit, setLit] = useState<{ id: string; spoilers: boolean } | null>(null);
+  const [root, setRoot] = useState<HTMLElement | null>(null);
+  // spoilers count only once they're shown, so a highlight can't give one away
+  const light = (id: string | null): void => {
+    const reveal = root?.closest(".timeline")?.querySelector<HTMLInputElement>(".timeline-reveal");
+    setLit(id === null ? null : { id, spoilers: reveal?.checked ?? true });
+  };
+  const [up, down] = lit === null ? [null, null] : lineage(lit.id, links, lit.spoilers);
+  const onLine = (a: string, b: string): boolean => up === null || down === null || (up.has(a) && up.has(b)) || (down.has(a) && down.has(b));
   const byID = new Map(works.map((w) => [w.id, w]));
 
   const nodes: Node[] = [
     ...ticks.map((t): TickNode => ({ id: `tick${t.x}`, type: "tick", position: { x: t.x - 20, y: 0 }, width: 40, height: height - 4, data: { label: t.label }, zIndex: -2 })),
     ...(boxes ?? []).map((b, i): BoxNode => ({ id: `box${i}`, type: "box", position: { x: b.x, y: b.y }, width: b.w, height: b.h, data: { name: b.name } })),
     ...works.map(
-      (w): WorkNode => ({ id: String(w.id), type: "work", position: { x: w.left - pad, y: w.y - above }, width: w.right - w.left + 2 * pad, height: cardHeight, data: { work: w } }),
+      (w): WorkNode => ({
+        id: String(w.id),
+        type: "work",
+        position: { x: w.left - pad, y: w.y - above },
+        width: w.right - w.left + 2 * pad,
+        height: cardHeight,
+        className: onLine(String(w.id), String(w.id)) ? "" : "is-dim",
+        data: { work: w, light },
+      }),
     ),
   ];
   for (const n of nodes) {
@@ -197,7 +236,7 @@ const Timeline = ({ width, height, ticks, boxes, works, links }: Props): ReactNo
       turn = down ? -gap : gap;
     }
     const id = `link${i}`;
-    const dim = hovered !== null && hovered !== String(l.source) && hovered !== String(l.target);
+    const dim = !onLine(String(l.source), String(l.target));
     return {
       id,
       type: "link",
@@ -206,7 +245,9 @@ const Timeline = ({ width, height, ticks, boxes, works, links }: Props): ReactNo
       target: String(l.target),
       targetHandle: handles[1],
       className: [l.sequel ? "timeline-sequel" : "timeline-other", l.spoiler ? "timeline-spoiler" : "", dim ? "is-dim" : ""].join(" "),
-      markerEnd: l.sequel ? { type: MarkerType.ArrowClosed, width: 14, height: 14, color: "var(--color-foreground-muted)" } : undefined,
+      markerEnd: l.sequel ? { type: MarkerType.ArrowClosed, width: 14, height: 14, color: dim ? "var(--color-border)" : "var(--color-foreground-muted)" } : undefined,
+      // lit lines draw over dim ones where they share a trunk
+      zIndex: dim ? 0 : 1,
       data: { label: l.label, trunkX: l.sequel && from.y !== to.y ? trunkX : null, turn, spoiler: l.spoiler, dim },
       focusable: false,
       selectable: false,
@@ -214,7 +255,7 @@ const Timeline = ({ width, height, ticks, boxes, works, links }: Props): ReactNo
   });
 
   return (
-    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="timeline, scrolls sideways">
+    <div ref={setRoot} className="overflow-x-auto" tabIndex={0} role="region" aria-label="timeline, scrolls sideways">
       <div className="mx-auto" style={{ width, height }}>
         <ReactFlow
           nodes={nodes}
@@ -235,8 +276,8 @@ const Timeline = ({ width, height, ticks, boxes, works, links }: Props): ReactNo
           nodesFocusable={false}
           edgesFocusable={false}
           elementsSelectable={false}
-          onNodeMouseEnter={(_, n) => n.type === "work" && setHovered(n.id)}
-          onNodeMouseLeave={() => setHovered(null)}
+          onNodeMouseEnter={(_, n) => n.type === "work" && light(n.id)}
+          onNodeMouseLeave={() => light(null)}
           proOptions={{ hideAttribution: true }}
         />
       </div>
