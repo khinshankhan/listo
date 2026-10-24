@@ -1,9 +1,11 @@
 package views
 
-// Franchise is a franchise page: what's in it, how it's split into
-// continuities, and the ways in.
+// Franchise is a group's page, whatever its kind: what's in it, how it's split
+// into continuities, and the ways in.
 type Franchise struct {
-	Name string
+	Name, Native, NativeLang string
+	// Standing is how a continuity stands; other kinds have none.
+	Standing string
 	// Trail is the breadcrumb, outermost group first, ending at this one.
 	Trail []Crumb
 	// Stats is the line under the title: "6 entries", "2 media".
@@ -19,6 +21,10 @@ type Franchise struct {
 	Elsewhere      string
 	ElsewhereAside string
 	Siblings       []SiblingCard
+	// the group's own titles, relations and links, at the foot of the page
+	Titles    []Title
+	Relations []Related
+	Links     []SiteLink
 }
 
 // Crumb is one step of a breadcrumb. The page itself has no Href.
@@ -45,11 +51,11 @@ type EntrySection struct {
 	Rows                  []EntryRow
 }
 
-// EntryRow is one entry in a franchise list. Role is its part in its group,
-// eg "source material"; Detail is when and how long, eg "spring 2011, 24
-// episodes".
+// EntryRow is one entry in a group's list. Position is its place in its own
+// group, eg "#1"; Role is its part there, eg "source material"; Detail is
+// when and how long, eg "spring 2011, 24 episodes".
 type EntryRow struct {
-	Title, Href, Role, Medium, Detail string
+	Position, Title, Href, Role, Medium, Detail string
 }
 
 // SiblingCard is a group beside this one under the same parent.

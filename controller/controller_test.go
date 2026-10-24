@@ -167,8 +167,21 @@ func TestCatalogPages(t *testing.T) {
 			want: []string{"on this page</p>", `href="#continuities">`, `href="#entries">`, `href="#related">`}},
 		{name: "a universe, not an universe", path: "/groups/1/science-adventure", status: http.StatusOK,
 			want: []string{`content="Science Adventure, a universe on listo."`}},
-		{name: "a continuity shows its standing", path: "/groups/3/steins-gate-main", status: http.StatusOK,
-			want: []string{"w-12 shrink-0", "continuity &middot; primary", `href="/entries/7/steins-gate-anime">Steins;Gate</a>`, "anime · 2011"}},
+		// nothing seeded under the universe itself in the fakes
+		{name: "an empty group says so, and has no stats to show", path: "/groups/1/science-adventure", status: http.StatusOK,
+			want:     []string{"Nothing in Science Adventure yet."},
+			dontWant: []string{"0 entries"}},
+		{name: "every kind of group gets the same page", path: "/groups/3/steins-gate-main", status: http.StatusOK,
+			want: []string{`aria-current="page">Main timeline</span>`, ">continuity</span>", "Main timeline</h1>", ">primary</span>",
+				`content="Main timeline, a continuity on listo: 1 entry, 1 medium."`}},
+		{name: "a series' entries keep their positions", path: "/groups/3/steins-gate-main", status: http.StatusOK,
+			want: []string{">#1</span>", `href="/entries/7/steins-gate-anime">Steins;Gate</a>`, ">spring 2011 · 24 episodes</span>"}},
+		// entries all straight in the group: nothing to group them by
+		{name: "a group without sub-groups lists by release", path: "/groups/3/steins-gate-main", status: http.StatusOK,
+			want:     []string{`href="/groups/3/steins-gate-main" aria-current="page">by release</a>`, `href="/groups/3/steins-gate-main?by=medium">by medium</a>`},
+			dontWant: []string{"by continuity", "by group", "directly in"}},
+		{name: "an old grouping falls back to release", path: "/groups/3/steins-gate-main?by=continuity", status: http.StatusOK,
+			want: []string{`href="/groups/3/steins-gate-main" aria-current="page">by release</a>`}},
 		{name: "an ordering, position by position", path: "/groups/2/steins-gate", status: http.StatusOK,
 			want: []string{">recommended order</h2>", "first-timer order", "Watch the series, then the branch",
 				">01</span>", "Ep. 1 to Ep. 22", ">02</span>", ">23β</span>", ">optional</span>", "epilogue"}},
@@ -340,6 +353,8 @@ func TestFrontPages(t *testing.T) {
 		{name: "browse everything", path: "/entries", status: http.StatusOK,
 			want: []string{`href="/entries" aria-current="page"`, ">everything</span>", `href="/entries/7/steins-gate-anime">Steins;Gate</a>`, `href="/entries/6/steins-gate-vn">Steins;Gate</a>`,
 				`<link rel="canonical" href="/entries">`}},
+		{name: "an empty list says so", path: "/entries?medium=visual_novel", status: http.StatusOK,
+			want: []string{"Nothing to browse here yet."}, dontWant: []string{">entries</h2>"}},
 		{name: "browse one medium", path: "/entries?medium=anime", status: http.StatusOK,
 			want: []string{`href="/entries/7/steins-gate-anime">Steins;Gate</a>`,
 				`<link rel="canonical" href="/entries?medium=anime">`, `href="/entries?medium=anime" aria-current="page"`},
@@ -452,23 +467,6 @@ func (fakeCatalog) GroupByPublicID(_ context.Context, id int64) (sqlcgen.GroupBy
 		return sqlcgen.GroupByPublicIDRow{}, errors.New("connection reset")
 	}
 	return sqlcgen.GroupByPublicIDRow{}, pgx.ErrNoRows
-}
-
-func (fakeCatalog) GroupMembers(_ context.Context, id uuid.UUID) ([]sqlcgen.GroupMembersRow, error) {
-	continuity, anime, first := "continuity", "anime", "#1"
-	start := time.Date(2011, 4, 6, 0, 0, 0, 0, time.UTC)
-	switch id {
-	case sgFranchise:
-		return []sqlcgen.GroupMembersRow{
-			{PublicID: 3, Slug: "steins-gate-main", Type: "group", Title: "Main timeline", GroupKind: &continuity},
-		}, nil
-	case sgMain:
-		return []sqlcgen.GroupMembersRow{
-			{PublicID: 7, Slug: "steins-gate-anime", Type: "entry", Title: "Steins;Gate", MediumLabel: &anime, StartDate: &start,
-				PositionLabel: &first},
-		}, nil
-	}
-	return nil, nil
 }
 
 func (fakeCatalog) GroupOrderings(_ context.Context, id uuid.UUID) ([]sqlcgen.GroupOrderingsRow, error) {
@@ -750,6 +748,16 @@ func (fakeCatalog) TitleSuggestions(_ context.Context, arg sqlcgen.TitleSuggesti
 }
 
 func (fakeCatalog) GroupEntries(_ context.Context, id uuid.UUID) ([]sqlcgen.GroupEntriesRow, error) {
+	if id == sgMain {
+		// the anime straight in the continuity, first in it
+		anime, month, total, first := "anime", "month", int32(24), "#1"
+		start := time.Date(2011, 4, 1, 0, 0, 0, 0, time.UTC)
+		return []sqlcgen.GroupEntriesRow{{
+			PublicID: 7, Slug: "steins-gate-anime", Title: "Steins;Gate", Medium: "anime", MediumLabel: anime, Format: "tv",
+			FormatLabel: anime, StartDate: &start, StartPrecision: &month, UnitKind: "episode", UnitTotal: &total,
+			PositionLabel: &first, BranchPublicID: 7, BranchSlug: "steins-gate-anime", BranchType: "entry",
+		}}, nil
+	}
 	if id != sgFranchise {
 		return nil, nil
 	}

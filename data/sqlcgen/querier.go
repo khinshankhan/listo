@@ -18,11 +18,9 @@ type Querier interface {
 	EntryByPublicID(ctx context.Context, publicID int64) (EntryByPublicIDRow, error)
 	GroupByPublicID(ctx context.Context, publicID int64) (GroupByPublicIDRow, error)
 	// Every entry under a group at any depth, with the branch it sits under (the
-	// group's direct member it was reached through) and its role in its own
-	// group. An entry under two branches comes back once for each.
+	// group's direct member it was reached through), and its role and position in
+	// its own group. An entry under two branches comes back once for each.
 	GroupEntries(ctx context.Context, groupID uuid.UUID) ([]GroupEntriesRow, error)
-	// A group's direct members: subgroups first, then entries in release order.
-	GroupMembers(ctx context.Context, groupID uuid.UUID) ([]GroupMembersRow, error)
 	// A group's orderings, recommended first, one row per step.
 	GroupOrderings(ctx context.Context, groupID uuid.UUID) ([]GroupOrderingsRow, error)
 	// The other groups that share a parent with this one, with every entry

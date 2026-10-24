@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -37,32 +36,11 @@ func (p *Pages) Group(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if g.Kind == "franchise" {
-		p.franchise(w, r, g, canonical)
-		return
-	}
-
-	v, err := p.groupView(ctx, g)
-	if err != nil {
-		p.serverError(w, r, err)
-		return
-	}
-
-	head := views.Head{
-		Title:       fmt.Sprintf("%s | listo", g.Name),
-		Description: fmt.Sprintf("%s, %s %s on listo.", g.Name, article(g.Kind), g.Kind),
-		Canonical:   canonical,
-	}
-	chrome, err := p.chrome(r, nil, "")
-	if err != nil {
-		p.serverError(w, r, err)
-		return
-	}
-	p.render(w, r, http.StatusOK, head, chrome, views.GroupPage(v))
+	p.groupPage(w, r, g, canonical)
 }
 
-// franchise renders a franchise's own page, with its sections in the sidebar.
-func (p *Pages) franchise(w http.ResponseWriter, r *http.Request, g sqlcgen.GroupByPublicIDRow, canonical string) {
+// groupPage renders any kind of group, with its sections in the sidebar.
+func (p *Pages) groupPage(w http.ResponseWriter, r *http.Request, g sqlcgen.GroupByPublicIDRow, canonical string) {
 	v, anchors, err := p.franchiseView(r.Context(), g, r.URL.Query().Get("by"))
 	if err != nil {
 		p.serverError(w, r, err)
@@ -78,47 +56,12 @@ func (p *Pages) franchise(w http.ResponseWriter, r *http.Request, g sqlcgen.Grou
 		chrome.Sidebar.Franchises[i].Active = chrome.Sidebar.Franchises[i].Href == canonical
 	}
 
-	head := views.Head{
-		Title:       fmt.Sprintf("%s | listo", g.Name),
-		Description: fmt.Sprintf("%s, a franchise on listo: %s.", g.Name, strings.Join(v.Stats, ", ")),
-		Canonical:   canonical,
+	description := fmt.Sprintf("%s, %s %s on listo", g.Name, article(g.Kind), g.Kind)
+	if len(v.Stats) > 0 {
+		description += ": " + strings.Join(v.Stats, ", ")
 	}
+	head := views.Head{Title: fmt.Sprintf("%s | listo", g.Name), Description: description + ".", Canonical: canonical}
 	p.render(w, r, http.StatusOK, head, chrome, views.FranchisePage(v))
-}
-
-func (p *Pages) groupView(ctx context.Context, g sqlcgen.GroupByPublicIDRow) (views.Group, error) {
-	v := views.Group{Name: g.Name, Kind: g.Kind, Standing: deref(g.Standing)}
-
-	members, err := p.catalog.GroupMembers(ctx, g.ID)
-	if err != nil {
-		return v, fmt.Errorf("members: %w", err)
-	}
-	for _, m := range members {
-		member := views.Member{
-			Position: deref(m.PositionLabel),
-			Title:    m.Title,
-			Href:     NodePath(m.Type, m.PublicID, m.Slug),
-			Meta:     deref(m.GroupKind),
-		}
-		if m.Type == "entry" {
-			member.Meta = withYear(deref(m.MediumLabel), m.StartDate)
-		}
-		v.Members = append(v.Members, member)
-	}
-
-	steps, err := p.catalog.GroupOrderings(ctx, g.ID)
-	if err != nil {
-		return v, fmt.Errorf("orderings: %w", err)
-	}
-	v.Orderings = orderings(steps, GroupPath(g.PublicID, g.Slug))
-
-	parts, err := p.nodeParts(ctx, g.ID, "")
-	if err != nil {
-		return v, err
-	}
-	v.Native, v.NativeLang = parts.native, parts.nativeLang
-	v.Titles, v.Relations, v.Groups, v.Links = parts.titles, parts.relations, parts.groups, parts.links
-	return v, nil
 }
 
 // orderings folds the step rows back into orderings, positions, choices and

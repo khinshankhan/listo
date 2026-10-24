@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -24,7 +25,14 @@ var standingRank = map[string]int{"primary": 0, "active": 1, "concluded": 2, "di
 // the ?by= grouping; anything unknown is the default.
 func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow, by string) (views.Franchise, []views.Anchor, error) {
 	canonical := GroupPath(g.PublicID, g.Slug)
-	v := views.Franchise{Name: g.Name}
+	v := views.Franchise{Name: g.Name, Standing: deref(g.Standing)}
+
+	parts, err := p.nodeParts(ctx, g.ID, "")
+	if err != nil {
+		return v, nil, err
+	}
+	v.Native, v.NativeLang = parts.native, parts.nativeLang
+	v.Titles, v.Relations, v.Links = parts.titles, parts.relations, parts.links
 
 	parents, err := p.catalog.NodeGroups(ctx, g.ID)
 	if err != nil {
@@ -46,14 +54,19 @@ func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow,
 		v.Stats = append(v.Stats, plural(len(v.Continuities), "continuity", "continuities"))
 	}
 
-	if !validSort(by) {
-		by = franchiseSorts[0].key
+	// with no sub-groups there's nothing to group by, so release order leads
+	sorts := franchiseSorts
+	if !hasBranches(rows) {
+		sorts = []struct{ key, label string }{{"release", "by release"}, {"medium", "by medium"}}
 	}
-	for i, s := range franchiseSorts {
+	if !slices.ContainsFunc(sorts, func(s struct{ key, label string }) bool { return s.key == by }) {
+		by = sorts[0].key
+	}
+	for i, s := range sorts {
 		link := views.SortLink{Label: s.label, Href: canonical + "?by=" + s.key, Active: s.key == by}
 		if i == 0 {
 			link.Href = canonical
-			if len(v.Continuities) == 0 {
+			if s.key == "continuity" && len(v.Continuities) == 0 {
 				link.Label = "by group"
 			}
 		}
@@ -107,6 +120,9 @@ func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow,
 // entryStats is "6 entries", "2 media": each entry once, however many
 // branches it sits under.
 func entryStats(rows []sqlcgen.GroupEntriesRow) []string {
+	if len(rows) == 0 {
+		return nil
+	}
 	entries, media := map[int64]bool{}, map[string]bool{}
 	for _, r := range rows {
 		entries[r.PublicID] = true
@@ -115,9 +131,11 @@ func entryStats(rows []sqlcgen.GroupEntriesRow) []string {
 	return []string{plural(len(entries), "entry", "entries"), plural(len(media), "medium", "media")}
 }
 
-func validSort(by string) bool {
-	for _, s := range franchiseSorts {
-		if s.key == by {
+// hasBranches is whether any entry sits under a sub-group rather than in the
+// group itself.
+func hasBranches(rows []sqlcgen.GroupEntriesRow) bool {
+	for _, r := range rows {
+		if r.BranchType != "entry" {
 			return true
 		}
 	}
@@ -242,9 +260,10 @@ func entryRow(r sqlcgen.GroupEntriesRow) views.EntryRow {
 		detail = append(detail, plural(int(*r.UnitTotal), r.UnitKind, r.UnitKind+"s"))
 	}
 	return views.EntryRow{
-		Title: r.Title,
-		Href:  EntryPath(r.PublicID, r.Slug),
-		Role:  deref(r.Role),
+		Position: deref(r.PositionLabel),
+		Title:    r.Title,
+		Href:     EntryPath(r.PublicID, r.Slug),
+		Role:     deref(r.Role),
 		// the format's label reads better here: an anime movie is "film"
 		Medium: r.FormatLabel,
 		Detail: strings.Join(detail, " · "),

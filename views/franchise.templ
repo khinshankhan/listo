@@ -8,7 +8,13 @@ templ FranchisePage(f Franchise) {
 			@trail(f.Trail)
 			<div class="flex flex-wrap items-end justify-between gap-4">
 				<div class="flex flex-col gap-[10px]">
-					<h1 class="font-heading text-32 leading-10 font-semibold wrap-break-word sm:text-44 sm:leading-[44px] tracking-tight text-foreground-strong">{ f.Name }</h1>
+					<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+						<h1 class="font-heading text-32 leading-10 font-semibold wrap-break-word sm:text-44 sm:leading-[44px] tracking-tight text-foreground-strong">{ f.Name }</h1>
+						@standingBadge(f.Standing)
+					</div>
+					if f.Native != "" {
+						<p class="text-16 leading-6 text-foreground-muted" lang={ f.NativeLang }>{ f.Native }</p>
+					}
 					if len(f.Stats) > 0 {
 						<p class="flex flex-wrap items-center gap-[9px] text-14 leading-[18px] text-foreground-muted">
 							for i, s := range f.Stats {
@@ -71,6 +77,11 @@ templ FranchisePage(f Franchise) {
 					}
 				</nav>
 			</div>
+			if len(f.Sections) == 0 {
+				<p class="rounded-[10px] border border-dashed border-border px-[18px] py-4 text-14 text-foreground-muted">
+					Nothing in { f.Name } yet. Entries show up here as they're added to the catalog.
+				</p>
+			}
 			for _, sec := range f.Sections {
 				if sec.Label != "" {
 					<h3 class="flex items-center gap-[10px] pt-1">
@@ -93,6 +104,9 @@ templ FranchisePage(f Franchise) {
 							<span class="h-[46px] w-[33px] shrink-0 rounded-sm bg-placeholder" aria-hidden="true"></span>
 							<div class="flex min-w-0 flex-1 flex-col gap-1">
 								<div class="flex flex-wrap items-baseline gap-x-[9px] gap-y-1">
+									if row.Position != "" {
+										<span class="font-mono text-12 leading-[18px] text-foreground-muted">{ row.Position }</span>
+									}
 									@Link(LinkProps{Href: row.Href, Variant: LinkNone, Class: "text-14 leading-[18px] font-semibold text-foreground-strong"}) {
 										{ row.Title }
 									}
@@ -139,6 +153,16 @@ templ FranchisePage(f Franchise) {
 					}
 				</ul>
 			</section>
+		}
+		if len(f.Relations) > 0 || len(f.Titles) > 1 || len(f.Links) > 0 {
+			<div class="flex flex-col gap-8">
+				@relationsPanel(f.Relations)
+				// one title is just the name above
+				if len(f.Titles) > 1 {
+					@titlesPanel(f.Titles)
+				}
+				@linksPanel(f.Links)
+			</div>
 		}
 	</div>
 }

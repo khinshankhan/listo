@@ -48,33 +48,6 @@ type GroupRef struct {
 	Name, Href, Position string
 }
 
-// Group is what a group page shows, already in display form.
-type Group struct {
-	Name, Kind, Standing string
-	Native, NativeLang   string
-	Members              []Member
-	Orderings            []Ordering
-	Titles               []Title
-	Relations            []Related
-	Groups               []GroupRef
-	Links                []SiteLink
-}
-
-// Positioned reports whether any member has a position.
-func (g Group) Positioned() bool {
-	for _, m := range g.Members {
-		if m.Position != "" {
-			return true
-		}
-	}
-	return false
-}
-
-// Member is one direct member of a group, an entry or a subgroup.
-type Member struct {
-	Position, Title, Href, Meta string
-}
-
 // Ordering is a curated path through a group. Names render as typed.
 type Ordering struct {
 	// Kind is "recommended", "release" or "chronological".

@@ -8,20 +8,6 @@ from catalog.node n
 join catalog.grp g on g.id = n.id
 where n.public_id = $1;
 
--- name: GroupMembers :many
--- A group's direct members: subgroups first, then entries in release order.
-select n.public_id, n.slug, n.type,
-       coalesce(e.title, g.name)::text as title,
-       g.kind as group_kind, m.label as medium_label, e.start_date,
-       ms.role, ms.position_label
-from catalog.membership ms
-join catalog.node n on n.id = ms.member_id
-left join catalog.entry e on e.id = n.id
-left join catalog.grp g on g.id = n.id
-left join catalog.medium m on m.medium = e.medium
-where ms.group_id = $1
-order by n.type desc, e.start_date nulls last, title;
-
 -- name: GroupOrderings :many
 -- A group's orderings, recommended first, one row per step.
 select o.id as ordering_id, o.kind, o.name, o.rationale, o.origin,
@@ -43,8 +29,8 @@ order by case o.kind when 'recommended' then 0 when 'release' then 1 else 2 end,
 
 -- name: GroupEntries :many
 -- Every entry under a group at any depth, with the branch it sits under (the
--- group's direct member it was reached through) and its role in its own
--- group. An entry under two branches comes back once for each.
+-- group's direct member it was reached through), and its role and position in
+-- its own group. An entry under two branches comes back once for each.
 with recursive down (branch, group_id, member_id) as (
   select ms.member_id, ms.group_id, ms.member_id
   from catalog.membership ms
@@ -56,7 +42,7 @@ with recursive down (branch, group_id, member_id) as (
 ) cycle member_id set looped using path
 select n.public_id, n.slug, e.title, e.medium, m.label as medium_label, e.format,
        mf.label as format_label, e.start_date, e.start_precision, e.unit_kind, e.unit_total,
-       ms.role,
+       ms.role, ms.position_label,
        b.public_id as branch_public_id, b.slug as branch_slug, b.type as branch_type,
        bg.name as branch_name, bg.kind as branch_kind, bg.standing as branch_standing
 from down

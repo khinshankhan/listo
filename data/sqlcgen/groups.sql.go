@@ -54,7 +54,7 @@ with recursive down (branch, group_id, member_id) as (
 ) cycle member_id set looped using path
 select n.public_id, n.slug, e.title, e.medium, m.label as medium_label, e.format,
        mf.label as format_label, e.start_date, e.start_precision, e.unit_kind, e.unit_total,
-       ms.role,
+       ms.role, ms.position_label,
        b.public_id as branch_public_id, b.slug as branch_slug, b.type as branch_type,
        bg.name as branch_name, bg.kind as branch_kind, bg.standing as branch_standing
 from down
@@ -82,6 +82,7 @@ type GroupEntriesRow struct {
 	UnitKind       string
 	UnitTotal      *int32
 	Role           *string
+	PositionLabel  *string
 	BranchPublicID int64
 	BranchSlug     string
 	BranchType     string
@@ -91,8 +92,8 @@ type GroupEntriesRow struct {
 }
 
 // Every entry under a group at any depth, with the branch it sits under (the
-// group's direct member it was reached through) and its role in its own
-// group. An entry under two branches comes back once for each.
+// group's direct member it was reached through), and its role and position in
+// its own group. An entry under two branches comes back once for each.
 func (q *Queries) GroupEntries(ctx context.Context, groupID uuid.UUID) ([]GroupEntriesRow, error) {
 	rows, err := q.db.Query(ctx, groupEntries, groupID)
 	if err != nil {
@@ -115,69 +116,13 @@ func (q *Queries) GroupEntries(ctx context.Context, groupID uuid.UUID) ([]GroupE
 			&i.UnitKind,
 			&i.UnitTotal,
 			&i.Role,
+			&i.PositionLabel,
 			&i.BranchPublicID,
 			&i.BranchSlug,
 			&i.BranchType,
 			&i.BranchName,
 			&i.BranchKind,
 			&i.BranchStanding,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const groupMembers = `-- name: GroupMembers :many
-select n.public_id, n.slug, n.type,
-       coalesce(e.title, g.name)::text as title,
-       g.kind as group_kind, m.label as medium_label, e.start_date,
-       ms.role, ms.position_label
-from catalog.membership ms
-join catalog.node n on n.id = ms.member_id
-left join catalog.entry e on e.id = n.id
-left join catalog.grp g on g.id = n.id
-left join catalog.medium m on m.medium = e.medium
-where ms.group_id = $1
-order by n.type desc, e.start_date nulls last, title
-`
-
-type GroupMembersRow struct {
-	PublicID      int64
-	Slug          string
-	Type          string
-	Title         string
-	GroupKind     *string
-	MediumLabel   *string
-	StartDate     *time.Time
-	Role          *string
-	PositionLabel *string
-}
-
-// A group's direct members: subgroups first, then entries in release order.
-func (q *Queries) GroupMembers(ctx context.Context, groupID uuid.UUID) ([]GroupMembersRow, error) {
-	rows, err := q.db.Query(ctx, groupMembers, groupID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []GroupMembersRow{}
-	for rows.Next() {
-		var i GroupMembersRow
-		if err := rows.Scan(
-			&i.PublicID,
-			&i.Slug,
-			&i.Type,
-			&i.Title,
-			&i.GroupKind,
-			&i.MediumLabel,
-			&i.StartDate,
-			&i.Role,
-			&i.PositionLabel,
 		); err != nil {
 			return nil, err
 		}

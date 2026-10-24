@@ -19,6 +19,10 @@ templ BrowsePage(b Browse) {
 				</li>
 			}
 		}
+	} else {
+		<p class="mt-8 rounded-[10px] border border-dashed border-border px-[18px] py-4 text-14 text-foreground-muted">
+			Nothing to browse here yet. The catalog grows one entry at a time.
+		</p>
 	}
 }
 
@@ -156,41 +160,6 @@ templ relationCard(r Related) {
 	</li>
 }
 
-// GroupPage is a group's orderings and members.
-templ GroupPage(g Group) {
-	<header>
-		<p class="font-mono text-12 tracking-wide text-foreground-muted uppercase">
-			{ g.Kind }
-			if g.Standing != "" {
-				&middot; { g.Standing }
-			}
-		</p>
-		@heading(g.Name, g.Native, g.NativeLang)
-		@partOf(g.Groups)
-	</header>
-	for _, o := range g.Orderings {
-		@orderingPanel(o)
-	}
-	if len(g.Members) > 0 {
-		@panel("members") {
-			for _, m := range g.Members {
-				<li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
-					if g.Positioned() {
-						<span class="w-12 shrink-0 font-mono text-13 text-foreground-muted">{ m.Position }</span>
-					}
-					@Link(LinkProps{Href: m.Href, Variant: LinkNone, Class: "font-semibold text-foreground-strong"}) {
-						{ m.Title }
-					}
-					<span class="ml-auto font-mono text-13 text-foreground-muted">{ m.Meta }</span>
-				</li>
-			}
-		}
-	}
-	@relationsPanel(g.Relations)
-	@titlesPanel(g.Titles)
-	@linksPanel(g.Links)
-}
-
 // orderingPanel is one curated path: its name and rationale, then each
 // position, with forks as pick-one choices.
 templ orderingPanel(o Ordering) {
@@ -252,13 +221,6 @@ templ steps(steps []Step) {
 			</li>
 		}
 	</ol>
-}
-
-templ heading(title, native, nativeLang string) {
-	<h1 class="mt-2 font-heading text-32 leading-snug font-semibold wrap-break-word sm:text-44 tracking-tight text-foreground-strong">{ title }</h1>
-	if native != "" {
-		<p class="mt-1 text-18 text-foreground-muted" lang={ nativeLang }>{ native }</p>
-	}
 }
 
 // partOf is the groups a node sits in, nearest first: "#1 in Detective Conan

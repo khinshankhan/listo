@@ -91,20 +91,18 @@ func TestGroupPageQueries(t *testing.T) {
 		}
 	})
 
-	t.Run("members: subgroups first, then entries by release", func(t *testing.T) {
-		got, err := q.GroupMembers(ctx, franchise)
+	t.Run("entries by release, each with its position", func(t *testing.T) {
+		got, err := q.GroupEntries(ctx, franchise)
 		if err != nil {
 			t.Fatal(err)
 		}
-		var titles []string
-		for _, m := range got {
-			titles = append(titles, m.Title)
+		var rows []string
+		for _, e := range got {
+			rows = append(rows, e.Title+" "+deref(e.PositionLabel))
 		}
-		if want := "Zz Series|Bb Earlier|Aa Later"; strings.Join(titles, "|") != want {
-			t.Errorf("titles = %v, want %s", titles, want)
-		}
-		if got[1].PositionLabel == nil || *got[1].PositionLabel != "#1" {
-			t.Errorf("earlier entry's position = %v, want #1", got[1].PositionLabel)
+		// the empty series has no entries to bring
+		if want := "Bb Earlier #1|Aa Later #2"; strings.Join(rows, "|") != want {
+			t.Errorf("rows = %v, want %s", rows, want)
 		}
 	})
 
