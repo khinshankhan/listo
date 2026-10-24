@@ -16,6 +16,13 @@ import (
 // perShelf is how many entries each medium's shelf shows.
 const perShelf = 6
 
+// browsePage is how many entries a page of results holds. It divides by 2, 3,
+// 4 and 6, so a grid's last row is full whatever the screen.
+const browsePage = 48
+
+// viewCookie remembers how someone likes to browse.
+const viewCookie = "listo_view"
+
 // the filters, in the order the form and its URLs use them
 var browseFilters = []string{"medium", "genre", "year", "season"}
 
@@ -23,25 +30,45 @@ var browseFilters = []string{"medium", "genre", "year", "season"}
 // index
 var seasons = []string{"winter", "spring", "summer", "fall"}
 
+// browseViews are the ways to show entries, the default first.
+var browseViews = []struct{ key, label string }{{"cards", "cards"}, {"list", "list"}, {"text", "text only"}}
+
 // Entries is the catalog: a shelf per medium, or with ?medium=, ?genre=,
-// ?year= or ?season=, everything that matches. A value the filters don't
-// offer is a 404, so each view has one address.
+// ?year= or ?season=, a page of everything that matches. ?view= picks cards,
+// a list or plain text, and is remembered. A value the filters don't offer,
+// or a page past the end, is a 404, so each view has one address.
 func (p *Pages) Entries(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
-	// the form sends "any" as empty; drop those for the clean address
 	clean := url.Values{}
-	for _, name := range browseFilters {
-		if v := query.Get(name); v != "" {
+	dirty := false
+	for _, name := range append(slices.Clone(browseFilters), "view", "page") {
+		switch v := query.Get(name); {
+		case !query.Has(name):
+		// "any" from the form, or the first page: the plain address has it
+		case v == "" || (name == "page" && v == "1"):
+			dirty = true
+		default:
 			clean.Set(name, v)
 		}
 	}
-	if dirty := slices.ContainsFunc(browseFilters, func(name string) bool { return query.Has(name) && query.Get(name) == "" }); dirty {
-		to := "/entries"
-		if len(clean) > 0 {
-			to += "?" + clean.Encode()
-		}
-		http.Redirect(w, r, to, http.StatusFound)
+	if dirty {
+		http.Redirect(w, r, browsePath(clean), http.StatusFound)
 		return
+	}
+
+	view, ok := p.browseView(w, r, clean.Get("view"))
+	if !ok {
+		p.NotFound(w, r)
+		return
+	}
+	page := 1
+	if s := clean.Get("page"); s != "" {
+		n, err := strconv.Atoi(s)
+		if err != nil || n < 2 {
+			p.NotFound(w, r)
+			return
+		}
+		page = n
 	}
 
 	ctx := r.Context()
@@ -56,24 +83,42 @@ func (p *Pages) Entries(w http.ResponseWriter, r *http.Request) {
 		p.serverError(w, r, err)
 		return
 	}
-	if !ok {
+	filtered := slices.ContainsFunc(browseFilters, clean.Has)
+	// the shelves are one page
+	if !ok || (!filtered && page > 1) {
 		p.NotFound(w, r)
 		return
 	}
 
-	v := views.Browse{Filters: filters, Filtered: len(clean) > 0}
-	if v.Filtered {
+	v := views.Browse{Filters: filters, Filtered: filtered, View: view, KeepView: clean.Get("view")}
+	for _, bv := range browseViews {
+		v.Views = append(v.Views, views.SortLink{Label: bv.label, Href: browsePath(with(clean, "view", bv.key)), Active: bv.key == view})
+	}
+	if filtered {
+		args.PageSize, args.Skip = browsePage, int32((page-1)*browsePage)
 		rows, err := p.catalog.BrowseEntries(ctx, args)
 		if err != nil {
 			p.serverError(w, r, err)
 			return
 		}
+		if len(rows) == 0 && page > 1 {
+			p.NotFound(w, r)
+			return
+		}
 		v.Cards = []views.Card{}
 		for _, e := range rows {
-			v.Cards = append(v.Cards, card(e))
+			v.Cards = append(v.Cards, card(pagedCard(e)))
+			v.Total = int(e.Total)
+		}
+		v.Page, v.Pages = page, max(1, (v.Total+browsePage-1)/browsePage)
+		if page > 1 {
+			v.Prev = browsePath(with(clean, "page", strconv.Itoa(page-1)))
+		}
+		if page < v.Pages {
+			v.Next = browsePath(with(clean, "page", strconv.Itoa(page+1)))
 		}
 	} else {
-		if v.Shelves, err = p.shelves(ctx, media); err != nil {
+		if v.Shelves, err = p.shelves(ctx, media, clean.Get("view")); err != nil {
 			p.serverError(w, r, err)
 			return
 		}
@@ -81,11 +126,14 @@ func (p *Pages) Entries(w http.ResponseWriter, r *http.Request) {
 
 	head := views.Head{Title: "browse | listo", Description: "Every entry in listo's catalog.", Canonical: "/entries"}
 	switch {
-	case medium != "" && len(clean) == 1:
-		head.Canonical = "/entries?medium=" + url.QueryEscape(medium)
-	case len(clean) > 0:
+	case medium != "" && !clean.Has("genre") && !clean.Has("year") && !clean.Has("season"):
+		head.Canonical = browsePath(url.Values{"medium": {medium}, "page": clean["page"]})
+	case filtered:
 		// every mix of filters is a page; only the plain ones are worth indexing
 		head.NoIndex = true
+	}
+	if page > 1 {
+		head.Title = fmt.Sprintf("browse, page %d | listo", page)
 	}
 	// reuse the links rather than counting again
 	chrome, err := p.chromeWith(r, media, "")
@@ -94,7 +142,53 @@ func (p *Pages) Entries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	chrome.HideSearch = true
+	// the view can come from a cookie, so no shared cache may keep this
+	w.Header().Set("Cache-Control", "private, max-age=60")
+	w.Header().Add("Vary", "Cookie")
 	p.render(w, r, http.StatusOK, head, chrome, views.BrowsePage(v))
+}
+
+// browseView is the view asked for, remembered for next time, or else the one
+// remembered, or else cards. ok is false for a view that doesn't exist.
+func (p *Pages) browseView(w http.ResponseWriter, r *http.Request, asked string) (string, bool) {
+	known := func(v string) bool {
+		return slices.ContainsFunc(browseViews, func(bv struct{ key, label string }) bool { return bv.key == v })
+	}
+	if asked != "" {
+		if !known(asked) {
+			return "", false
+		}
+		http.SetCookie(w, &http.Cookie{Name: viewCookie, Value: asked, Path: "/entries", MaxAge: 365 * 24 * 60 * 60,
+			HttpOnly: true, SameSite: http.SameSiteLaxMode})
+		return asked, true
+	}
+	if c, err := r.Cookie(viewCookie); err == nil && known(c.Value) {
+		return c.Value, true
+	}
+	return browseViews[0].key, true
+}
+
+// browsePath is /entries with these values, in a stable order.
+func browsePath(values url.Values) string {
+	if len(values) == 0 {
+		return "/entries"
+	}
+	return "/entries?" + values.Encode()
+}
+
+// with is values with one more set. Page one is the plain address, so it
+// drops the page instead.
+func with(values url.Values, key, value string) url.Values {
+	out := url.Values{}
+	for k, v := range values {
+		out[k] = slices.Clone(v)
+	}
+	if key == "page" && value == "1" {
+		out.Del(key)
+		return out
+	}
+	out.Set(key, value)
+	return out
 }
 
 // browseFilters is the form's dropdowns with the chosen values selected, and
@@ -157,27 +251,37 @@ func (p *Pages) browseFilters(ctx context.Context, media []views.MediumLink, cho
 }
 
 // shelves is each medium's newest entries, the media in the sidebar's order.
-func (p *Pages) shelves(ctx context.Context, media []views.MediumLink) ([]views.Shelf, error) {
+func (p *Pages) shelves(ctx context.Context, media []views.MediumLink, view string) ([]views.Shelf, error) {
 	rows, err := p.catalog.BrowseShelves(ctx, perShelf)
 	if err != nil {
 		return nil, fmt.Errorf("shelves: %w", err)
 	}
 	byMedium := map[string][]views.Card{}
 	for _, e := range rows {
-		// the same columns, so the same card
-		byMedium[e.Medium] = append(byMedium[e.Medium], card(sqlcgen.BrowseEntriesRow(e)))
+		byMedium[e.Medium] = append(byMedium[e.Medium], card(e))
 	}
 	var out []views.Shelf
 	for _, m := range media[1:] {
 		if cards := byMedium[m.Medium]; len(cards) > 0 {
-			out = append(out, views.Shelf{ID: m.Medium, Title: m.Label, Href: m.Href, Cards: cards})
+			all := url.Values{"medium": {m.Medium}}
+			if view != "" {
+				all.Set("view", view)
+			}
+			out = append(out, views.Shelf{ID: m.Medium, Title: m.Label, Href: browsePath(all), Cards: cards})
 		}
 	}
 	return out, nil
 }
 
-// card is an entry as a cover, its meta eg "anime, spring 2011, 24 episodes".
-func card(e sqlcgen.BrowseEntriesRow) views.Card {
+// pagedCard is a page row as a shelf row: the same columns, less the count.
+func pagedCard(e sqlcgen.BrowseEntriesRow) sqlcgen.BrowseShelvesRow {
+	return sqlcgen.BrowseShelvesRow{PublicID: e.PublicID, Slug: e.Slug, Title: e.Title, Medium: e.Medium, MediumLabel: e.MediumLabel,
+		Format: e.Format, FormatLabel: e.FormatLabel, StartDate: e.StartDate, StartPrecision: e.StartPrecision,
+		UnitKind: e.UnitKind, UnitTotal: e.UnitTotal}
+}
+
+// card is an entry for browsing, its meta eg "anime, spring 2011, 24 episodes".
+func card(e sqlcgen.BrowseShelvesRow) views.Card {
 	meta := []string{e.FormatLabel}
 	if e.StartDate != nil && e.StartPrecision != nil {
 		meta = append(meta, when(e.Medium, e.Format, *e.StartDate, *e.StartPrecision))

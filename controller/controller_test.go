@@ -220,6 +220,8 @@ func TestCatalogPages(t *testing.T) {
 			location: "/entries?genre=sci-fi"},
 		{name: "all empty is plain browse", path: "/entries?medium=&genre=&year=&season=", status: http.StatusFound,
 			location: "/entries"},
+		{name: "page one is the plain address", path: "/entries?genre=many&page=1", status: http.StatusFound,
+			location: "/entries?genre=many"},
 		{name: "a relation says where it attaches", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
 			want: []string{">here at Ep. 23</span>"}},
 		{name: "group wrong slug redirects", path: "/groups/2/sg?x=1", status: http.StatusMovedPermanently,
@@ -379,6 +381,31 @@ func TestFrontPages(t *testing.T) {
 		{name: "filters that match nothing say so", path: "/entries?medium=visual_novel&year=2011", status: http.StatusOK,
 			want: []string{">0 entries</h2>", "Nothing matches these filters yet. Try loosening one.", `<a href="/entries">clear filters</a>`}},
 		{name: "a genre nobody has", path: "/entries?genre=pottery", status: http.StatusNotFound},
+		{name: "results come a page at a time", path: "/entries?genre=many", status: http.StatusOK,
+			want: []string{">100 entries</h2>", ">Many 000</a>", ">Many 047</a>", "page 1 of 3",
+				`<a href="/entries?genre=many&amp;page=2">next`},
+			dontWant: []string{">Many 048</a>", "previous"}},
+		{name: "a middle page links both ways", path: "/entries?genre=many&page=2", status: http.StatusOK,
+			want: []string{">Many 048</a>", "page 2 of 3", `<a href="/entries?genre=many">`, `<a href="/entries?genre=many&amp;page=3">next`,
+				"<title>browse, page 2 | listo</title>"},
+			dontWant: []string{">Many 047</a>", ">Many 096</a>"}},
+		{name: "the last page has no next", path: "/entries?genre=many&page=3", status: http.StatusOK,
+			want: []string{">Many 099</a>", "page 3 of 3", "previous"}, dontWant: []string{"next"}},
+		{name: "one page needs no pager", path: "/entries?genre=sci-fi", status: http.StatusOK,
+			dontWant: []string{`aria-label="pages"`}},
+		{name: "a page past the end", path: "/entries?genre=many&page=4", status: http.StatusNotFound},
+		{name: "a page that isn't a number", path: "/entries?genre=many&page=two", status: http.StatusNotFound},
+		{name: "the shelves are one page", path: "/entries?page=2", status: http.StatusNotFound},
+		{name: "cards by default, and the switch says so", path: "/entries", status: http.StatusOK,
+			want: []string{`aria-label="view"`, `<a href="/entries?view=cards" aria-current="page">cards</a>`,
+				`<a href="/entries?view=list">list</a>`, `<a href="/entries?view=text">text only</a>`, "aspect-[172/250]"}},
+		{name: "a list keeps small covers", path: "/entries?genre=sci-fi&view=list", status: http.StatusOK,
+			want:     []string{"h-[46px] w-[33px]", `<input type="hidden" name="view" value="list">`, `aria-current="page">list</a>`},
+			dontWant: []string{"aspect-[172/250]"}},
+		{name: "text only has no covers at all", path: "/entries?view=text", status: http.StatusOK,
+			want:     []string{`aria-current="page">text only</a>`, `<a href="/entries?medium=anime&amp;view=text">view all`},
+			dontWant: []string{"aspect-[172/250]", "h-[46px] w-[33px]"}},
+		{name: "a view that isn't one", path: "/entries?view=gallery", status: http.StatusNotFound},
 		{name: "a year nobody started in", path: "/entries?year=1890", status: http.StatusNotFound},
 		{name: "a season that isn't one", path: "/entries?season=monsoon", status: http.StatusNotFound},
 		{name: "browse one medium", path: "/entries?medium=anime", status: http.StatusOK,
@@ -634,11 +661,11 @@ func (fakeCatalog) MediumCounts(context.Context) ([]sqlcgen.MediumCountsRow, err
 
 // browseRows is the fake catalog as browse sees it: the anime dated to the
 // month and tagged sci-fi, the VN only to the year.
-func browseRows() []sqlcgen.BrowseEntriesRow {
+func browseRows() []sqlcgen.BrowseShelvesRow {
 	month, year, total := "month", "year", int32(24)
 	anime := time.Date(2011, 4, 1, 0, 0, 0, 0, time.UTC)
 	vn := time.Date(2009, 1, 1, 0, 0, 0, 0, time.UTC)
-	return []sqlcgen.BrowseEntriesRow{
+	return []sqlcgen.BrowseShelvesRow{
 		{PublicID: 7, Slug: "steins-gate-anime", Title: "Steins;Gate", Medium: "anime", MediumLabel: "anime", Format: "tv",
 			FormatLabel: "anime", StartDate: &anime, StartPrecision: &month, UnitKind: "episode", UnitTotal: &total},
 		{PublicID: 6, Slug: "steins-gate-vn", Title: "Steins;Gate", Medium: "visual_novel", MediumLabel: "visual novel",
@@ -646,34 +673,48 @@ func browseRows() []sqlcgen.BrowseEntriesRow {
 	}
 }
 
-// BrowseEntries filters by medium and by the sci-fi genre; the SQL's own
-// filtering is the data package's to test.
+// BrowseEntries filters by medium, year and the sci-fi genre, and pages like
+// limit and offset; the SQL itself is the data package's to test. The "many"
+// genre is 100 entries, to have pages to turn.
 func (fakeCatalog) BrowseEntries(_ context.Context, arg sqlcgen.BrowseEntriesParams) ([]sqlcgen.BrowseEntriesRow, error) {
-	var out []sqlcgen.BrowseEntriesRow
+	var matches []sqlcgen.BrowseShelvesRow
+	if arg.Genre != nil && *arg.Genre == "many" {
+		for i := range 100 {
+			matches = append(matches, sqlcgen.BrowseShelvesRow{PublicID: int64(1000 + i), Slug: "many", Title: fmt.Sprintf("Many %03d", i),
+				Medium: "anime", MediumLabel: "anime", Format: "tv", FormatLabel: "anime", UnitKind: "none"})
+		}
+	}
 	for _, r := range browseRows() {
-		if arg.Medium != nil && *arg.Medium != r.Medium {
+		if arg.Genre != nil && (*arg.Genre != "sci-fi" || r.Medium != "anime") {
 			continue
 		}
-		if arg.Genre != nil && r.Medium != "anime" {
+		if arg.Medium != nil && *arg.Medium != r.Medium {
 			continue
 		}
 		if arg.Year != nil && int(*arg.Year) != r.StartDate.Year() {
 			continue
 		}
-		out = append(out, r)
+		matches = append(matches, r)
+	}
+	var out []sqlcgen.BrowseEntriesRow
+	for i, r := range matches {
+		if i < int(arg.Skip) || i >= int(arg.Skip+arg.PageSize) {
+			continue
+		}
+		out = append(out, sqlcgen.BrowseEntriesRow{PublicID: r.PublicID, Slug: r.Slug, Title: r.Title, Medium: r.Medium,
+			MediumLabel: r.MediumLabel, Format: r.Format, FormatLabel: r.FormatLabel, StartDate: r.StartDate,
+			StartPrecision: r.StartPrecision, UnitKind: r.UnitKind, UnitTotal: r.UnitTotal, Total: int32(len(matches))})
 	}
 	return out, nil
 }
 
 func (fakeCatalog) BrowseShelves(context.Context, int32) ([]sqlcgen.BrowseShelvesRow, error) {
-	var out []sqlcgen.BrowseShelvesRow
-	for _, r := range browseRows() {
-		out = append(out, sqlcgen.BrowseShelvesRow(r))
-	}
-	return out, nil
+	return browseRows(), nil
 }
 
-func (fakeCatalog) BrowseGenres(context.Context) ([]string, error) { return []string{"sci-fi"}, nil }
+func (fakeCatalog) BrowseGenres(context.Context) ([]string, error) {
+	return []string{"many", "sci-fi"}, nil
+}
 
 func (fakeCatalog) BrowseYears(context.Context) ([]int32, error) { return []int32{2011, 2009}, nil }
 
@@ -744,6 +785,60 @@ func TestEmptyPagesLeaveNoHusks(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// A view picked once sticks, from a cookie, so browse pages can't be shared
+// out of a cache.
+func TestBrowseRemembersTheView(t *testing.T) {
+	srv := httptest.NewServer(newHTTPServer("", &web.Bundle{Files: fstest.MapFS{}}, fakeDB{}, fakeCatalog{}).srv.Handler)
+	t.Cleanup(srv.Close)
+	get := func(path string, cookie *http.Cookie) (*http.Response, string) {
+		t.Helper()
+		req, err := http.NewRequest(http.MethodGet, srv.URL+path, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cookie != nil {
+			req.AddCookie(cookie)
+		}
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res, plainLinks(string(body))
+	}
+
+	res, _ := get("/entries?view=text", nil)
+	var picked *http.Cookie
+	for _, c := range res.Cookies() {
+		if c.Name == "listo_view" {
+			picked = c
+		}
+	}
+	if picked == nil || picked.Value != "text" || picked.Path != "/entries" || !picked.HttpOnly {
+		t.Fatalf("cookie = %+v, want listo_view=text on /entries, http only", picked)
+	}
+
+	res, body := get("/entries", picked)
+	if !strings.Contains(body, `aria-current="page">text only</a>`) || strings.Contains(body, "aspect-[172/250]") {
+		t.Errorf("a plain visit didn't remember text only")
+	}
+	if cc, vary := res.Header.Get("Cache-Control"), res.Header.Get("Vary"); !strings.HasPrefix(cc, "private") || !strings.Contains(vary, "Cookie") {
+		t.Errorf("Cache-Control = %q, Vary = %q; want private, varying by cookie", cc, vary)
+	}
+
+	if _, body := get("/entries", &http.Cookie{Name: "listo_view", Value: "gallery"}); !strings.Contains(body, `aria-current="page">cards</a>`) {
+		t.Errorf("a cookie for no view should fall back to cards")
+	}
+	// other pages stay shareable
+	if res, _ := get("/groups/2/steins-gate", picked); res.Header.Get("Cache-Control") != "public, max-age=60" {
+		t.Errorf("group page Cache-Control = %q, want public", res.Header.Get("Cache-Control"))
 	}
 }
 

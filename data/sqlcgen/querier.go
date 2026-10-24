@@ -11,8 +11,9 @@ import (
 )
 
 type Querier interface {
-	// Every entry the filters let through, newest first. A season is 0 for winter
-	// to 3 for fall, and only matches entries dated to the month.
+	// A page of the entries the filters let through, newest first, each row
+	// carrying how many match in all. A season is 0 for winter to 3 for fall, and
+	// only matches entries dated to the month.
 	BrowseEntries(ctx context.Context, arg BrowseEntriesParams) ([]BrowseEntriesRow, error)
 	// Genres some entry has, for the filter.
 	BrowseGenres(ctx context.Context) ([]string, error)

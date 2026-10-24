@@ -6,8 +6,16 @@ type Browse struct {
 	Filters  []Filter
 	Filtered bool
 	Shelves  []Shelf
-	// Cards are the matches, when Filtered.
+	// Cards are a page of the matches, when Filtered, out of Total.
 	Cards []Card
+	Total int
+	// Page is which of Pages this is; Prev and Next link either side.
+	Page, Pages int
+	Prev, Next  string
+	// View is "cards", "list" or "text"; Views switch between them.
+	// KeepView is the view from the address, for the form to send on.
+	View, KeepView string
+	Views          []SortLink
 }
 
 // Filter is one dropdown; its first option is "any".

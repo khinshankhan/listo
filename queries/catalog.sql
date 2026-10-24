@@ -71,10 +71,12 @@ group by m.medium, m.label
 order by entries desc, m.label;
 
 -- name: BrowseEntries :many
--- Every entry the filters let through, newest first. A season is 0 for winter
--- to 3 for fall, and only matches entries dated to the month.
+-- A page of the entries the filters let through, newest first, each row
+-- carrying how many match in all. A season is 0 for winter to 3 for fall, and
+-- only matches entries dated to the month.
 select n.public_id, n.slug, e.title, e.medium, m.label as medium_label, e.format, mf.label as format_label,
-       e.start_date, e.start_precision, e.unit_kind, e.unit_total
+       e.start_date, e.start_precision, e.unit_kind, e.unit_total,
+       count(*) over ()::int as total
 from catalog.entry e
 join catalog.node n on n.id = e.id
 join catalog.medium m on m.medium = e.medium
@@ -88,7 +90,8 @@ where (sqlc.narg(medium)::text is null or e.medium = sqlc.narg(medium)::text)
   and (sqlc.narg(year)::int is null or extract(year from e.start_date)::int = sqlc.narg(year)::int)
   and (sqlc.narg(season)::int is null
        or (e.start_precision <> 'year' and (extract(month from e.start_date)::int - 1) / 3 = sqlc.narg(season)::int))
-order by e.start_date desc nulls last, e.title, n.public_id;
+order by e.start_date desc nulls last, e.title, n.public_id
+limit sqlc.arg(page_size)::int offset sqlc.arg(skip)::int;
 
 -- name: BrowseShelves :many
 -- Each medium's newest entries, at most per_shelf apiece.

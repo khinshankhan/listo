@@ -12,7 +12,8 @@ import (
 
 const browseEntries = `-- name: BrowseEntries :many
 select n.public_id, n.slug, e.title, e.medium, m.label as medium_label, e.format, mf.label as format_label,
-       e.start_date, e.start_precision, e.unit_kind, e.unit_total
+       e.start_date, e.start_precision, e.unit_kind, e.unit_total,
+       count(*) over ()::int as total
 from catalog.entry e
 join catalog.node n on n.id = e.id
 join catalog.medium m on m.medium = e.medium
@@ -27,13 +28,16 @@ where ($1::text is null or e.medium = $1::text)
   and ($4::int is null
        or (e.start_precision <> 'year' and (extract(month from e.start_date)::int - 1) / 3 = $4::int))
 order by e.start_date desc nulls last, e.title, n.public_id
+limit $6::int offset $5::int
 `
 
 type BrowseEntriesParams struct {
-	Medium *string
-	Genre  *string
-	Year   *int32
-	Season *int32
+	Medium   *string
+	Genre    *string
+	Year     *int32
+	Season   *int32
+	Skip     int32
+	PageSize int32
 }
 
 type BrowseEntriesRow struct {
@@ -48,16 +52,20 @@ type BrowseEntriesRow struct {
 	StartPrecision *string
 	UnitKind       string
 	UnitTotal      *int32
+	Total          int32
 }
 
-// Every entry the filters let through, newest first. A season is 0 for winter
-// to 3 for fall, and only matches entries dated to the month.
+// A page of the entries the filters let through, newest first, each row
+// carrying how many match in all. A season is 0 for winter to 3 for fall, and
+// only matches entries dated to the month.
 func (q *Queries) BrowseEntries(ctx context.Context, arg BrowseEntriesParams) ([]BrowseEntriesRow, error) {
 	rows, err := q.db.Query(ctx, browseEntries,
 		arg.Medium,
 		arg.Genre,
 		arg.Year,
 		arg.Season,
+		arg.Skip,
+		arg.PageSize,
 	)
 	if err != nil {
 		return nil, err
@@ -78,6 +86,7 @@ func (q *Queries) BrowseEntries(ctx context.Context, arg BrowseEntriesParams) ([
 			&i.StartPrecision,
 			&i.UnitKind,
 			&i.UnitTotal,
+			&i.Total,
 		); err != nil {
 			return nil, err
 		}

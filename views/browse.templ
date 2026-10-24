@@ -1,5 +1,7 @@
 package views
 
+import "fmt"
+
 // BrowsePage is the catalog under a search: filters, then shelves or the
 // filtered grid. The filters wait for "apply" rather than jumping on change.
 templ BrowsePage(b Browse) {
@@ -31,43 +33,120 @@ templ BrowsePage(b Browse) {
 					</div>
 				</div>
 			}
+			if b.KeepView != "" {
+				<input type="hidden" name="view" value={ b.KeepView }/>
+			}
 			// the same in every state, so applying doesn't shift the row
 			<button type="submit" class="col-span-2 h-[38px] cursor-pointer justify-self-start rounded-lg bg-foreground-strong px-4 text-13 leading-4 font-semibold text-background-2 hover:bg-cream-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast md:col-span-1">apply</button>
 		</form>
-		if b.Filtered {
-			<section class="flex flex-col gap-4" aria-labelledby="matches">
-				<div class="flex items-baseline justify-between gap-3">
-					<h2 id="matches" class="text-20 leading-6 font-semibold tracking-[-0.025em] text-foreground-strong">{ count(len(b.Cards), "entry", "entries") }</h2>
-					@Link(LinkProps{Href: "/entries", Variant: LinkNone, Class: "text-12 leading-4 font-semibold text-accent-11"}) {
-						clear filters
+		<div class="flex flex-col gap-4">
+			<div class="flex flex-wrap items-baseline justify-between gap-3">
+				if b.Filtered {
+					<div class="flex items-baseline gap-4">
+						<h2 id="matches" class="text-20 leading-6 font-semibold tracking-[-0.025em] text-foreground-strong">{ count(b.Total, "entry", "entries") }</h2>
+						@Link(LinkProps{Href: "/entries", Variant: LinkNone, Class: "text-12 leading-4 font-semibold text-accent-11"}) {
+							clear filters
+						}
+					</div>
+				} else {
+					<p class="text-13 leading-4 text-foreground-muted">the newest in each medium</p>
+				}
+				<nav class="flex gap-[7px]" aria-label="view">
+					for _, vl := range b.Views {
+						@Link(LinkProps{Href: vl.Href, Variant: LinkNone, Monochrome: true, Current: vl.Active, Class: sortClass(vl.Active)}) {
+							{ vl.Label }
+						}
 					}
-				</div>
+				</nav>
+			</div>
+			if b.Filtered {
 				if len(b.Cards) > 0 {
-					@cardGrid(b.Cards)
+					@entryView(b.View, b.Cards)
 				} else {
 					<p class="rounded-[10px] border border-dashed border-border px-[18px] py-4 text-14 text-foreground-muted">
 						Nothing matches these filters yet. Try loosening one.
 					</p>
 				}
-			</section>
-		} else if len(b.Shelves) > 0 {
-			for _, s := range b.Shelves {
-				<section class="flex flex-col gap-4" aria-labelledby={ "shelf-" + s.ID }>
-					<div class="flex items-baseline justify-between gap-3">
-						<h2 id={ "shelf-" + s.ID } class="text-20 leading-6 font-semibold tracking-[-0.025em] text-foreground-strong">{ s.Title }</h2>
-						@Link(LinkProps{Href: s.Href, Variant: LinkNone, Class: "text-12 leading-4 font-semibold text-accent-11"}) {
-							view all<span class="sr-only">{ " " + s.Title }</span>
+				if b.Pages > 1 {
+					<nav class="flex items-center justify-between gap-3 border-t border-border pt-4" aria-label="pages">
+						if b.Prev != "" {
+							@Link(LinkProps{Href: b.Prev, Variant: LinkNone, Class: "text-13 leading-4 font-semibold text-accent-11"}) {
+								<span aria-hidden="true">&lsaquo;</span> previous
+							}
+						} else {
+							<span></span>
 						}
-					</div>
-					@cardGrid(s.Cards)
-				</section>
+						<span class="font-mono text-12 leading-4 text-foreground-muted">page { fmt.Sprint(b.Page) } of { fmt.Sprint(b.Pages) }</span>
+						if b.Next != "" {
+							@Link(LinkProps{Href: b.Next, Variant: LinkNone, Class: "text-13 leading-4 font-semibold text-accent-11"}) {
+								next <span aria-hidden="true">&rsaquo;</span>
+							}
+						} else {
+							<span></span>
+						}
+					</nav>
+				}
 			}
-		} else {
-			<p class="rounded-[10px] border border-dashed border-border px-[18px] py-4 text-14 text-foreground-muted">
-				Nothing to browse here yet. The catalog grows one entry at a time.
-			</p>
+		</div>
+		if !b.Filtered {
+			if len(b.Shelves) > 0 {
+				for _, s := range b.Shelves {
+					<section class="flex flex-col gap-4" aria-labelledby={ "shelf-" + s.ID }>
+						<div class="flex items-baseline justify-between gap-3">
+							<h2 id={ "shelf-" + s.ID } class="text-20 leading-6 font-semibold tracking-[-0.025em] text-foreground-strong">{ s.Title }</h2>
+							@Link(LinkProps{Href: s.Href, Variant: LinkNone, Class: "text-12 leading-4 font-semibold text-accent-11"}) {
+								view all<span class="sr-only">{ " " + s.Title }</span>
+							}
+						</div>
+						@entryView(b.View, s.Cards)
+					</section>
+				}
+			} else {
+				<p class="rounded-[10px] border border-dashed border-border px-[18px] py-4 text-14 text-foreground-muted">
+					Nothing to browse here yet. The catalog grows one entry at a time.
+				</p>
+			}
 		}
 	</div>
+}
+
+// entryView shows entries the chosen way: covers, a list with small covers,
+// or plain text.
+templ entryView(view string, cards []Card) {
+	switch view {
+		case "list":
+			@entryList(cards, true)
+		case "text":
+			@entryList(cards, false)
+		default:
+			@cardGrid(cards)
+	}
+}
+
+// entryList is entries as rows, with a small cover or without.
+templ entryList(cards []Card, covers bool) {
+	<ul class="flex flex-col border-t border-border-subtle">
+		for _, c := range cards {
+			if covers {
+				<li class="flex items-center gap-4 border-b border-border-subtle px-3 py-[11px]">
+					<span class="h-[46px] w-[33px] shrink-0 rounded-sm bg-placeholder" aria-hidden="true"></span>
+					<span class="flex min-w-0 flex-col gap-1">
+						@Link(LinkProps{Href: c.Href, Variant: LinkNone, Class: "text-14 leading-[18px] font-semibold wrap-break-word text-foreground-strong"}) {
+							{ c.Title }
+						}
+						<span class="text-12 leading-4 text-foreground-muted">{ c.Meta }</span>
+					</span>
+				</li>
+			} else {
+				<li class="flex flex-col gap-1 border-b border-border-subtle px-3 py-2.5 sm:flex-row sm:items-baseline sm:gap-4">
+					@Link(LinkProps{Href: c.Href, Variant: LinkNone, Class: "text-14 leading-[18px] font-semibold wrap-break-word text-foreground-strong"}) {
+						{ c.Title }
+					}
+					<span class="text-12 leading-4 text-foreground-muted sm:ml-auto sm:shrink-0">{ c.Meta }</span>
+				</li>
+			}
+		}
+	</ul>
 }
 
 // cardGrid is entries as covers: two across on a phone, six on a wide screen.

@@ -160,7 +160,7 @@ func TestCatalogQueries(t *testing.T) {
 	})
 
 	t.Run("browse filters by medium", func(t *testing.T) {
-		rows, err := q.BrowseEntries(ctx, sqlcgen.BrowseEntriesParams{Medium: &medium})
+		rows, err := q.BrowseEntries(ctx, sqlcgen.BrowseEntriesParams{Medium: &medium, PageSize: 100})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -254,11 +254,16 @@ func TestBrowseQueries(t *testing.T) {
 		// stored as January 1st, but that's not a winter release
 		{"a year-only date isn't winter", sqlcgen.BrowseEntriesParams{Season: season(0)}, ""},
 		{"filters combine", sqlcgen.BrowseEntriesParams{Year: year(2011), Season: season(3)}, ""},
+		{"a page", sqlcgen.BrowseEntriesParams{PageSize: 2, Skip: 1}, "spring year-only"},
+		{"past the end", sqlcgen.BrowseEntriesParams{PageSize: 2, Skip: 4}, ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			// scoped to the test medium, so the seed's entries stay out of it
 			tc.args.Medium = &medium
+			if tc.args.PageSize == 0 {
+				tc.args.PageSize = 100
+			}
 			rows, err := q.BrowseEntries(ctx, tc.args)
 			if err != nil {
 				t.Fatal(err)
@@ -272,6 +277,16 @@ func TestBrowseQueries(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("each row of a page knows the whole count", func(t *testing.T) {
+		rows, err := q.BrowseEntries(ctx, sqlcgen.BrowseEntriesParams{Medium: &medium, PageSize: 2})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rows) != 2 || rows[0].Total != 4 || rows[1].Total != 4 {
+			t.Errorf("got %d rows, totals %v; want 2 rows of 4", len(rows), rows)
+		}
+	})
 
 	t.Run("shelves hold a medium's newest few", func(t *testing.T) {
 		rows, err := q.BrowseShelves(ctx, 2)
