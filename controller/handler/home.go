@@ -53,7 +53,7 @@ func (p *Pages) Home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	head := views.Head{Title: "listo", Description: "Keep one list for everything you watch, read and play, and find out where to start."}
+	head := views.Head{Title: "listo", Description: "Keep one list for everything you watch, read, and play, and find out where to start."}
 	// top bar only, and the hero has the search
 	p.render(w, r, http.StatusOK, head, views.Chrome{HideSearch: true}, views.HomePage(v))
 }

@@ -38,7 +38,7 @@ func TestRoutes(t *testing.T) {
 		status int
 		want   []string
 	}{
-		{"home", up, "/", http.StatusOK, []string{"keep one list for everything you watch, read and play.", "/assets/islands-abc.js"}},
+		{"home", up, "/", http.StatusOK, []string{"keep one list for everything you watch, read, and play.", "/assets/islands-abc.js"}},
 		{"the demo page is gone", up, "/there", http.StatusNotFound, []string{"back home"}},
 		{"every page has the top bar", up, "/nope", http.StatusNotFound, []string{`role="search"`, `id="site-search"`}},
 		// the first stop for a keyboard, past the top bar and sidebar
@@ -330,7 +330,7 @@ func TestFrontPages(t *testing.T) {
 		dontWant []string
 	}{
 		{name: "home says what listo is", path: "/", status: http.StatusOK,
-			want: []string{"keep one list for everything you watch, read and play.</h1>",
+			want: []string{"keep one list for everything you watch, read, and play.</h1>",
 				`<form action="/search" method="get" role="search" class="flex min-w-0 items-center rounded-lg border border-border focus-within:outline-2 focus-within:outline-stark-contrast relative h-[52px]`},
 			// top bar only, and the one search is the hero's
 			dontWant: []string{"data-island", "noindex", `aria-label="catalog"`, "max-w-[420px]"}},
