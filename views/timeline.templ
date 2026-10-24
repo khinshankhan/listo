@@ -8,27 +8,9 @@ templ TimelineSection(t *Timeline, group string) {
 	<section id="timeline" class="timeline flex scroll-mt-6 flex-col gap-4">
 		@sectionHead("timeline", "what came out when, and what leads to what")
 		<figure class="flex flex-col gap-[14px] rounded-xl border border-border bg-background-2 px-[19px] pt-5 pb-[18px]">
-			<div class="overflow-x-auto" tabindex="0" role="region" aria-label="timeline, scrolls sideways">
-				<svg viewBox={ fmt.Sprintf("0 0 %d %d", t.Width, t.Height) } class="block h-auto w-full min-w-[720px] font-body" aria-hidden="true">
-					for _, b := range t.Boxes {
-						<rect x={ fmt.Sprint(b.X) } y={ fmt.Sprint(b.Y) } width={ fmt.Sprint(b.W) } height={ fmt.Sprint(b.H) } rx="12" fill="none" stroke="var(--color-border)" stroke-dasharray="5 4"></rect>
-					}
-					for _, l := range t.Links {
-						@timelineLink(l)
-					}
-					// text goes over the lines, each haloed in the ground so a line
-					// running under it doesn't strike it through
-					for _, b := range t.Boxes {
-						<text x={ fmt.Sprint(b.X + 18) } y={ fmt.Sprint(b.Y + 26) } font-size="14" font-weight="700" fill="var(--color-foreground-strong)" { halo... }>{ b.Name }</text>
-					}
-					for _, w := range t.Works {
-						@timelineWork(w)
-					}
-					for _, tick := range t.Ticks {
-						<text x={ fmt.Sprint(tick.X) } y={ fmt.Sprint(t.Height - 10) } text-anchor="middle" font-size="10" class="font-mono" fill="var(--color-foreground-muted)">{ tick.Label }</text>
-					}
-				</svg>
-			</div>
+			@Island("timeline", t, "visible") {
+				@timelineDrawing(t)
+			}
 			<figcaption class="flex flex-wrap items-center gap-x-[22px] gap-y-2 px-4 text-12 leading-4 text-foreground-muted">
 				if len(t.Boxes) > 0 {
 					@mapLegend("crossover, reboot or other link", "part of "+group)
@@ -52,6 +34,33 @@ templ TimelineSection(t *Timeline, group string) {
 			}
 		</ul>
 	</section>
+}
+
+// timelineDrawing is the timeline as plain SVG, until the island takes over
+// or without script.
+templ timelineDrawing(t *Timeline) {
+	<div class="overflow-x-auto" tabindex="0" role="region" aria-label="timeline, scrolls sideways">
+		// as wide as the island draws it, so nothing moves when it takes over
+		<svg viewBox={ fmt.Sprintf("0 0 %d %d", t.Width, t.Height) } width={ fmt.Sprint(t.Width) } height={ fmt.Sprint(t.Height) } class="mx-auto block max-w-none font-body" aria-hidden="true">
+			for _, b := range t.Boxes {
+				<rect x={ fmt.Sprint(b.X) } y={ fmt.Sprint(b.Y) } width={ fmt.Sprint(b.W) } height={ fmt.Sprint(b.H) } rx="12" fill="none" stroke="var(--color-border)" stroke-dasharray="5 4"></rect>
+			}
+			for _, l := range t.Links {
+				@timelineLink(l)
+			}
+			// text goes over the lines, each haloed in the ground so a line
+			// running under it doesn't strike it through
+			for _, b := range t.Boxes {
+				<text x={ fmt.Sprint(b.X + 18) } y={ fmt.Sprint(b.Y + 26) } font-size="14" font-weight="700" fill="var(--color-foreground-strong)" { halo... }>{ b.Name }</text>
+			}
+			for _, w := range t.Works {
+				@timelineWork(w)
+			}
+			for _, tick := range t.Ticks {
+				<text x={ fmt.Sprint(tick.X) } y={ fmt.Sprint(t.Height - 10) } text-anchor="middle" font-size="10" class="font-mono" fill="var(--color-foreground-muted)">{ tick.Label }</text>
+			}
+		</svg>
+	</div>
 }
 
 // timelineLink is a sequel's arrow, or a dotted line with what it is.

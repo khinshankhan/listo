@@ -20,9 +20,9 @@ const (
 	tlLeft, tlRight = 56, 904
 	// names keep this far from the edge
 	tlEdge = 24
-	tlRow  = 64
-	// between two works on a row, and between boxes
-	tlGap = 24
+	tlRow  = 88
+	// between two works on a row, room for the cards the island draws
+	tlGap = 40
 )
 
 // mergeKinds make two entries one work: the same story in another medium or
@@ -114,7 +114,7 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 		if first.BranchType == "group" {
 			w.branch, w.branchName = first.BranchPublicID, deref(first.BranchName)
 		}
-		w.view.Name = first.Title
+		w.view.ID, w.view.Name, w.view.Href = first.PublicID, first.Title, EntryPath(first.PublicID, first.Slug)
 		names[first.Title]++
 	}
 	// in words, works that share a name are told apart by year
@@ -205,15 +205,15 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 		}
 
 		top := y
-		firstRow := y + 34
+		firstRow := y + 44
 		if branch != 0 {
-			firstRow = y + 62
+			firstRow = y + 84
 		}
 		for w, l := range laneOf {
 			w.view.Y = firstRow + slices.Index(lanes, l)*tlRow
 			w.view.NameY = w.view.Y - 14
 		}
-		bottom := firstRow + (len(lanes)-1)*tlRow + 34
+		bottom := firstRow + (len(lanes)-1)*tlRow + 44
 		if branch != 0 {
 			tl.Boxes = append(tl.Boxes, views.TimelineBox{X: 16, Y: top, W: tlWidth - 32, H: bottom - top, Name: name})
 		}
@@ -221,14 +221,21 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 	}
 	tl.Height = y + 24
 
-	dotAt := func(id int64) (int, int) {
+	for _, w := range works {
+		w.view.Left, w.view.Right = int(math.Floor(w.left)), int(math.Ceil(w.right))
+	}
+	dotOf := func(id int64) int {
 		w := workOf[id]
 		for i, e := range w.entries {
 			if e.PublicID == id {
-				return w.view.Dots[dotIndex(w, i)].X, w.view.Y
+				return dotIndex(w, i)
 			}
 		}
-		return 0, 0
+		return 0
+	}
+	dotAt := func(id int64) (int, int) {
+		w := workOf[id]
+		return w.view.Dots[dotOf(id)].X, w.view.Y
 	}
 	// labels go where they cover no text
 	var taken []box
@@ -288,6 +295,7 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 		line := fmt.Sprintf("%s, %s %s", called(byID[rel.FromID]), rel.Label, called(byID[rel.ToID]))
 		if link.Sequel {
 			// from the release it continues to the start of the sequel
+			link.Source, link.SourceDot, link.Target = to.view.ID, dotOf(rel.ToID), from.view.ID
 			x1, y1 := dotAt(rel.ToID)
 			x2, y2 := from.view.Dots[0].X-9, from.view.Y
 			c := connect(x1, y1, x2, y2)
@@ -306,8 +314,10 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 			// drawn left to right, whichever way the relation reads
 			x1, y1 := dotAt(rel.FromID)
 			x2, y2 := dotAt(rel.ToID)
+			link.Source, link.SourceDot, link.Target, link.TargetDot = from.view.ID, dotOf(rel.FromID), to.view.ID, dotOf(rel.ToID)
 			if x2 < x1 {
 				x1, y1, x2, y2 = x2, y2, x1, y1
+				link.Source, link.SourceDot, link.Target, link.TargetDot = link.Target, link.TargetDot, link.Source, link.SourceDot
 			}
 			c := connect(x1, y1, x2-7, y2)
 			if y1 == y2 {

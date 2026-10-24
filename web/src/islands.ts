@@ -8,9 +8,10 @@ import "./search";
 
 type Loader = () => Promise<Mount>;
 
-// One line per island, eg
-//   typeahead: () => import("./islands/typeahead").then((m) => m.mount),
-const islands: Record<string, Loader> = {};
+// One line per island.
+const islands: Record<string, Loader> = {
+  timeline: () => import("./islands/timeline").then((m) => m.mount),
+};
 
 const start = (el: HTMLElement): void => {
   const name = el.dataset.island ?? "";

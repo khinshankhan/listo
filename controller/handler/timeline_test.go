@@ -92,7 +92,7 @@ func TestTimelineWorks(t *testing.T) {
 		tlRelation(3, "sequel_of", 1),
 		tlRelation(4, "adaptation_of", 3),
 		tlRelation(6, "adaptation_of", 5),
-		tlRelation(7, "crossover_with", 5),
+		tlRelation(7, "crossover_with", 6),
 		// made by Chaos;Child, long after either end
 		tlRelation(5, "references", 1),
 	}
@@ -151,10 +151,36 @@ func TestTimelineWorks(t *testing.T) {
 		}
 	})
 
+	// the island joins works by these, so they must name the right releases
+	t.Run("links run left to right, release to release", func(t *testing.T) {
+		type ends struct {
+			source    int64
+			sourceDot int
+			target    int64
+			targetDot int
+		}
+		want := []ends{
+			// Chaos;Head's one dot on to Chaos;Child
+			{1, 0, 3, 0},
+			// drawn from Steins;Gate's anime, though DaSH is the one crossing over
+			{5, 1, 7, 0},
+			// back in time, so flipped
+			{1, 0, 5, 0},
+		}
+		var got []ends
+		for _, l := range tl.Links {
+			got = append(got, ends{l.Source, l.SourceDot, l.Target, l.TargetDot})
+		}
+		if !slices.Equal(got, want) {
+			t.Errorf("link ends = %v, want %v", got, want)
+		}
+	})
+
 	t.Run("links", func(t *testing.T) {
 		var got []views.TimelineLink
 		for _, l := range tl.Links {
 			l.Path, l.Head, l.LabelX, l.LabelY = "", "", 0, 0
+			l.Source, l.SourceDot, l.Target, l.TargetDot = 0, 0, 0, 0
 			got = append(got, l)
 		}
 		want := []views.TimelineLink{
@@ -271,5 +297,22 @@ func TestTimelineLabelsBetweenRows(t *testing.T) {
 	}
 	if l := tl.Links[0]; l.Label != "spin-off" || l.LabelY <= index.Y || l.LabelY >= railgun.NameY {
 		t.Errorf("label %q at y %d, want between Index's row (%d) and Railgun's name (%d)", l.Label, l.LabelY, index.Y, railgun.NameY)
+	}
+}
+
+// A sequel to the anime leaves from the anime's dot, not the VN's.
+func TestTimelineSequelLeavesItsRelease(t *testing.T) {
+	rows := []sqlcgen.GroupEntriesRow{
+		tlEntry(1, "Steins;Gate", "visual novel", 2009, 10, ""),
+		tlEntry(2, "Steins;Gate", "anime", 2011, 4, ""),
+		tlEntry(3, "Steins;Gate: The Movie", "film", 2013, 4, ""),
+	}
+	rels := []sqlcgen.GroupRelationsRow{tlRelation(2, "adaptation_of", 1), tlRelation(3, "sequel_of", 2)}
+	tl := timeline(rows, rels)
+	if len(tl.Links) != 1 {
+		t.Fatalf("links = %+v, want the sequel", tl.Links)
+	}
+	if l := tl.Links[0]; l.Source != 1 || l.SourceDot != 1 || l.Target != 3 || l.TargetDot != 0 {
+		t.Errorf("sequel runs %d dot %d to %d dot %d, want 1 dot 1 to 3 dot 0", l.Source, l.SourceDot, l.Target, l.TargetDot)
 	}
 }

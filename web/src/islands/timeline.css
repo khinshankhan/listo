@@ -1,0 +1,57 @@
+/* the timeline island's lines, in the same inks as its SVG fallback */
+.timeline .react-flow {
+  --xy-background-color: transparent;
+}
+
+.timeline .react-flow__handle {
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  background: none;
+  opacity: 0;
+}
+
+.timeline .react-flow__node {
+  cursor: default;
+}
+
+/* boxes sit over the lines, so their names do, but let the cards be hovered */
+.timeline .react-flow__node-box {
+  pointer-events: none;
+}
+
+.timeline .timeline-sequel .react-flow__edge-path {
+  stroke: var(--color-foreground-muted);
+  stroke-width: 1.25;
+}
+
+.timeline .timeline-other .react-flow__edge-path {
+  stroke: var(--color-foreground-subtle);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-dasharray: 1.5 4;
+}
+
+/* a hovered card's links stand out, the rest step back */
+.timeline .react-flow__edge,
+.timeline .timeline-label {
+  transition: opacity 120ms;
+}
+
+.timeline .react-flow__edge.is-dim,
+.timeline .timeline-label.is-dim {
+  opacity: 0.25;
+}
+
+.timeline .react-flow__node:hover .timeline-card {
+  border-color: var(--color-foreground-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timeline .react-flow__edge,
+  .timeline .timeline-label {
+    transition: none;
+  }
+}
