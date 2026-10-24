@@ -412,6 +412,9 @@ func TestFrontPages(t *testing.T) {
 			dontWant: []string{`aria-label="pages"`}},
 		{name: "a page past the end", path: "/entries?genre=many&page=4", status: http.StatusNotFound},
 		{name: "a page that isn't a number", path: "/entries?genre=many&page=two", status: http.StatusNotFound},
+		// (page-1)*48 past int32: these wrapped to offset 32 and to a negative
+		{name: "a page so far it would wrap the offset", path: "/entries?genre=many&page=89478487", status: http.StatusNotFound},
+		{name: "a page so far it would go negative", path: "/entries?genre=many&page=44739244", status: http.StatusNotFound},
 		{name: "the shelves are one page", path: "/entries?page=2", status: http.StatusNotFound},
 		{name: "cards by default, and the switch says so", path: "/entries", status: http.StatusOK,
 			want: []string{`aria-label="view"`, `<a href="/entries?view=cards" aria-current="page">cards</a>`,

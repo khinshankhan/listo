@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"slices"
@@ -64,7 +65,8 @@ func (p *Pages) Entries(w http.ResponseWriter, r *http.Request) {
 	page := 1
 	if s := clean.Get("page"); s != "" {
 		n, err := strconv.Atoi(s)
-		if err != nil || n < 2 {
+		// past this, the page's offset no longer fits the query's int32
+		if err != nil || n < 2 || n > math.MaxInt32/browsePage {
 			p.NotFound(w, r)
 			return
 		}
