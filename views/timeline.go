@@ -37,20 +37,26 @@ type TimelineBox struct {
 	Name string `json:"name"`
 }
 
-// TimelineWork is one work on its row: its name, and a dot per release
-// joined by a bar. EndAnchored names end at NameX instead of starting there.
-// ID is its first entry's, and Left and Right the stretch of row it takes.
+// TimelineWork is one work on its row: a card with its name over a dot per
+// release, joined by a bar, the dots on the row at Y. ID is its first
+// entry's.
 type TimelineWork struct {
-	ID          int64         `json:"id"`
-	Name        string        `json:"name"`
-	Href        string        `json:"href"`
-	NameX       int           `json:"-"`
-	NameY       int           `json:"-"`
-	EndAnchored bool          `json:"-"`
-	Left        int           `json:"left"`
-	Right       int           `json:"right"`
-	Y           int           `json:"y"`
-	Dots        []TimelineDot `json:"dots"`
+	ID    int64         `json:"id"`
+	Name  string        `json:"name"`
+	Href  string        `json:"href"`
+	Card  TimelineCard  `json:"card"`
+	NameX int           `json:"-"`
+	NameY int           `json:"-"`
+	Y     int           `json:"y"`
+	Dots  []TimelineDot `json:"dots"`
+}
+
+// TimelineCard is the box a work is drawn in.
+type TimelineCard struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+	W int `json:"w"`
+	H int `json:"h"`
 }
 
 // TimelineDot is a release, or a few at once, with what they are, eg "VN,
@@ -60,21 +66,29 @@ type TimelineDot struct {
 	Label string `json:"label"`
 }
 
-// TimelineLink is a line between works: a sequel's arrow, or a dotted line
-// for anything else. Path is the line's SVG path and Head the arrowhead's.
-// It runs from the Source work's dot to the Target work's, left to right.
+// TimelineLink is a step line from the Source work to the Target, left to
+// right: an arrow for a sequel, side story or spin-off, dotted for anything
+// else. Path is its SVG path. Its label is a pill LabelW wide centred on
+// LabelX, LabelY, or ending at LabelX when LabelEnd.
 type TimelineLink struct {
-	Source    int64  `json:"source"`
-	SourceDot int    `json:"sourceDot"`
-	Target    int64  `json:"target"`
-	TargetDot int    `json:"targetDot"`
-	Path      string `json:"-"`
-	Head      string `json:"-"`
-	Label     string `json:"label"`
-	LabelX    int    `json:"-"`
-	LabelY    int    `json:"-"`
-	Sequel    bool   `json:"sequel"`
-	Spoiler   bool   `json:"spoiler"`
+	Source   int64  `json:"source"`
+	Target   int64  `json:"target"`
+	Path     string `json:"path"`
+	Label    string `json:"label"`
+	LabelX   int    `json:"labelX"`
+	LabelY   int    `json:"labelY"`
+	LabelW   int    `json:"labelW"`
+	LabelEnd bool   `json:"labelEnd"`
+	Sequel   bool   `json:"sequel"`
+	Spoiler  bool   `json:"spoiler"`
+}
+
+// LabelLeft is where a link's label pill starts.
+func (l TimelineLink) LabelLeft() int {
+	if l.LabelEnd {
+		return l.LabelX - l.LabelW
+	}
+	return l.LabelX - l.LabelW/2
 }
 
 // TimelineLine is one sentence of the drawing in words.
@@ -85,9 +99,3 @@ type TimelineLine struct {
 
 // halo outlines a timeline's text in the ground colour, under the fill.
 var halo = templ.Attributes{"stroke": "var(--color-background-2)", "stroke-width": "4", "stroke-linejoin": "round", "paint-order": "stroke"}
-
-// labelWidth is about how wide a link's label draws, with a little to spare,
-// for the backing that keeps lines from running through it.
-func labelWidth(s string) int {
-	return len(s)*6 + 8
-}

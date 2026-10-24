@@ -53,3 +53,18 @@ input[type="search"]::-webkit-search-cancel-button:hover {
     navigation: auto;
   }
 }
+
+/* a timeline's cards, as the plain SVG draws them, answer hover and focus
+   like the island's */
+.timeline-work:hover rect {
+  stroke: var(--color-foreground-muted);
+}
+
+.timeline-work:hover .timeline-name {
+  text-decoration: underline;
+}
+
+.timeline-work:focus-visible {
+  outline: 2px solid var(--color-stark-contrast);
+  outline-offset: 2px;
+}

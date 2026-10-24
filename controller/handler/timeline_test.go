@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"fmt"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -151,36 +153,38 @@ func TestTimelineWorks(t *testing.T) {
 		}
 	})
 
-	// the island joins works by these, so they must name the right releases
-	t.Run("links run left to right, release to release", func(t *testing.T) {
-		type ends struct {
-			source    int64
-			sourceDot int
-			target    int64
-			targetDot int
-		}
+	// the island lights a work's line by these
+	t.Run("links run left to right", func(t *testing.T) {
+		type ends struct{ source, target int64 }
 		want := []ends{
-			// Chaos;Head's one dot on to Chaos;Child
-			{1, 0, 3, 0},
-			// drawn from Steins;Gate's anime, though DaSH is the one crossing over
-			{5, 1, 7, 0},
+			{1, 3},
+			// drawn from Steins;Gate, though DaSH is the one crossing over
+			{5, 7},
 			// back in time, so flipped
-			{1, 0, 5, 0},
+			{1, 5},
 		}
 		var got []ends
 		for _, l := range tl.Links {
-			got = append(got, ends{l.Source, l.SourceDot, l.Target, l.TargetDot})
+			got = append(got, ends{l.Source, l.Target})
 		}
 		if !slices.Equal(got, want) {
 			t.Errorf("link ends = %v, want %v", got, want)
 		}
 	})
 
+	// DaSH, in no box, sits above them all
+	t.Run("a crossover leaves the release it crosses over with", func(t *testing.T) {
+		sg := workNamed(t, tl, "Steins;Gate")
+		if start, _ := pathEnds(t, tl.Links[1].Path); start != fmt.Sprintf("%d %d", sg.Dots[1].X, sg.Card.Y) {
+			t.Errorf("crossover starts at %s, want the anime's dot (x %d) on the card's top (%d)", start, sg.Dots[1].X, sg.Card.Y)
+		}
+	})
+
 	t.Run("links", func(t *testing.T) {
 		var got []views.TimelineLink
 		for _, l := range tl.Links {
-			l.Path, l.Head, l.LabelX, l.LabelY = "", "", 0, 0
-			l.Source, l.SourceDot, l.Target, l.TargetDot = 0, 0, 0, 0
+			l.Path, l.LabelX, l.LabelY, l.LabelW, l.LabelEnd = "", 0, 0, 0, false
+			l.Source, l.Target = 0, 0
 			got = append(got, l)
 		}
 		want := []views.TimelineLink{
@@ -284,35 +288,66 @@ func TestTimelineKeepsStructure(t *testing.T) {
 	}
 }
 
-// A link between rows is labelled between them, not over a name above.
-func TestTimelineLabelsBetweenRows(t *testing.T) {
-	rows := []sqlcgen.GroupEntriesRow{
-		tlEntry(1, "A Certain Magical Index", "anime", 2008, 10, "Index"),
-		tlEntry(2, "A Certain Scientific Railgun", "anime", 2009, 10, "Railgun"),
+// Where a link leaves and meets its cards, and where its label goes.
+func TestTimelineRoutes(t *testing.T) {
+	index := tlEntry(1, "A Certain Magical Index", "anime", 2008, 10, "Index")
+	route := func(t *testing.T, child sqlcgen.GroupEntriesRow, kind string) (views.TimelineWork, views.TimelineWork, views.TimelineLink) {
+		t.Helper()
+		tl := timeline([]sqlcgen.GroupEntriesRow{index, child}, []sqlcgen.GroupRelationsRow{tlRelation(2, kind, 1)})
+		if len(tl.Links) != 1 {
+			t.Fatalf("links = %+v, want one", tl.Links)
+		}
+		return workNamed(t, tl, index.Title), workNamed(t, tl, child.Title), tl.Links[0]
 	}
-	tl := timeline(rows, []sqlcgen.GroupRelationsRow{tlRelation(2, "spin_off_of", 1)})
-	index, railgun := workNamed(t, tl, "A Certain Magical Index"), workNamed(t, tl, "A Certain Scientific Railgun")
-	if len(tl.Links) != 1 {
-		t.Fatalf("links = %+v, want the spin-off", tl.Links)
-	}
-	if l := tl.Links[0]; l.Label != "spin-off" || l.LabelY <= index.Y || l.LabelY >= railgun.NameY {
-		t.Errorf("label %q at y %d, want between Index's row (%d) and Railgun's name (%d)", l.Label, l.LabelY, index.Y, railgun.NameY)
-	}
+	at := func(x, y int) string { return fmt.Sprintf("%d %d", x, y) }
+
+	t.Run("a sequel with room carries on along the row, card to card", func(t *testing.T) {
+		a, b, l := route(t, tlEntry(2, "Index II", "anime", 2012, 10, "Index"), "sequel_of")
+		if want := fmt.Sprintf("M%d %dL%d %d", a.Card.X+a.Card.W, a.Y, b.Card.X, b.Y); l.Path != want {
+			t.Errorf("path = %s, want %s", l.Path, want)
+		}
+	})
+
+	t.Run("a side story hangs off the trunk and runs in", func(t *testing.T) {
+		a, b, l := route(t, tlEntry(2, "Railgun", "anime", 2010, 10, "Index"), "side_story_of")
+		start, end := pathEnds(t, l.Path)
+		if start != at(a.Card.X+8, a.Card.Y+a.Card.H) || end != at(b.Card.X, b.Y) {
+			t.Errorf("runs %s to %s, want %s to %s", start, end, at(a.Card.X+8, a.Card.Y+a.Card.H), at(b.Card.X, b.Y))
+		}
+		if !l.LabelEnd || l.LabelX != b.Card.X-14 || l.LabelY != b.Y {
+			t.Errorf("label ends at %d, %d (end %t), want 14 short of the card on its row: %d, %d", l.LabelX, l.LabelY, l.LabelEnd, b.Card.X-14, b.Y)
+		}
+	})
+
+	t.Run("one starting too near the trunk meets the card from above, labelled beside the trunk", func(t *testing.T) {
+		a, b, l := route(t, tlEntry(2, "OVA", "OVA", 2008, 11, "Index"), "side_story_of")
+		if _, end := pathEnds(t, l.Path); end != at(b.Dots[0].X, b.Card.Y) {
+			t.Errorf("ends at %s, want its dot on the card's top: %s", end, at(b.Dots[0].X, b.Card.Y))
+		}
+		if !l.LabelEnd || l.LabelX != a.Card.X+8-6 || l.LabelY != b.Card.Y-10 {
+			t.Errorf("label ends at %d, %d, want left of the trunk on the run across: %d, %d", l.LabelX, l.LabelY, a.Card.X+2, b.Card.Y-10)
+		}
+	})
+
+	t.Run("anything else drops from its dot onto the card", func(t *testing.T) {
+		a, b, l := route(t, tlEntry(2, "Railgun", "anime", 2010, 10, "Railgun"), "references")
+		start, end := pathEnds(t, l.Path)
+		if start != at(a.Dots[0].X, a.Card.Y+a.Card.H) || end != at(b.Dots[0].X, b.Card.Y) {
+			t.Errorf("runs %s to %s, want dot to dot: %s to %s", start, end, at(a.Dots[0].X, a.Card.Y+a.Card.H), at(b.Dots[0].X, b.Card.Y))
+		}
+		if l.LabelEnd || l.LabelY != b.Card.Y-10 {
+			t.Errorf("label at y %d (end %t), want centred on the run across, %d", l.LabelY, l.LabelEnd, b.Card.Y-10)
+		}
+	})
 }
 
-// A sequel to the anime leaves from the anime's dot, not the VN's.
-func TestTimelineSequelLeavesItsRelease(t *testing.T) {
-	rows := []sqlcgen.GroupEntriesRow{
-		tlEntry(1, "Steins;Gate", "visual novel", 2009, 10, ""),
-		tlEntry(2, "Steins;Gate", "anime", 2011, 4, ""),
-		tlEntry(3, "Steins;Gate: The Movie", "film", 2013, 4, ""),
+// pathEnds is where a path starts and ends, as "x y".
+func pathEnds(t *testing.T, path string) (string, string) {
+	t.Helper()
+	first := strings.IndexAny(path[1:], "LQ") + 1
+	last := strings.LastIndex(path, "L")
+	if !strings.HasPrefix(path, "M") || first < 1 || last < 0 {
+		t.Fatalf("path %q isn't M..L", path)
 	}
-	rels := []sqlcgen.GroupRelationsRow{tlRelation(2, "adaptation_of", 1), tlRelation(3, "sequel_of", 2)}
-	tl := timeline(rows, rels)
-	if len(tl.Links) != 1 {
-		t.Fatalf("links = %+v, want the sequel", tl.Links)
-	}
-	if l := tl.Links[0]; l.Source != 1 || l.SourceDot != 1 || l.Target != 3 || l.TargetDot != 0 {
-		t.Errorf("sequel runs %d dot %d to %d dot %d, want 1 dot 1 to 3 dot 0", l.Source, l.SourceDot, l.Target, l.TargetDot)
-	}
+	return path[1:first], path[last+1:]
 }
