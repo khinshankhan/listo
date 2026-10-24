@@ -97,6 +97,9 @@ func routes(bundle *web.Bundle, api *handler.API, pages *handler.Pages) *http.Se
 
 	apiRoutes(mux, api)
 	mux.Handle("GET /assets/", handler.Assets(bundle.Files))
+	mux.HandleFunc("GET /favicon.svg", handler.Favicon)
+	// browsers ask for this by name when a page doesn't say
+	mux.Handle("GET /favicon.ico", http.RedirectHandler("/favicon.svg", http.StatusMovedPermanently))
 	pageRoutes(mux, pages)
 
 	return mux

@@ -51,6 +51,10 @@ func TestRoutes(t *testing.T) {
 		{"unknown path is a real 404", up, "/nope", http.StatusNotFound, []string{"back home"}},
 		{"there has no subpaths", up, "/there/x", http.StatusNotFound, []string{"back home"}},
 		{"hashed asset", up, "/assets/app-abc.css", http.StatusOK, []string{"body{}"}},
+		{"every page names its icon", up, "/nope", http.StatusNotFound, []string{`<link rel="icon" href="/favicon.svg" type="image/svg+xml">`}},
+		{"the icon", up, "/favicon.svg", http.StatusOK, []string{`<svg xmlns="http://www.w3.org/2000/svg"`}},
+		// followed to the svg, so the default request isn't a 404
+		{"favicon.ico finds the icon", up, "/favicon.ico", http.StatusOK, []string{`<svg xmlns="http://www.w3.org/2000/svg"`}},
 		{"missing asset", up, "/assets/gone.js", http.StatusNotFound, nil},
 		{"assets aren't a directory listing", up, "/assets/", http.StatusNotFound, nil},
 		{"meta", up, "/api/meta", http.StatusOK, []string{`"module":`, `"version":`, `"database":"ok"`, `"systemTime":"`}},

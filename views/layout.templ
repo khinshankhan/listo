@@ -16,6 +16,7 @@ templ Layout(head Head, tags web.Tags, chrome Chrome) {
 			<title>{ head.Title }</title>
 			<meta name="description" content={ head.Description }/>
 			<meta property="og:site_name" content="listo"/>
+			<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
 			<meta property="og:title" content={ head.Title }/>
 			<meta property="og:description" content={ head.Description }/>
 			if head.NoIndex {
