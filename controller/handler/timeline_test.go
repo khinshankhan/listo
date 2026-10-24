@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -339,6 +340,55 @@ func TestTimelineRoutes(t *testing.T) {
 			t.Errorf("label at y %d (end %t), want centred on the run across, %d", l.LabelY, l.LabelEnd, b.Card.Y-10)
 		}
 	})
+}
+
+// A sequel that came out first, as Bakemonogatari did before the
+// Kizumonogatari films it follows, goes round the left of everything between
+// them rather than up through it.
+func TestTimelineBackwardSequel(t *testing.T) {
+	rows := []sqlcgen.GroupEntriesRow{
+		tlEntry(1, "Bakemonogatari", "anime", 2009, 7, "Index"),
+		tlEntry(2, "Nisemonogatari", "anime", 2012, 1, "Index"),
+		tlEntry(3, "Hanamonogatari", "anime", 2014, 8, "Index"),
+		tlEntry(4, "Kizumonogatari III", "film", 2017, 1, "Index"),
+	}
+	rels := []sqlcgen.GroupRelationsRow{tlRelation(2, "sequel_of", 1), tlRelation(1, "sequel_of", 4)}
+	tl := timeline(rows, rels)
+	bake, hana, kizu := workNamed(t, tl, "Bakemonogatari"), workNamed(t, tl, "Hanamonogatari"), workNamed(t, tl, "Kizumonogatari III")
+	var back views.TimelineLink
+	for _, l := range tl.Links {
+		if l.Source == 4 {
+			back = l
+		}
+	}
+	start, end := pathEnds(t, back.Path)
+	if want := fmt.Sprintf("%d %d", kizu.Card.X, kizu.Y); start != want {
+		t.Errorf("starts at %s, want Kizumonogatari's left edge on its row, %s", start, want)
+	}
+	if want := fmt.Sprintf("%d %d", bake.Card.X, bake.Y); end != want {
+		t.Errorf("ends at %s, want Bakemonogatari's left edge on its row, %s", end, want)
+	}
+	// so round Hanamonogatari, between them, too
+	if left := slices.Min(pathXs(t, back.Path)); left >= float64(min(bake.Card.X, hana.Card.X, kizu.Card.X)) {
+		t.Errorf("goes no further left than x %.0f, want left of the cards (from x %d)", left, min(bake.Card.X, hana.Card.X, kizu.Card.X))
+	}
+}
+
+// pathXs is every x a path visits.
+func pathXs(t *testing.T, path string) []float64 {
+	t.Helper()
+	var xs []float64
+	for _, seg := range strings.FieldsFunc(path, func(r rune) bool { return r == 'M' || r == 'L' || r == 'Q' }) {
+		nums := strings.Fields(seg)
+		for i := 0; i+1 < len(nums); i += 2 {
+			x, err := strconv.ParseFloat(nums[i], 64)
+			if err != nil {
+				t.Fatalf("path %q: %v", path, err)
+			}
+			xs = append(xs, x)
+		}
+	}
+	return xs
 }
 
 // pathEnds is where a path starts and ends, as "x y".
