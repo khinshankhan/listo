@@ -129,6 +129,8 @@ type Chrome struct {
 	Sidebar *Sidebar
 	// HideSearch leaves search out of the top bar, for a page that has it.
 	HideSearch bool
+	// Wide lets a page past the content width, for a grid that uses the room.
+	Wide bool
 }
 
 func searchIconSize(hero bool) string {

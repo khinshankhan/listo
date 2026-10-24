@@ -46,8 +46,8 @@ templ Layout(head Head, tags web.Tags, chrome Chrome) {
 				if chrome.Sidebar != nil {
 					@sidebar(*chrome.Sidebar)
 				}
-				<main id="content" class="min-w-0 flex-1 px-4 pt-9 pb-12 sm:px-10">
-					<div class={ "max-w-content", templ.KV("mx-auto", chrome.Sidebar == nil) }>
+				<main id="content" class="min-w-0 flex-1 px-4 pt-6 pb-12 sm:px-10">
+					<div class={ templ.KV("max-w-content", !chrome.Wide), templ.KV("mx-auto", chrome.Sidebar == nil) }>
 						{ children... }
 					</div>
 				</main>
@@ -142,7 +142,7 @@ templ searchPanel(hero bool) {
 
 // sidebar is the catalog nav, hidden on small screens.
 templ sidebar(s Sidebar) {
-	<aside class="hidden w-sidebar shrink-0 flex-col border-r border-border bg-background-2 px-5 py-6 lg:flex [view-transition-name:sidebar]">
+	<aside class="hidden w-sidebar shrink-0 flex-col border-r border-border bg-background-2 px-5 pt-4 pb-6 lg:flex [view-transition-name:sidebar]">
 		<nav class="flex flex-col gap-7" aria-label="catalog">
 			@sideSection("catalog") {
 				for _, m := range s.Media {
