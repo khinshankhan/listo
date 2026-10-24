@@ -75,10 +75,10 @@ templ SearchPage(s Search) {
 				<div class="flex flex-wrap items-center gap-[14px] rounded-[10px] border border-dashed border-border px-[18px] py-4">
 					<div class="flex min-w-[240px] flex-1 flex-col gap-1">
 						<p class="text-14 leading-[18px] font-semibold text-foreground-strong">not finding it?</p>
-						<p class="text-13 leading-[19px] text-foreground-muted">This searched listo's own catalog, which only has what's been added so far. AniList knows far more.</p>
+						<p class="text-13 leading-[19px] text-foreground-muted">This searched every title in listo's catalog, in any language. It only has what's been added so far, so browsing may turn up something close.</p>
 					</div>
-					@Link(LinkProps{Href: s.AniList, Variant: LinkNone, Class: "flex h-[34px] shrink-0 items-center rounded-lg border border-border bg-background-2 px-[14px] text-13 leading-4 font-semibold text-foreground-strong hover:border-accent-7"}) {
-						search AniList
+					@Link(LinkProps{Href: "/entries", Variant: LinkNone, Class: "flex h-[34px] shrink-0 items-center rounded-lg border border-border bg-background-2 px-[14px] text-13 leading-4 font-semibold text-foreground-strong hover:border-accent-7"}) {
+						browse the catalog
 					}
 				</div>
 			</section>
@@ -94,10 +94,7 @@ templ noResults(s Search) {
 			<p class="text-14 leading-[22px] text-foreground-muted">No entry matches &ldquo;{ s.Query }&rdquo;. listo only knows what's been added so far, and the catalog grows one entry at a time.</p>
 		</div>
 		<div class="flex flex-wrap justify-center gap-[10px]">
-			@Link(LinkProps{Href: s.AniList, Variant: LinkNone, Monochrome: true, Class: "flex h-9 items-center rounded-lg bg-foreground-strong px-4 text-13 leading-4 font-semibold text-background-2 hover:bg-cream-10"}) {
-				search AniList instead
-			}
-			@Link(LinkProps{Href: "/entries", Variant: LinkNone, Class: "flex h-9 items-center rounded-lg border border-border bg-background-2 px-4 text-13 leading-4 font-semibold text-foreground-strong hover:border-accent-7"}) {
+			@Link(LinkProps{Href: "/entries", Variant: LinkNone, Monochrome: true, Class: "flex h-9 items-center rounded-lg bg-foreground-strong px-4 text-13 leading-4 font-semibold text-background-2 hover:bg-cream-10"}) {
 				browse the catalog
 			}
 		</div>

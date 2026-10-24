@@ -38,7 +38,6 @@ func (p *Pages) Search(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		v.Searched = true
-		v.AniList = "https://anilist.co/search/anime?search=" + strings.ReplaceAll(url.QueryEscape(q), "+", "%20")
 		v.Media, hits = searchFilters(q, r.URL.Query().Get("medium"), hits)
 		v.Results = resultsFor(hits)
 

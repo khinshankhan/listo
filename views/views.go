@@ -155,8 +155,6 @@ type Search struct {
 	Media []MediumLink
 	// Suggestions are nearby titles, after a search that found nothing.
 	Suggestions []Suggestion
-	// AniList searches the same query there.
-	AniList string
 }
 
 // Suggestion is a title to search for instead.
