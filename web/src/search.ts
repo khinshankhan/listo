@@ -178,7 +178,16 @@ function suggest(
     }
   };
 
+  // closing for good: nothing still on its way may open it again
+  const dismiss = (): void => {
+    clearTimeout(timer);
+    pending?.abort();
+    close();
+  };
+
   input.addEventListener("input", () => {
+    // what was picked was picked for the old text: Enter now searches the new
+    highlight(-1);
     clearTimeout(timer);
     timer = setTimeout(() => void fetchSuggestions(), DEBOUNCE_MS);
   });
@@ -192,7 +201,7 @@ function suggest(
   input.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !panel.hidden) {
       event.preventDefault();
-      close();
+      dismiss();
       return;
     }
     // alt+down opens the suggestions without choosing one, alt+up closes them
@@ -207,7 +216,7 @@ function suggest(
     }
     if (event.altKey && event.key === "ArrowUp") {
       event.preventDefault();
-      close();
+      dismiss();
       return;
     }
     if (hits.length === 0) {
@@ -243,15 +252,15 @@ function suggest(
 
   document.addEventListener("pointerdown", (event) => {
     if (form && event.target instanceof Node && !form.contains(event.target)) {
-      close();
+      dismiss();
     }
   });
-  form?.addEventListener("submit", close);
+  form?.addEventListener("submit", dismiss);
   // tabbing out of the search closes it; clicks on options keep focus in the
   // field, and the "see all" link is inside the form
   form?.addEventListener("focusout", (event) => {
     if (!(event.relatedTarget instanceof Node && form.contains(event.relatedTarget))) {
-      close();
+      dismiss();
     }
   });
 }
