@@ -171,3 +171,15 @@ language sql as $$
   insert into catalog.node_tag (node_id, tag_id)
   select catalog.id(s), t.id from unnest(p_slugs) s, catalog.tag t where t.kind = p_kind and t.name = p_name;
 $$;
+
+-- credits a company with an entry, adding the company the first time
+create function catalog.credit(p_entry text, p_company text, p_role text, p_country char(2) default null)
+returns void language plpgsql as $$
+declare v uuid;
+begin
+  select id into v from catalog.company where name = p_company;
+  if v is null then
+    insert into catalog.company (name, country) values (p_company, p_country) returning id into v;
+  end if;
+  insert into catalog.entry_company (entry_id, company_id, role) values (catalog.id(p_entry), v, p_role);
+end $$;
