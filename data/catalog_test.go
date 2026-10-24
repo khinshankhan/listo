@@ -3,6 +3,7 @@ package data_test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -89,6 +90,39 @@ func TestCatalogQueries(t *testing.T) {
 					t.Errorf("entry found %d times, want 1", found)
 				}
 			})
+		}
+	})
+
+	t.Run("ties come back the same way: groups, then oldest first", func(t *testing.T) {
+		// its own medium, so the browse counts below don't see these
+		plimMedium := medium + "_plim"
+		exec(`insert into catalog.medium (medium, label, verb_current, verb_planning, verb_repeating)
+		      values ($1, 'plim medium', 'watching', 'plan to watch', 'rewatching')`, plimMedium)
+		exec(`insert into catalog.medium_format (medium, format, label) values ($1, 'tv', 'tv')`, plimMedium)
+		// added newest first, so insertion order can't pass for the rule
+		newer, _ := node("entry", "plim-2011")
+		older, _ := node("entry", "plim-2009")
+		group, _ := node("group", "plim")
+		exec(`insert into catalog.entry (id, medium, format, title, start_date, start_precision) values
+		      ($1, $3, 'tv', 'Plimvort', '2011-04-01', 'month'), ($2, $3, 'tv', 'Plimvort', '2009-10-01', 'month')`, newer, older, plimMedium)
+		exec(`insert into catalog.grp (id, kind, name) values ($1, 'franchise', 'Plimvort')`, group)
+		exec(`insert into catalog.title (node_id, kind, title) values ($1, 'english', 'Plimvort'), ($2, 'english', 'Plimvort'), ($3, 'english', 'Plimvort')`,
+			newer, older, group)
+
+		for range 5 {
+			hits, err := q.SearchNodes(ctx, sqlcgen.SearchNodesParams{Q: "plimvort", MaxResults: 10})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got []string
+			for _, h := range hits {
+				if h.Title == "Plimvort" {
+					got = append(got, strings.TrimSuffix(h.Slug, "-"+run))
+				}
+			}
+			if want := []string{"test-plim", "test-plim-2009", "test-plim-2011"}; strings.Join(got, ",") != strings.Join(want, ",") {
+				t.Fatalf("order = %v, want %v", got, want)
+			}
 		}
 	})
 

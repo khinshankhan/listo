@@ -1,6 +1,6 @@
 -- name: SearchNodes :many
 -- Fuzzy title search over entries and groups, one hit per node by its best
--- matching title.
+-- matching title. Ties go a group before its entries, then oldest first.
 select n.public_id, n.slug, n.type,
        coalesce(e.title, g.name)::text as title,
        hit.matched::text as matched, hit.matched_kind::text as matched_kind,
@@ -21,7 +21,7 @@ left join catalog.entry e on e.id = n.id
 left join catalog.grp g on g.id = n.id
 left join catalog.medium m on m.medium = e.medium
 left join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
-order by hit.score desc, title
+order by hit.score desc, title, e.start_date nulls first, n.public_id
 limit sqlc.arg(max_results)::int;
 
 -- name: TitleSuggestions :many
