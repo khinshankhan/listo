@@ -76,3 +76,22 @@ join catalog.node n on n.id = g.id
 left join catalog.entry e on e.id = down.id
 group by n.public_id, n.slug, g.kind, g.name
 order by g.name;
+
+-- name: GroupRelations :many
+-- The relations between entries under a group at any depth, for its timeline.
+with recursive down (member_id) as (
+  select ms.member_id from catalog.membership ms where ms.group_id = $1
+  union
+  select ms.member_id from down join catalog.membership ms on ms.group_id = down.member_id
+),
+entries as (
+  select down.member_id as id from down join catalog.entry e on e.id = down.member_id
+)
+select f.public_id as from_id, r.kind, rk.label, rk.family, t.public_id as to_id,
+       r.spoiler, r.established_on
+from catalog.relation r
+join catalog.relation_kind rk on rk.kind = r.kind
+join catalog.node f on f.id = r.from_node
+join catalog.node t on t.id = r.to_node
+where r.from_node in (select id from entries) and r.to_node in (select id from entries)
+order by f.public_id, r.kind, t.public_id;

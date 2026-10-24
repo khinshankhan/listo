@@ -35,6 +35,8 @@ type Querier interface {
 	GroupEntries(ctx context.Context, groupID uuid.UUID) ([]GroupEntriesRow, error)
 	// A group's orderings, recommended first, one row per step.
 	GroupOrderings(ctx context.Context, groupID uuid.UUID) ([]GroupOrderingsRow, error)
+	// The relations between entries under a group at any depth, for its timeline.
+	GroupRelations(ctx context.Context, groupID uuid.UUID) ([]GroupRelationsRow, error)
 	// The other groups that share a parent with this one, with every entry
 	// beneath each counted.
 	GroupSiblings(ctx context.Context, memberID uuid.UUID) ([]GroupSiblingsRow, error)

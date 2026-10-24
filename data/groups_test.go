@@ -230,3 +230,63 @@ func TestFranchiseQueries(t *testing.T) {
 		}
 	})
 }
+
+// A group's relations are the ones between its own entries, however deep, and
+// none that reach outside it or land on a group.
+func TestGroupRelations(t *testing.T) {
+	tx := testTx(t)
+	ctx := context.Background()
+
+	run := fmt.Sprint(time.Now().UnixNano())
+	medium := "test_medium_" + run
+
+	exec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := tx.Exec(ctx, q, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	node := func(typ, name string) (uuid.UUID, int64) {
+		t.Helper()
+		var id uuid.UUID
+		var publicID int64
+		if err := tx.QueryRow(ctx, `insert into catalog.node (type, slug) values ($1, $2) returning id, public_id`,
+			typ, fmt.Sprintf("test-%s-%s", name, run)).Scan(&id, &publicID); err != nil {
+			t.Fatal(err)
+		}
+		return id, publicID
+	}
+	entry := func(name string) (uuid.UUID, int64) {
+		t.Helper()
+		id, publicID := node("entry", name)
+		exec(`insert into catalog.entry (id, medium, format, title, unit_kind) values ($1, $2, 'tv', $3, 'none')`,
+			id, medium, name)
+		return id, publicID
+	}
+
+	exec(`insert into catalog.medium (medium, label, verb_current, verb_planning, verb_repeating)
+	      values ($1, 'test medium', 'watching', 'plan to watch', 'rewatching')`, medium)
+	exec(`insert into catalog.medium_format (medium, format, label) values ($1, 'tv', 'tv')`, medium)
+
+	franchise, _ := node("group", "franchise")
+	sub, _ := node("group", "sub")
+	exec(`insert into catalog.grp (id, kind, name) values ($1, 'franchise', 'Test Franchise'), ($2, 'series', 'Test Series')`,
+		franchise, sub)
+	top, topID := entry("top")
+	deep, deepID := entry("deep")
+	outside, _ := entry("outside")
+	exec(`insert into catalog.membership (group_id, member_id) values ($1, $2), ($1, $3), ($3, $4)`, franchise, top, sub, deep)
+	exec(`insert into catalog.relation (from_node, kind, to_node, spoiler) values
+	      ($1, 'sequel_of', $2, true), ($2, 'references', $3, false)`, deep, top, outside)
+	exec(`insert into catalog.relation (from_node, kind, to_node, is_symmetric) values (least($1::uuid, $2::uuid), 'crossover_with', greatest($1::uuid, $2::uuid), true)`,
+		deep, sub)
+
+	got, err := sqlcgen.New(tx).GroupRelations(ctx, franchise)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []sqlcgen.GroupRelationsRow{{FromID: deepID, Kind: "sequel_of", Label: "sequel of", Family: "sequence", ToID: topID, Spoiler: true}}
+	if len(got) != len(want) || got[0] != want[0] {
+		t.Errorf("got %+v, want %+v", got, want)
+	}
+}

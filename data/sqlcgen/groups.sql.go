@@ -228,6 +228,64 @@ func (q *Queries) GroupOrderings(ctx context.Context, groupID uuid.UUID) ([]Grou
 	return items, nil
 }
 
+const groupRelations = `-- name: GroupRelations :many
+with recursive down (member_id) as (
+  select ms.member_id from catalog.membership ms where ms.group_id = $1
+  union
+  select ms.member_id from down join catalog.membership ms on ms.group_id = down.member_id
+),
+entries as (
+  select down.member_id as id from down join catalog.entry e on e.id = down.member_id
+)
+select f.public_id as from_id, r.kind, rk.label, rk.family, t.public_id as to_id,
+       r.spoiler, r.established_on
+from catalog.relation r
+join catalog.relation_kind rk on rk.kind = r.kind
+join catalog.node f on f.id = r.from_node
+join catalog.node t on t.id = r.to_node
+where r.from_node in (select id from entries) and r.to_node in (select id from entries)
+order by f.public_id, r.kind, t.public_id
+`
+
+type GroupRelationsRow struct {
+	FromID        int64
+	Kind          string
+	Label         string
+	Family        string
+	ToID          int64
+	Spoiler       bool
+	EstablishedOn *time.Time
+}
+
+// The relations between entries under a group at any depth, for its timeline.
+func (q *Queries) GroupRelations(ctx context.Context, groupID uuid.UUID) ([]GroupRelationsRow, error) {
+	rows, err := q.db.Query(ctx, groupRelations, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GroupRelationsRow{}
+	for rows.Next() {
+		var i GroupRelationsRow
+		if err := rows.Scan(
+			&i.FromID,
+			&i.Kind,
+			&i.Label,
+			&i.Family,
+			&i.ToID,
+			&i.Spoiler,
+			&i.EstablishedOn,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const groupSiblings = `-- name: GroupSiblings :many
 with recursive down (root, id) as (
   select s.member_id, s.member_id
