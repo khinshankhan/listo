@@ -41,7 +41,7 @@ templ Layout(head Head, tags web.Tags, chrome Chrome) {
 		<body class="flex min-h-screen flex-col bg-background-1 font-body text-foreground antialiased">
 			// first stop for a keyboard, past the top bar and sidebar
 			<a href="#content" class="sr-only rounded-md bg-foreground-strong px-4 py-2 text-14 font-semibold text-background-2 focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast">skip to content</a>
-			@topBar(chrome.Query, chrome.HideSearch)
+			@topBar(chrome.Query, chrome.HideSearch, chrome.Sidebar != nil)
 			<div class="flex flex-1">
 				if chrome.Sidebar != nil {
 					@sidebar(*chrome.Sidebar)
@@ -57,10 +57,11 @@ templ Layout(head Head, tags web.Tags, chrome Chrome) {
 }
 
 // topBar is the wordmark corner, browse and search. The corner matches the
-// sidebar's width. A page that hosts the search itself hides it here.
-templ topBar(query string, hideSearch bool) {
+// sidebar's width, and only draws its edge when there's a sidebar under it.
+// A page that hosts the search itself hides it here.
+templ topBar(query string, hideSearch, sidebar bool) {
 	<header class="relative flex shrink-0 border-b border-border bg-background-2 [view-transition-name:top-bar]">
-		<div class="flex shrink-0 items-center px-4 sm:w-sidebar sm:border-r sm:border-border sm:px-7">
+		<div class={ "flex shrink-0 items-center px-4 sm:w-sidebar sm:px-7", templ.KV("lg:border-r lg:border-border", sidebar) }>
 			@Wordmark()
 		</div>
 		<div class="flex min-w-0 flex-1 items-center justify-between gap-[22px] py-[14px] pr-4 sm:px-10">
