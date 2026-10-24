@@ -246,8 +246,9 @@ const Timeline = ({ width, height, ticks, boxes, works, links }: Props): ReactNo
       targetHandle: handles[1],
       className: [l.sequel ? "timeline-sequel" : "timeline-other", l.spoiler ? "timeline-spoiler" : "", dim ? "is-dim" : ""].join(" "),
       markerEnd: l.sequel ? { type: MarkerType.ArrowClosed, width: 14, height: 14, color: dim ? "var(--color-border)" : "var(--color-foreground-muted)" } : undefined,
-      // lit lines draw over dim ones where they share a trunk
-      zIndex: dim ? 0 : 1,
+      // lit lines draw over dim ones where they share a trunk, and both under
+      // the box names and labels
+      zIndex: dim ? -1 : 0,
       data: { label: l.label, trunkX: l.sequel && from.y !== to.y ? trunkX : null, turn, spoiler: l.spoiler, dim },
       focusable: false,
       selectable: false,
