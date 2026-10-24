@@ -7,8 +7,9 @@
   background-size: 100% 0.0625em;
 }
 
+/* thicker than quicksilver's, so a hover is plain to see */
 @utility drastic-underline {
-  background-size: 100% 0.078125em;
+  background-size: 100% 0.15em;
 }
 
 @utility link-hide {

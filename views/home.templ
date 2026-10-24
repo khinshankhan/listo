@@ -7,7 +7,7 @@ import "fmt"
 templ HomePage(h Home) {
 	<div class="mx-auto flex max-w-[992px] flex-col gap-[72px] pt-4 sm:pt-7">
 		<section class="flex flex-col items-center gap-5 text-center">
-			<h1 class="max-w-[760px] font-heading text-[36px] leading-10 font-bold tracking-[-0.035em] text-foreground-strong sm:text-[52px] sm:leading-[56px]">
+			<h1 class="max-w-[640px] font-heading text-[40px] leading-[44px] font-bold tracking-[-0.04em] text-foreground-strong sm:text-[60px] sm:leading-[62px] xl:max-w-[780px] xl:text-[76px] xl:leading-[76px]">
 				keep one list for everything you watch, read, and play.
 			</h1>
 			<p class="max-w-[600px] text-16 leading-[26px] text-foreground-muted">
@@ -233,9 +233,12 @@ templ guides(h Home) {
 								<ul class="flex w-full flex-col gap-[5px]">
 									for _, row := range c.Rows {
 										<li class="flex justify-between gap-2 border-b border-border-subtle pb-[5px]">
-											@Link(LinkProps{Href: row.Href, Variant: LinkNone, Class: "min-w-0 text-13 leading-4 text-foreground-strong"}) {
-												{ row.Title }
-											}
+											// inline in a span, so a wrapped title is underlined on every line
+											<span class="min-w-0">
+												@Link(LinkProps{Href: row.Href, Class: "text-13 leading-[18px] font-medium text-accent-11"}) {
+													{ row.Title }
+												}
+											</span>
 											<span class="shrink-0 font-mono text-[10px] leading-3 tracking-[0.04em] text-foreground-muted">{ row.Meta }</span>
 										</li>
 									}
@@ -254,9 +257,11 @@ templ guides(h Home) {
 							<li class="flex items-center gap-3 border-b border-border-subtle py-[9px]">
 								<span class="flex size-[22px] shrink-0 items-center justify-center rounded-full border border-border font-mono text-11 leading-[14px] text-foreground-muted">{ fmt.Sprint(st.Number) }</span>
 								<span class="flex min-w-0 flex-1 flex-col gap-0.5">
-									@Link(LinkProps{Href: st.Href, Variant: LinkNone, Class: "text-13 leading-4 text-foreground-strong"}) {
-										{ st.Title }
-									}
+									<span>
+										@Link(LinkProps{Href: st.Href, Class: "text-13 leading-[18px] font-medium text-accent-11"}) {
+											{ st.Title }
+										}
+									</span>
 									if st.Note != "" {
 										<span class="truncate text-12 leading-4 text-foreground-muted">{ st.Note }</span>
 									}
@@ -291,7 +296,7 @@ templ guideHead(kind, name, href string, stats []string) {
 		<div class="flex flex-col gap-[7px]">
 			<p class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">{ kind }</p>
 			<h3 class="text-[19px] leading-6 font-semibold tracking-[-0.02em] text-foreground-strong">
-				@Link(LinkProps{Href: href, Variant: LinkNone}) {
+				@Link(LinkProps{Href: href}) {
 					{ name }
 				}
 			</h3>
