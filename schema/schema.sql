@@ -74,15 +74,34 @@ create table catalog.entry (
   format          text not null,
   country         char(2),
   title           text not null,           -- display default; real titles live in catalog.title
+  description     text,
+  -- null until someone knows; a guess would be worse
+  status          text,
   start_date      date,
   start_precision text check (start_precision in ('day', 'month', 'year')),
+  end_date        date,
+  end_precision   text check (end_precision in ('day', 'month', 'year')),
   unit_kind       text not null default 'none'
                   check (unit_kind in ('episode', 'chapter', 'volume', 'route', 'none')),
-  unit_total      int,
+  unit_total      int,                     -- the final count, once known
+  unit_available  numeric,                 -- released so far, while releasing
+  unit_minutes    int,                     -- per episode: "24 min"
+  length_minutes  int,                     -- the whole work: a film's runtime, a VN's ~40 hrs
+  -- the source when it isn't in the catalog; when it is, adaptation_of says so
+  source_type     text,
   foreign key (id, type) references catalog.node (id, type) on delete cascade,
   constraint entry_format_fits_medium foreign key (medium, format)
     references catalog.medium_format (medium, format),
-  check ((start_date is null) = (start_precision is null))
+  check ((start_date is null) = (start_precision is null)),
+  constraint entry_end_has_precision check ((end_date is null) = (end_precision is null)),
+  constraint entry_ends_after_start check (end_date >= start_date),
+  constraint entry_status_known
+    check (status in ('announced', 'releasing', 'finished', 'cancelled', 'hiatus')),
+  constraint entry_source_type_known
+    check (source_type in ('original', 'manga', 'light_novel', 'novel', 'web_novel',
+                           'visual_novel', 'game', 'comic', 'other')),
+  constraint entry_unit_minutes_positive check (unit_minutes > 0),
+  check (length_minutes > 0)
 );
 
 -- "group" is a reserved word, hence grp.
@@ -122,9 +141,30 @@ create table catalog.unit (
   number   numeric,                            -- the official number, for display and matching
   part     int,                                -- season (tv) or volume (manga chapters): medium.part_label
   label    text not null,                      -- "Ep. 7", "23β"
+  title    text,                               -- "Lawful Neutral"
+  -- a timestamp, not a date: "next episode in 3d 4h"
+  air_date timestamptz,
+  minutes  int check (minutes > 0),
   unique (entry_id, ordinal),
   unique (id, entry_id)                        -- lets anchors prove which entry they belong to
 );
+
+-- Studios, publishers and the like. People wait for the credits screen.
+create table catalog.company (
+  id      uuid primary key default uuidv7(),
+  name    text not null,
+  country char(2)
+);
+
+create table catalog.entry_company (
+  entry_id   uuid not null references catalog.entry on delete cascade,
+  company_id uuid not null references catalog.company on delete cascade,
+  role       text not null,
+  primary key (entry_id, company_id, role),
+  constraint entry_company_role_known
+    check (role in ('studio', 'producer', 'publisher', 'developer', 'licensor'))
+);
+create index on catalog.entry_company (company_id);
 
 -- Graph
 

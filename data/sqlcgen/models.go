@@ -11,6 +11,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type CatalogCompany struct {
+	ID      uuid.UUID
+	Name    string
+	Country *string
+}
+
 type CatalogEntry struct {
 	ID             uuid.UUID
 	Type           string
@@ -18,10 +24,24 @@ type CatalogEntry struct {
 	Format         string
 	Country        *string
 	Title          string
+	Description    *string
+	Status         *string
 	StartDate      *time.Time
 	StartPrecision *string
+	EndDate        *time.Time
+	EndPrecision   *string
 	UnitKind       string
 	UnitTotal      *int32
+	UnitAvailable  pgtype.Numeric
+	UnitMinutes    *int32
+	LengthMinutes  *int32
+	SourceType     *string
+}
+
+type CatalogEntryCompany struct {
+	EntryID   uuid.UUID
+	CompanyID uuid.UUID
+	Role      string
 }
 
 type CatalogExternalID struct {
@@ -72,8 +92,8 @@ type CatalogNode struct {
 	Type      string
 	Slug      string
 	Source    string
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type CatalogNodeTag struct {
@@ -149,6 +169,9 @@ type CatalogUnit struct {
 	Number  pgtype.Numeric
 	Part    *int32
 	Label   string
+	Title   *string
+	AirDate *time.Time
+	Minutes *int32
 }
 
 type TrackingAccount struct {
@@ -163,14 +186,14 @@ type TrackingListEntry struct {
 	Status    string
 	Progress  pgtype.Numeric
 	Priority  int32
-	AddedAt   pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	AddedAt   time.Time
+	UpdatedAt time.Time
 }
 
 type TrackingQueue struct {
 	AccountID uuid.UUID
 	EntryID   uuid.UUID
 	Priority  int32
-	AddedAt   pgtype.Timestamptz
+	AddedAt   time.Time
 	Effective int32
 }

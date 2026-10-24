@@ -241,6 +241,64 @@ func TestEntryPageQueries(t *testing.T) {
 			t.Errorf("got %+v", got)
 		}
 	})
+
+	t.Run("who made it, studios first", func(t *testing.T) {
+		// added publisher first, so insertion order can't pass for the rule
+		for _, c := range []struct{ name, role string }{{"Zz Publisher", "publisher"}, {"Bb Studio", "studio"}, {"Aa Studio", "studio"}} {
+			exec(`with c as (insert into catalog.company (name) values ($1) returning id)
+			      insert into catalog.entry_company (entry_id, company_id, role) select $2, id, $3 from c`, c.name+" "+run, adaptation, c.role)
+		}
+		got, err := q.EntryCompanies(ctx, adaptation)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var names []string
+		for _, c := range got {
+			names = append(names, strings.TrimSuffix(c.Name, " "+run)+"/"+c.Role)
+		}
+		if want := "Aa Studio/studio Bb Studio/studio Zz Publisher/publisher"; strings.Join(names, " ") != want {
+			t.Errorf("got %v, want %s", names, want)
+		}
+	})
+
+	t.Run("units in order, with what's known of each", func(t *testing.T) {
+		exec(`update catalog.unit set title = 'Pilot', air_date = '2011-04-06 00:00+09', minutes = 24
+		      where entry_id = $1 and ordinal = 1`, source1)
+		got, err := q.EntryUnits(ctx, source1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got) != 2 || got[0].Label != "Ep. 1" || got[1].Label != "Ep. 2" {
+			t.Fatalf("got %+v, want Ep. 1 then Ep. 2", got)
+		}
+		first := got[0]
+		aired := time.Date(2011, 4, 5, 15, 0, 0, 0, time.UTC)
+		if deref(first.Title) != "Pilot" || first.AirDate == nil || !first.AirDate.Equal(aired) || first.Minutes == nil || *first.Minutes != 24 {
+			t.Errorf("first = %+v, want Pilot, aired %v, 24 min", first, aired)
+		}
+		if got[1].Title != nil || got[1].AirDate != nil {
+			t.Errorf("second = %+v, want nothing known", got[1])
+		}
+	})
+
+	t.Run("an entry brings its description, status and run", func(t *testing.T) {
+		exec(`update catalog.entry set description = 'A test.', status = 'finished', source_type = 'manga',
+		      start_date = '2011-04-01', start_precision = 'month', end_date = '2011-09-01', end_precision = 'month',
+		      unit_minutes = 24 where id = $1`, adaptation)
+		var publicID int64
+		if err := tx.QueryRow(ctx, `select public_id from catalog.node where id = $1`, adaptation).Scan(&publicID); err != nil {
+			t.Fatal(err)
+		}
+		got, err := q.EntryByPublicID(ctx, publicID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if deref(got.Description) != "A test." || deref(got.Status) != "finished" || deref(got.SourceType) != "manga" ||
+			got.EndDate == nil || got.EndDate.Month() != time.September || deref(got.EndPrecision) != "month" ||
+			got.UnitMinutes == nil || *got.UnitMinutes != 24 {
+			t.Errorf("got %+v", got)
+		}
+	})
 }
 
 func deref(s *string) string {

@@ -10,12 +10,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const entryByPublicID = `-- name: EntryByPublicID :one
 select n.id, n.public_id, n.slug, e.medium, m.label as medium_label, e.format,
-       mf.label as format_label, e.country, e.title, e.start_date, e.start_precision,
-       e.unit_kind, e.unit_total
+       mf.label as format_label, e.country, e.title, e.description, e.status,
+       e.start_date, e.start_precision, e.end_date, e.end_precision,
+       e.unit_kind, e.unit_total, e.unit_available, e.unit_minutes, e.length_minutes, e.source_type
 from catalog.node n
 join catalog.entry e on e.id = n.id
 join catalog.medium m on m.medium = e.medium
@@ -33,10 +35,18 @@ type EntryByPublicIDRow struct {
 	FormatLabel    string
 	Country        *string
 	Title          string
+	Description    *string
+	Status         *string
 	StartDate      *time.Time
 	StartPrecision *string
+	EndDate        *time.Time
+	EndPrecision   *string
 	UnitKind       string
 	UnitTotal      *int32
+	UnitAvailable  pgtype.Numeric
+	UnitMinutes    *int32
+	LengthMinutes  *int32
+	SourceType     *string
 }
 
 // An entry by public id, with its medium and format labels. The caller
@@ -54,12 +64,100 @@ func (q *Queries) EntryByPublicID(ctx context.Context, publicID int64) (EntryByP
 		&i.FormatLabel,
 		&i.Country,
 		&i.Title,
+		&i.Description,
+		&i.Status,
 		&i.StartDate,
 		&i.StartPrecision,
+		&i.EndDate,
+		&i.EndPrecision,
 		&i.UnitKind,
 		&i.UnitTotal,
+		&i.UnitAvailable,
+		&i.UnitMinutes,
+		&i.LengthMinutes,
+		&i.SourceType,
 	)
 	return i, err
+}
+
+const entryCompanies = `-- name: EntryCompanies :many
+select c.name, ec.role
+from catalog.entry_company ec
+join catalog.company c on c.id = ec.company_id
+where ec.entry_id = $1
+order by array_position(array['studio', 'developer', 'publisher', 'producer', 'licensor'], ec.role), c.name
+`
+
+type EntryCompaniesRow struct {
+	Name string
+	Role string
+}
+
+// Who made an entry, by role then name.
+func (q *Queries) EntryCompanies(ctx context.Context, entryID uuid.UUID) ([]EntryCompaniesRow, error) {
+	rows, err := q.db.Query(ctx, entryCompanies, entryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []EntryCompaniesRow{}
+	for rows.Next() {
+		var i EntryCompaniesRow
+		if err := rows.Scan(&i.Name, &i.Role); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const entryUnits = `-- name: EntryUnits :many
+select ordinal, kind, number, label, title, air_date, minutes
+from catalog.unit
+where entry_id = $1
+order by ordinal
+`
+
+type EntryUnitsRow struct {
+	Ordinal int32
+	Kind    string
+	Number  pgtype.Numeric
+	Label   string
+	Title   *string
+	AirDate *time.Time
+	Minutes *int32
+}
+
+// An entry's units in order, for the episode list and what airs next.
+func (q *Queries) EntryUnits(ctx context.Context, entryID uuid.UUID) ([]EntryUnitsRow, error) {
+	rows, err := q.db.Query(ctx, entryUnits, entryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []EntryUnitsRow{}
+	for rows.Next() {
+		var i EntryUnitsRow
+		if err := rows.Scan(
+			&i.Ordinal,
+			&i.Kind,
+			&i.Number,
+			&i.Label,
+			&i.Title,
+			&i.AirDate,
+			&i.Minutes,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const nodeGroups = `-- name: NodeGroups :many
@@ -179,7 +277,7 @@ left join catalog.unit mine on mine.id = case when r.from_node = $1::uuid then r
 left join catalog.unit theirs on theirs.id = case when r.from_node = $1::uuid then r.to_unit else r.from_unit end
 where $1::uuid in (r.from_node, r.to_node)
   and not r.spoiler
-order by rk.family, reading, e.start_date nulls last, title
+order by rk.family, reading, e.start_date nulls last, coalesce(e.title, g.name)
 `
 
 type NodeRelationsRow struct {

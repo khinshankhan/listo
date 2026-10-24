@@ -2,8 +2,9 @@
 -- An entry by public id, with its medium and format labels. The caller
 -- checks the slug.
 select n.id, n.public_id, n.slug, e.medium, m.label as medium_label, e.format,
-       mf.label as format_label, e.country, e.title, e.start_date, e.start_precision,
-       e.unit_kind, e.unit_total
+       mf.label as format_label, e.country, e.title, e.description, e.status,
+       e.start_date, e.start_precision, e.end_date, e.end_precision,
+       e.unit_kind, e.unit_total, e.unit_available, e.unit_minutes, e.length_minutes, e.source_type
 from catalog.node n
 join catalog.entry e on e.id = n.id
 join catalog.medium m on m.medium = e.medium
@@ -45,7 +46,7 @@ left join catalog.unit mine on mine.id = case when r.from_node = sqlc.arg(node_i
 left join catalog.unit theirs on theirs.id = case when r.from_node = sqlc.arg(node_id)::uuid then r.to_unit else r.from_unit end
 where sqlc.arg(node_id)::uuid in (r.from_node, r.to_node)
   and not r.spoiler
-order by rk.family, reading, e.start_date nulls last, title;
+order by rk.family, reading, e.start_date nulls last, coalesce(e.title, g.name);
 
 -- name: NodeGroups :many
 -- Every group a node is in, nearest first, with a cycle guard. Only direct
@@ -74,3 +75,18 @@ from catalog.node_tag nt
 join catalog.tag t on t.id = nt.tag_id
 where nt.node_id = $1
 order by t.kind, t.name;
+
+-- name: EntryCompanies :many
+-- Who made an entry, by role then name.
+select c.name, ec.role
+from catalog.entry_company ec
+join catalog.company c on c.id = ec.company_id
+where ec.entry_id = $1
+order by array_position(array['studio', 'developer', 'publisher', 'producer', 'licensor'], ec.role), c.name;
+
+-- name: EntryUnits :many
+-- An entry's units in order, for the episode list and what airs next.
+select ordinal, kind, number, label, title, air_date, minutes
+from catalog.unit
+where entry_id = $1
+order by ordinal;

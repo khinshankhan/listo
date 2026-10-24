@@ -57,6 +57,8 @@ func TestSchemaRejectsBadWrites(t *testing.T) {
 	exec(`insert into catalog.external_id (source, external_id, node_id) values ($1, '9253', $2)`, source, first)
 	group := id(`insert into catalog.node (type, slug) values ('group', $1) returning id`, "test-group-"+run)
 	exec(`insert into catalog.grp (id, kind, name) values ($1, 'franchise', 'Test Franchise')`, group)
+	studio := id(`insert into catalog.company (name) values ($1) returning id`, "Test Studio "+run)
+	exec(`insert into catalog.entry_company (entry_id, company_id, role) values ($1, $2, 'studio')`, first, studio)
 	account := id(`insert into tracking.account (username) values ($1) returning id`, "test-"+run)
 	exec(`insert into tracking.list_entry (account_id, entry_id, status) values ($1, $2, 'current')`, account, tracked)
 
@@ -102,6 +104,28 @@ func TestSchemaRejectsBadWrites(t *testing.T) {
 		{"i. a group can't contain itself",
 			`insert into catalog.membership (group_id, member_id) values ($1, $1)`,
 			[]any{group}, "23514", "membership_not_in_self"},
+		{"j. a status comes from the list",
+			`update catalog.entry set status = 'airing' where id = $1`,
+			[]any{second}, "23514", "entry_status_known"},
+		{"k. an end date needs its precision",
+			`update catalog.entry set end_date = '2020-01-01' where id = $1`,
+			[]any{second}, "23514", "entry_end_has_precision"},
+		{"l. nothing ends before it starts",
+			`update catalog.entry set start_date = '2020-01-01', start_precision = 'year',
+			 end_date = '2019-01-01', end_precision = 'year' where id = $1`,
+			[]any{second}, "23514", "entry_ends_after_start"},
+		{"m. a source type comes from the list",
+			`update catalog.entry set source_type = 'fanfic' where id = $1`,
+			[]any{second}, "23514", "entry_source_type_known"},
+		{"n. an episode lasts some time",
+			`update catalog.entry set unit_minutes = 0 where id = $1`,
+			[]any{second}, "23514", "entry_unit_minutes_positive"},
+		{"o. a company's role comes from the list",
+			`insert into catalog.entry_company (entry_id, company_id, role) values ($1, $2, 'caterer')`,
+			[]any{second, studio}, "23514", "entry_company_role_known"},
+		{"p. a company is credited once per role",
+			`insert into catalog.entry_company (entry_id, company_id, role) values ($1, $2, 'studio')`,
+			[]any{first, studio}, "23505", "entry_company_pkey"},
 	}
 
 	for _, tc := range cases {

@@ -24,6 +24,10 @@ type Querier interface {
 	// An entry by public id, with its medium and format labels. The caller
 	// checks the slug.
 	EntryByPublicID(ctx context.Context, publicID int64) (EntryByPublicIDRow, error)
+	// Who made an entry, by role then name.
+	EntryCompanies(ctx context.Context, entryID uuid.UUID) ([]EntryCompaniesRow, error)
+	// An entry's units in order, for the episode list and what airs next.
+	EntryUnits(ctx context.Context, entryID uuid.UUID) ([]EntryUnitsRow, error)
 	GroupByPublicID(ctx context.Context, publicID int64) (GroupByPublicIDRow, error)
 	// Every entry under a group at any depth, with the branch it sits under (the
 	// group's direct member it was reached through), and its role and position in
