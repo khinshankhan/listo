@@ -112,10 +112,3 @@ func sideLinkClass(active bool) string {
 	}
 	return "flex items-center gap-[11px] rounded-lg px-2.5 py-[9px] hover:bg-background-1"
 }
-
-func pillClass(active bool) string {
-	if active {
-		return "rounded-md border border-accent-7 bg-accent-3 px-3 py-1.5 text-14 text-accent-12"
-	}
-	return "rounded-md border border-border px-3 py-1.5 text-14 text-foreground hover:border-accent-7"
-}

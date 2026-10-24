@@ -140,10 +140,11 @@ type GroupCard struct {
 }
 
 // MediumLink filters the browse list to one medium; the empty Label is "all".
+// Medium is its key, eg "visual_novel".
 type MediumLink struct {
-	Label, Href string
-	Count       int
-	Active      bool
+	Medium, Label, Href string
+	Count               int
+	Active              bool
 }
 
 // Search is the search page: the query as typed, and what it found.
@@ -168,17 +169,6 @@ type Suggestion struct {
 type Result struct {
 	Title, Href, Meta, Matched string
 	MatchedAs, Medium, Detail  string
-}
-
-// Browse is every entry, or one medium's.
-type Browse struct {
-	Media   []MediumLink
-	Entries []Row
-}
-
-// Row is one linked line in a list.
-type Row struct {
-	Title, Href, Meta string
 }
 
 // count is "1 entry", "36 entries".

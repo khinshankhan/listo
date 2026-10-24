@@ -71,10 +71,52 @@ group by m.medium, m.label
 order by entries desc, m.label;
 
 -- name: BrowseEntries :many
--- Every entry, or one medium's, alphabetically.
-select n.public_id, n.slug, e.title, m.label as medium_label, e.start_date
+-- Every entry the filters let through, newest first. A season is 0 for winter
+-- to 3 for fall, and only matches entries dated to the month.
+select n.public_id, n.slug, e.title, e.medium, m.label as medium_label, e.format, mf.label as format_label,
+       e.start_date, e.start_precision, e.unit_kind, e.unit_total
 from catalog.entry e
 join catalog.node n on n.id = e.id
 join catalog.medium m on m.medium = e.medium
-where sqlc.narg(medium)::text is null or e.medium = sqlc.narg(medium)::text
-order by e.title, e.start_date nulls last;
+join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
+where (sqlc.narg(medium)::text is null or e.medium = sqlc.narg(medium)::text)
+  and (sqlc.narg(genre)::text is null or exists (
+        select 1
+        from catalog.node_tag nt
+        join catalog.tag t on t.id = nt.tag_id
+        where nt.node_id = e.id and t.kind = 'genre' and t.name = sqlc.narg(genre)::text))
+  and (sqlc.narg(year)::int is null or extract(year from e.start_date)::int = sqlc.narg(year)::int)
+  and (sqlc.narg(season)::int is null
+       or (e.start_precision <> 'year' and (extract(month from e.start_date)::int - 1) / 3 = sqlc.narg(season)::int))
+order by e.start_date desc nulls last, e.title, n.public_id;
+
+-- name: BrowseShelves :many
+-- Each medium's newest entries, at most per_shelf apiece.
+select public_id, slug, title, medium, medium_label, format, format_label,
+       start_date, start_precision, unit_kind, unit_total
+from (
+  select n.public_id, n.slug, e.title, e.medium, m.label as medium_label, e.format, mf.label as format_label,
+         e.start_date, e.start_precision, e.unit_kind, e.unit_total,
+         row_number() over (partition by e.medium order by e.start_date desc nulls last, e.title, n.public_id) as rank
+  from catalog.entry e
+  join catalog.node n on n.id = e.id
+  join catalog.medium m on m.medium = e.medium
+  join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
+) shelf
+where rank <= sqlc.arg(per_shelf)::int
+order by medium, rank;
+
+-- name: BrowseGenres :many
+-- Genres some entry has, for the filter.
+select t.name
+from catalog.tag t
+where t.kind = 'genre'
+  and exists (select 1 from catalog.node_tag nt join catalog.entry e on e.id = nt.node_id where nt.tag_id = t.id)
+order by t.name;
+
+-- name: BrowseYears :many
+-- Years some entry started in, newest first, for the filter.
+select distinct extract(year from start_date)::int as year
+from catalog.entry
+where start_date is not null
+order by year desc;

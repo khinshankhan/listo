@@ -215,6 +215,11 @@ func TestCatalogPages(t *testing.T) {
 			location: "/groups/2/steins-gate/orderings/first-timer-order"},
 		{name: "an ordering the group doesn't have", path: "/groups/2/steins-gate/orderings/vibes", status: http.StatusNotFound},
 		{name: "an ordering of no group", path: "/groups/999/x/orderings/first-timer-order", status: http.StatusNotFound},
+		// the form sends "any" as empty; one address per view
+		{name: "browse drops empty filters", path: "/entries?medium=&genre=sci-fi&year=&season=", status: http.StatusFound,
+			location: "/entries?genre=sci-fi"},
+		{name: "all empty is plain browse", path: "/entries?medium=&genre=&year=&season=", status: http.StatusFound,
+			location: "/entries"},
 		{name: "a relation says where it attaches", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
 			want: []string{">here at Ep. 23</span>"}},
 		{name: "group wrong slug redirects", path: "/groups/2/sg?x=1", status: http.StatusMovedPermanently,
@@ -355,12 +360,31 @@ func TestFrontPages(t *testing.T) {
 		{name: "browse everything", path: "/entries", status: http.StatusOK,
 			want: []string{`href="/entries" aria-current="page"`, ">everything</span>", `href="/entries/7/steins-gate-anime">Steins;Gate</a>`, `href="/entries/6/steins-gate-vn">Steins;Gate</a>`,
 				`<link rel="canonical" href="/entries">`}},
-		{name: "an empty list says so", path: "/entries?medium=visual_novel", status: http.StatusOK,
-			want: []string{"Nothing to browse here yet."}, dontWant: []string{">entries</h2>"}},
+		{name: "unfiltered, a shelf per medium", path: "/entries", status: http.StatusOK,
+			want: []string{`id="shelf-anime"`, ">anime</h2>", ">visual novel</h2>",
+				`<a href="/entries?medium=anime">view all<span class="sr-only"> anime</span></a>`,
+				">anime · spring 2011 · 24 episodes</span>", ">visual novel · 2009</span>"},
+			// shelves, not the filtered grid
+			dontWant: []string{`id="matches"`, "clear filters"}},
+		{name: "browse has the one search, up top", path: "/entries", status: http.StatusOK,
+			want: []string{`relative h-[52px] w-full`}, dontWant: []string{"max-w-[420px]"}},
+		{name: "the filters, each with any", path: "/entries", status: http.StatusOK,
+			want: []string{`<label for="filter-medium"`, `<option value="" selected>any</option>`, `<option value="visual_novel">visual novel</option>`,
+				`<option value="sci-fi">sci-fi</option>`, `<option value="2009">2009</option>`, `<option value="fall">fall</option>`,
+				`<button type="submit"`}},
+		{name: "a filter shows what it chose", path: "/entries?genre=sci-fi", status: http.StatusOK,
+			want: []string{`<option value="sci-fi" selected>sci-fi</option>`, ">1 entry</h2>", "clear filters",
+				`href="/entries/7/steins-gate-anime">Steins;Gate</a>`, `<meta name="robots" content="noindex">`},
+			dontWant: []string{"/entries/6/steins-gate-vn", `id="shelf-anime"`}},
+		{name: "filters that match nothing say so", path: "/entries?medium=visual_novel&year=2011", status: http.StatusOK,
+			want: []string{">0 entries</h2>", "Nothing matches these filters yet. Try loosening one.", `<a href="/entries">clear filters</a>`}},
+		{name: "a genre nobody has", path: "/entries?genre=pottery", status: http.StatusNotFound},
+		{name: "a year nobody started in", path: "/entries?year=1890", status: http.StatusNotFound},
+		{name: "a season that isn't one", path: "/entries?season=monsoon", status: http.StatusNotFound},
 		{name: "browse one medium", path: "/entries?medium=anime", status: http.StatusOK,
-			want: []string{`href="/entries/7/steins-gate-anime">Steins;Gate</a>`,
+			want: []string{`href="/entries/7/steins-gate-anime">Steins;Gate</a>`, `<option value="anime" selected>anime</option>`,
 				`<link rel="canonical" href="/entries?medium=anime">`, `href="/entries?medium=anime" aria-current="page"`},
-			dontWant: []string{"/entries/6/steins-gate-vn"}},
+			dontWant: []string{"/entries/6/steins-gate-vn", "noindex"}},
 		{name: "unknown medium", path: "/entries?medium=pottery", status: http.StatusNotFound, want: []string{"back home"}},
 	}
 
@@ -608,19 +632,50 @@ func (fakeCatalog) MediumCounts(context.Context) ([]sqlcgen.MediumCountsRow, err
 	}, nil
 }
 
-func (fakeCatalog) BrowseEntries(_ context.Context, medium *string) ([]sqlcgen.BrowseEntriesRow, error) {
-	all := []sqlcgen.BrowseEntriesRow{
-		{PublicID: 7, Slug: "steins-gate-anime", Title: "Steins;Gate", MediumLabel: "anime"},
-		{PublicID: 6, Slug: "steins-gate-vn", Title: "Steins;Gate", MediumLabel: "visual novel"},
+// browseRows is the fake catalog as browse sees it: the anime dated to the
+// month and tagged sci-fi, the VN only to the year.
+func browseRows() []sqlcgen.BrowseEntriesRow {
+	month, year, total := "month", "year", int32(24)
+	anime := time.Date(2011, 4, 1, 0, 0, 0, 0, time.UTC)
+	vn := time.Date(2009, 1, 1, 0, 0, 0, 0, time.UTC)
+	return []sqlcgen.BrowseEntriesRow{
+		{PublicID: 7, Slug: "steins-gate-anime", Title: "Steins;Gate", Medium: "anime", MediumLabel: "anime", Format: "tv",
+			FormatLabel: "anime", StartDate: &anime, StartPrecision: &month, UnitKind: "episode", UnitTotal: &total},
+		{PublicID: 6, Slug: "steins-gate-vn", Title: "Steins;Gate", Medium: "visual_novel", MediumLabel: "visual novel",
+			Format: "full", FormatLabel: "visual novel", StartDate: &vn, StartPrecision: &year, UnitKind: "none"},
 	}
-	if medium == nil {
-		return all, nil
-	}
-	if *medium == "anime" {
-		return all[:1], nil
-	}
-	return nil, nil
 }
+
+// BrowseEntries filters by medium and by the sci-fi genre; the SQL's own
+// filtering is the data package's to test.
+func (fakeCatalog) BrowseEntries(_ context.Context, arg sqlcgen.BrowseEntriesParams) ([]sqlcgen.BrowseEntriesRow, error) {
+	var out []sqlcgen.BrowseEntriesRow
+	for _, r := range browseRows() {
+		if arg.Medium != nil && *arg.Medium != r.Medium {
+			continue
+		}
+		if arg.Genre != nil && r.Medium != "anime" {
+			continue
+		}
+		if arg.Year != nil && int(*arg.Year) != r.StartDate.Year() {
+			continue
+		}
+		out = append(out, r)
+	}
+	return out, nil
+}
+
+func (fakeCatalog) BrowseShelves(context.Context, int32) ([]sqlcgen.BrowseShelvesRow, error) {
+	var out []sqlcgen.BrowseShelvesRow
+	for _, r := range browseRows() {
+		out = append(out, sqlcgen.BrowseShelvesRow(r))
+	}
+	return out, nil
+}
+
+func (fakeCatalog) BrowseGenres(context.Context) ([]string, error) { return []string{"sci-fi"}, nil }
+
+func (fakeCatalog) BrowseYears(context.Context) ([]int32, error) { return []int32{2011, 2009}, nil }
 
 func (fakeCatalog) NodeTags(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeTagsRow, error) {
 	if id != sgAnime {
@@ -660,7 +715,7 @@ func TestEmptyPagesLeaveNoHusks(t *testing.T) {
 	}{
 		{"/entries/9/bare", nil},
 		{"/groups/1/science-adventure", []string{`aria-label="group entries"`}},
-		{"/entries?medium=visual_novel", nil},
+		{"/entries?medium=visual_novel&year=2011", nil},
 		{"/search?q=nothing", nil},
 	}
 	for _, tc := range cases {

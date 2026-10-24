@@ -34,7 +34,10 @@ type Catalog interface {
 	TitleSuggestions(ctx context.Context, arg sqlcgen.TitleSuggestionsParams) ([]string, error)
 	TopGroups(ctx context.Context) ([]sqlcgen.TopGroupsRow, error)
 	MediumCounts(ctx context.Context) ([]sqlcgen.MediumCountsRow, error)
-	BrowseEntries(ctx context.Context, medium *string) ([]sqlcgen.BrowseEntriesRow, error)
+	BrowseEntries(ctx context.Context, arg sqlcgen.BrowseEntriesParams) ([]sqlcgen.BrowseEntriesRow, error)
+	BrowseShelves(ctx context.Context, perShelf int32) ([]sqlcgen.BrowseShelvesRow, error)
+	BrowseGenres(ctx context.Context) ([]string, error)
+	BrowseYears(ctx context.Context) ([]int32, error)
 }
 
 // EntryPath is an entry's canonical URL: the id is the key, the slug decoration.

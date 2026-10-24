@@ -11,25 +11,54 @@ import (
 )
 
 const browseEntries = `-- name: BrowseEntries :many
-select n.public_id, n.slug, e.title, m.label as medium_label, e.start_date
+select n.public_id, n.slug, e.title, e.medium, m.label as medium_label, e.format, mf.label as format_label,
+       e.start_date, e.start_precision, e.unit_kind, e.unit_total
 from catalog.entry e
 join catalog.node n on n.id = e.id
 join catalog.medium m on m.medium = e.medium
-where $1::text is null or e.medium = $1::text
-order by e.title, e.start_date nulls last
+join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
+where ($1::text is null or e.medium = $1::text)
+  and ($2::text is null or exists (
+        select 1
+        from catalog.node_tag nt
+        join catalog.tag t on t.id = nt.tag_id
+        where nt.node_id = e.id and t.kind = 'genre' and t.name = $2::text))
+  and ($3::int is null or extract(year from e.start_date)::int = $3::int)
+  and ($4::int is null
+       or (e.start_precision <> 'year' and (extract(month from e.start_date)::int - 1) / 3 = $4::int))
+order by e.start_date desc nulls last, e.title, n.public_id
 `
 
-type BrowseEntriesRow struct {
-	PublicID    int64
-	Slug        string
-	Title       string
-	MediumLabel string
-	StartDate   *time.Time
+type BrowseEntriesParams struct {
+	Medium *string
+	Genre  *string
+	Year   *int32
+	Season *int32
 }
 
-// Every entry, or one medium's, alphabetically.
-func (q *Queries) BrowseEntries(ctx context.Context, medium *string) ([]BrowseEntriesRow, error) {
-	rows, err := q.db.Query(ctx, browseEntries, medium)
+type BrowseEntriesRow struct {
+	PublicID       int64
+	Slug           string
+	Title          string
+	Medium         string
+	MediumLabel    string
+	Format         string
+	FormatLabel    string
+	StartDate      *time.Time
+	StartPrecision *string
+	UnitKind       string
+	UnitTotal      *int32
+}
+
+// Every entry the filters let through, newest first. A season is 0 for winter
+// to 3 for fall, and only matches entries dated to the month.
+func (q *Queries) BrowseEntries(ctx context.Context, arg BrowseEntriesParams) ([]BrowseEntriesRow, error) {
+	rows, err := q.db.Query(ctx, browseEntries,
+		arg.Medium,
+		arg.Genre,
+		arg.Year,
+		arg.Season,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -41,12 +70,138 @@ func (q *Queries) BrowseEntries(ctx context.Context, medium *string) ([]BrowseEn
 			&i.PublicID,
 			&i.Slug,
 			&i.Title,
+			&i.Medium,
 			&i.MediumLabel,
+			&i.Format,
+			&i.FormatLabel,
 			&i.StartDate,
+			&i.StartPrecision,
+			&i.UnitKind,
+			&i.UnitTotal,
 		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const browseGenres = `-- name: BrowseGenres :many
+select t.name
+from catalog.tag t
+where t.kind = 'genre'
+  and exists (select 1 from catalog.node_tag nt join catalog.entry e on e.id = nt.node_id where nt.tag_id = t.id)
+order by t.name
+`
+
+// Genres some entry has, for the filter.
+func (q *Queries) BrowseGenres(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, browseGenres)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		items = append(items, name)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const browseShelves = `-- name: BrowseShelves :many
+select public_id, slug, title, medium, medium_label, format, format_label,
+       start_date, start_precision, unit_kind, unit_total
+from (
+  select n.public_id, n.slug, e.title, e.medium, m.label as medium_label, e.format, mf.label as format_label,
+         e.start_date, e.start_precision, e.unit_kind, e.unit_total,
+         row_number() over (partition by e.medium order by e.start_date desc nulls last, e.title, n.public_id) as rank
+  from catalog.entry e
+  join catalog.node n on n.id = e.id
+  join catalog.medium m on m.medium = e.medium
+  join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
+) shelf
+where rank <= $1::int
+order by medium, rank
+`
+
+type BrowseShelvesRow struct {
+	PublicID       int64
+	Slug           string
+	Title          string
+	Medium         string
+	MediumLabel    string
+	Format         string
+	FormatLabel    string
+	StartDate      *time.Time
+	StartPrecision *string
+	UnitKind       string
+	UnitTotal      *int32
+}
+
+// Each medium's newest entries, at most per_shelf apiece.
+func (q *Queries) BrowseShelves(ctx context.Context, perShelf int32) ([]BrowseShelvesRow, error) {
+	rows, err := q.db.Query(ctx, browseShelves, perShelf)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []BrowseShelvesRow{}
+	for rows.Next() {
+		var i BrowseShelvesRow
+		if err := rows.Scan(
+			&i.PublicID,
+			&i.Slug,
+			&i.Title,
+			&i.Medium,
+			&i.MediumLabel,
+			&i.Format,
+			&i.FormatLabel,
+			&i.StartDate,
+			&i.StartPrecision,
+			&i.UnitKind,
+			&i.UnitTotal,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const browseYears = `-- name: BrowseYears :many
+select distinct extract(year from start_date)::int as year
+from catalog.entry
+where start_date is not null
+order by year desc
+`
+
+// Years some entry started in, newest first, for the filter.
+func (q *Queries) BrowseYears(ctx context.Context) ([]int32, error) {
+	rows, err := q.db.Query(ctx, browseYears)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int32{}
+	for rows.Next() {
+		var year int32
+		if err := rows.Scan(&year); err != nil {
+			return nil, err
+		}
+		items = append(items, year)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

@@ -11,8 +11,15 @@ import (
 )
 
 type Querier interface {
-	// Every entry, or one medium's, alphabetically.
-	BrowseEntries(ctx context.Context, medium *string) ([]BrowseEntriesRow, error)
+	// Every entry the filters let through, newest first. A season is 0 for winter
+	// to 3 for fall, and only matches entries dated to the month.
+	BrowseEntries(ctx context.Context, arg BrowseEntriesParams) ([]BrowseEntriesRow, error)
+	// Genres some entry has, for the filter.
+	BrowseGenres(ctx context.Context) ([]string, error)
+	// Each medium's newest entries, at most per_shelf apiece.
+	BrowseShelves(ctx context.Context, perShelf int32) ([]BrowseShelvesRow, error)
+	// Years some entry started in, newest first, for the filter.
+	BrowseYears(ctx context.Context) ([]int32, error)
 	// An entry by public id, with its medium and format labels. The caller
 	// checks the slug.
 	EntryByPublicID(ctx context.Context, publicID int64) (EntryByPublicIDRow, error)

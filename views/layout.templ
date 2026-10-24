@@ -91,7 +91,7 @@ templ siteSearch(query string, hero bool) {
 		role="search"
 		class={ "flex min-w-0 items-center rounded-lg border border-border focus-within:outline-2 focus-within:outline-stark-contrast",
 			templ.KV("max-w-[420px] flex-1 gap-[9px] bg-background-1 px-3 py-2 sm:relative", !hero),
-			templ.KV("relative h-[52px] w-full max-w-[560px] gap-[10px] rounded-[10px] bg-background-2 px-[14px]", hero) }
+			templ.KV("relative h-[52px] w-full gap-[10px] rounded-[10px] bg-background-2 px-[14px]", hero) }
 	>
 		<svg width={ searchIconSize(hero) } height={ searchIconSize(hero) } viewBox="0 0 18 18" class="shrink-0" aria-hidden="true">
 			<circle cx="8.2" cy="8.2" r="5.4" fill="none" stroke="var(--color-foreground-subtle)" stroke-width="1.5"></circle>

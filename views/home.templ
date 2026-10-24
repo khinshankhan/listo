@@ -13,7 +13,9 @@ templ HomePage(h Home) {
 			<p class="max-w-[600px] text-16 leading-[26px] text-foreground-muted">
 				Track everything on one scale, see how it all connects across media, and find out where to start with the franchises that make it hard.
 			</p>
-			@siteSearch("", true)
+			<div class="w-full max-w-[560px]">
+				@siteSearch("", true)
+			</div>
 			if len(h.Media) > 0 {
 				<ul class="flex flex-wrap justify-center gap-2" aria-label="media">
 					for _, m := range h.Media {

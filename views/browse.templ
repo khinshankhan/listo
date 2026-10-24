@@ -1,0 +1,88 @@
+package views
+
+// BrowsePage is the catalog under a search: filters, then shelves or the
+// filtered grid. The filters wait for "apply" rather than jumping on change.
+templ BrowsePage(b Browse) {
+	<div class="flex flex-col gap-[26px]">
+		<header class="flex flex-col gap-[18px]">
+			<div class="flex flex-col gap-[9px]">
+				<p class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">catalog</p>
+				<h1 class="font-heading text-32 leading-10 font-semibold tracking-[-0.035em] text-foreground-strong sm:text-44 sm:leading-[44px]">browse</h1>
+			</div>
+			@siteSearch("", true)
+		</header>
+		<form action="/entries" method="get" aria-label="filter the catalog" class="grid grid-cols-2 items-end gap-3 border-b border-border pb-[22px] md:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
+			for _, f := range b.Filters {
+				<div class="flex min-w-0 flex-col gap-[7px]">
+					<label for={ "filter-" + f.Name } class="font-mono text-[10px] leading-3 tracking-[0.1em] text-foreground-muted uppercase">{ f.Label }</label>
+					<div class="relative">
+						<select
+							id={ "filter-" + f.Name }
+							name={ f.Name }
+							class={ "h-[38px] w-full cursor-pointer appearance-none rounded-lg border border-border bg-background-2 pr-8 pl-[13px] text-13 leading-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast", filterClass(f) }
+						>
+							for _, o := range f.Options {
+								<option value={ o.Value } selected?={ o.Selected }>{ o.Label }</option>
+							}
+						</select>
+						<svg width="11" height="11" viewBox="0 0 12 12" class="pointer-events-none absolute top-1/2 right-[13px] -translate-y-1/2 text-foreground-muted" aria-hidden="true">
+							<path d="M2.8 4.5L6 7.8l3.2-3.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+						</svg>
+					</div>
+				</div>
+			}
+			// the same in every state, so applying doesn't shift the row
+			<button type="submit" class="col-span-2 h-[38px] cursor-pointer justify-self-start rounded-lg bg-foreground-strong px-4 text-13 leading-4 font-semibold text-background-2 hover:bg-cream-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast md:col-span-1">apply</button>
+		</form>
+		if b.Filtered {
+			<section class="flex flex-col gap-4" aria-labelledby="matches">
+				<div class="flex items-baseline justify-between gap-3">
+					<h2 id="matches" class="text-20 leading-6 font-semibold tracking-[-0.025em] text-foreground-strong">{ count(len(b.Cards), "entry", "entries") }</h2>
+					@Link(LinkProps{Href: "/entries", Variant: LinkNone, Class: "text-12 leading-4 font-semibold text-accent-11"}) {
+						clear filters
+					}
+				</div>
+				if len(b.Cards) > 0 {
+					@cardGrid(b.Cards)
+				} else {
+					<p class="rounded-[10px] border border-dashed border-border px-[18px] py-4 text-14 text-foreground-muted">
+						Nothing matches these filters yet. Try loosening one.
+					</p>
+				}
+			</section>
+		} else if len(b.Shelves) > 0 {
+			for _, s := range b.Shelves {
+				<section class="flex flex-col gap-4" aria-labelledby={ "shelf-" + s.ID }>
+					<div class="flex items-baseline justify-between gap-3">
+						<h2 id={ "shelf-" + s.ID } class="text-20 leading-6 font-semibold tracking-[-0.025em] text-foreground-strong">{ s.Title }</h2>
+						@Link(LinkProps{Href: s.Href, Variant: LinkNone, Class: "text-12 leading-4 font-semibold text-accent-11"}) {
+							view all<span class="sr-only">{ " " + s.Title }</span>
+						}
+					</div>
+					@cardGrid(s.Cards)
+				</section>
+			}
+		} else {
+			<p class="rounded-[10px] border border-dashed border-border px-[18px] py-4 text-14 text-foreground-muted">
+				Nothing to browse here yet. The catalog grows one entry at a time.
+			</p>
+		}
+	</div>
+}
+
+// cardGrid is entries as covers: two across on a phone, six on a wide screen.
+templ cardGrid(cards []Card) {
+	<ul class="grid grid-cols-2 gap-x-[18px] gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+		for _, c := range cards {
+			<li class="flex min-w-0 flex-col gap-[10px]">
+				<span class="aspect-[172/250] rounded-[9px] bg-placeholder" aria-hidden="true"></span>
+				<span class="flex flex-col gap-1">
+					@Link(LinkProps{Href: c.Href, Variant: LinkNone, Class: "text-14 leading-[19px] font-semibold tracking-[-0.012em] wrap-break-word text-foreground-strong"}) {
+						{ c.Title }
+					}
+					<span class="text-12 leading-4 text-foreground-muted">{ c.Meta }</span>
+				</span>
+			</li>
+		}
+	</ul>
+}

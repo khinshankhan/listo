@@ -95,7 +95,7 @@ func searchFilters(q, medium string, hits []sqlcgen.SearchNodesRow) ([]views.Med
 
 	links := []views.MediumLink{{Label: "all", Href: searchPath(q, ""), Count: len(hits), Active: medium == ""}}
 	for _, m := range order {
-		links = append(links, views.MediumLink{Label: labels[m], Href: searchPath(q, m), Count: counts[m], Active: m == medium})
+		links = append(links, views.MediumLink{Medium: m, Label: labels[m], Href: searchPath(q, m), Count: counts[m], Active: m == medium})
 	}
 	if medium == "" {
 		return links, hits
@@ -117,56 +117,6 @@ func searchPath(q, medium string) string {
 	return "/search?" + v.Encode()
 }
 
-// Entries lists every entry, or one medium's with ?medium=. An unknown or
-// empty medium is a 404.
-func (p *Pages) Entries(w http.ResponseWriter, r *http.Request) {
-	medium := r.URL.Query().Get("medium")
-
-	media, err := p.mediumLinks(r, &medium)
-	if err != nil {
-		p.serverError(w, r, err)
-		return
-	}
-	var filter *string
-	if medium != "" {
-		known := false
-		for _, m := range media {
-			known = known || m.Active
-		}
-		if !known {
-			p.NotFound(w, r)
-			return
-		}
-		filter = &medium
-	}
-
-	entries, err := p.catalog.BrowseEntries(r.Context(), filter)
-	if err != nil {
-		p.serverError(w, r, err)
-		return
-	}
-	v := views.Browse{Media: media}
-	for _, e := range entries {
-		v.Entries = append(v.Entries, views.Row{
-			Title: e.Title,
-			Href:  EntryPath(e.PublicID, e.Slug),
-			Meta:  withYear(e.MediumLabel, e.StartDate),
-		})
-	}
-
-	head := views.Head{Title: "browse | listo", Description: "Every entry in listo's catalog.", Canonical: "/entries"}
-	if filter != nil {
-		head.Canonical = "/entries?medium=" + url.QueryEscape(medium)
-	}
-	// reuse the links rather than counting again
-	chrome, err := p.chromeWith(r, media, "")
-	if err != nil {
-		p.serverError(w, r, err)
-		return
-	}
-	p.render(w, r, http.StatusOK, head, chrome, views.BrowsePage(v))
-}
-
 // mediumLinks is "all" plus a link per medium with entries. active marks one:
 // nil none, "" all.
 func (p *Pages) mediumLinks(r *http.Request, active *string) ([]views.MediumLink, error) {
@@ -184,6 +134,7 @@ func (p *Pages) mediumLinks(r *http.Request, active *string) ([]views.MediumLink
 		}
 		links[0].Count += int(c.Entries)
 		links = append(links, views.MediumLink{
+			Medium: c.Medium,
 			Label:  c.Label,
 			Href:   "/entries?medium=" + url.QueryEscape(c.Medium),
 			Count:  int(c.Entries),

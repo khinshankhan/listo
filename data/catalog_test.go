@@ -3,6 +3,7 @@ package data_test
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -159,12 +160,13 @@ func TestCatalogQueries(t *testing.T) {
 	})
 
 	t.Run("browse filters by medium", func(t *testing.T) {
-		rows, err := q.BrowseEntries(ctx, &medium)
+		rows, err := q.BrowseEntries(ctx, sqlcgen.BrowseEntriesParams{Medium: &medium})
 		if err != nil {
 			t.Fatal(err)
 		}
+		// undated, so by title
 		if len(rows) != 2 || rows[0].Slug != entrySlug {
-			t.Errorf("got %+v, want the two test entries, alphabetically", rows)
+			t.Errorf("got %+v, want the two test entries, by title", rows)
 		}
 
 		counts, err := q.MediumCounts(ctx)
@@ -190,6 +192,117 @@ func TestCatalogQueries(t *testing.T) {
 		// by kind, then name
 		if len(got) != 2 || got[0].Kind != "genre" || got[1].Kind != "theme" {
 			t.Errorf("got %+v, want the genre then the theme", got)
+		}
+	})
+}
+
+func TestBrowseQueries(t *testing.T) {
+	tx := testTx(t)
+	ctx := context.Background()
+
+	run := fmt.Sprint(time.Now().UnixNano())
+	medium := "test_medium_" + run
+	genre, unused := "test-genre-"+run, "test-unused-"+run
+
+	exec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := tx.Exec(ctx, q, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	entry := func(name, start, precision string) uuid.UUID {
+		t.Helper()
+		var id uuid.UUID
+		if err := tx.QueryRow(ctx, `insert into catalog.node (type, slug) values ('entry', $1) returning id`,
+			fmt.Sprintf("test-%s-%s", name, run)).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		var date, prec any
+		if start != "" {
+			date, prec = start, precision
+		}
+		exec(`insert into catalog.entry (id, medium, format, title, start_date, start_precision) values ($1, $2, 'tv', $3, $4, $5)`,
+			id, medium, name, date, prec)
+		return id
+	}
+
+	exec(`insert into catalog.medium (medium, label, verb_current, verb_planning, verb_repeating)
+	      values ($1, 'test medium', 'watching', 'plan to watch', 'rewatching')`, medium)
+	exec(`insert into catalog.medium_format (medium, format, label) values ($1, 'tv', 'tv')`, medium)
+	spring := entry("spring", "2011-04-01", "month")
+	entry("year-only", "2011-01-01", "year")
+	entry("fall", "2018-10-06", "day")
+	entry("undated", "", "")
+	exec(`insert into catalog.tag (kind, name) values ('genre', $1), ('genre', $2)`, genre, unused)
+	exec(`insert into catalog.node_tag (node_id, tag_id) select $1, id from catalog.tag where name = $2`, spring, genre)
+
+	q := sqlcgen.New(tx)
+	year := func(y int32) *int32 { return &y }
+	season := func(s int32) *int32 { return &s }
+
+	cases := []struct {
+		name string
+		args sqlcgen.BrowseEntriesParams
+		want string
+	}{
+		{"newest first, undated last", sqlcgen.BrowseEntriesParams{}, "fall spring year-only undated"},
+		{"a genre", sqlcgen.BrowseEntriesParams{Genre: &genre}, "spring"},
+		{"a year", sqlcgen.BrowseEntriesParams{Year: year(2011)}, "spring year-only"},
+		// a year-only date can't be placed in a season
+		{"a season", sqlcgen.BrowseEntriesParams{Season: season(1)}, "spring"},
+		{"fall", sqlcgen.BrowseEntriesParams{Season: season(3)}, "fall"},
+		// stored as January 1st, but that's not a winter release
+		{"a year-only date isn't winter", sqlcgen.BrowseEntriesParams{Season: season(0)}, ""},
+		{"filters combine", sqlcgen.BrowseEntriesParams{Year: year(2011), Season: season(3)}, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// scoped to the test medium, so the seed's entries stay out of it
+			tc.args.Medium = &medium
+			rows, err := q.BrowseEntries(ctx, tc.args)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got []string
+			for _, r := range rows {
+				got = append(got, r.Title)
+			}
+			if strings.Join(got, " ") != tc.want {
+				t.Errorf("got %q, want %q", strings.Join(got, " "), tc.want)
+			}
+		})
+	}
+
+	t.Run("shelves hold a medium's newest few", func(t *testing.T) {
+		rows, err := q.BrowseShelves(ctx, 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got []string
+		for _, r := range rows {
+			if r.Medium == medium {
+				got = append(got, r.Title)
+			}
+		}
+		if strings.Join(got, " ") != "fall spring" {
+			t.Errorf("got %v, want fall then spring", got)
+		}
+	})
+
+	t.Run("filters only offer what something has", func(t *testing.T) {
+		genres, err := q.BrowseGenres(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !slices.Contains(genres, genre) || slices.Contains(genres, unused) {
+			t.Errorf("genres = %v, want %s and not %s", genres, genre, unused)
+		}
+		years, err := q.BrowseYears(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !slices.Contains(years, 2018) || !slices.Contains(years, 2011) || !slices.IsSortedFunc(years, func(a, b int32) int { return int(b - a) }) {
+			t.Errorf("years = %v, want 2018 and 2011, newest first", years)
 		}
 	})
 }

@@ -1,49 +1,5 @@
 package views
 
-import "fmt"
-
-// BrowsePage is every entry, or one medium's.
-templ BrowsePage(b Browse) {
-	<h1 class="font-heading text-32 font-semibold tracking-tight text-foreground-strong">browse</h1>
-	<div class="lg:hidden">
-		@mediumNav(b.Media)
-	</div>
-	if len(b.Entries) > 0 {
-		@panel("entries") {
-			for _, e := range b.Entries {
-				<li class="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-baseline sm:gap-4">
-					@Link(LinkProps{Href: e.Href, Variant: LinkNone, Class: "font-semibold text-foreground-strong"}) {
-						{ e.Title }
-					}
-					<span class="font-mono text-13 text-foreground-muted sm:ml-auto">{ e.Meta }</span>
-				</li>
-			}
-		}
-	} else {
-		<p class="mt-8 rounded-[10px] border border-dashed border-border px-[18px] py-4 text-14 text-foreground-muted">
-			Nothing to browse here yet. The catalog grows one entry at a time.
-		</p>
-	}
-}
-
-// mediumNav is the browse filters: all, then each medium with entries.
-templ mediumNav(media []MediumLink) {
-	if len(media) > 1 {
-		<nav class="mt-8 flex flex-wrap gap-2" aria-label="browse by medium">
-			for _, m := range media {
-				@Link(LinkProps{Href: m.Href, Variant: LinkNone, Monochrome: true, Current: m.Active, Class: pillClass(m.Active)}) {
-					if m.Label == "" {
-						all
-					} else {
-						{ m.Label }
-					}
-					<span class={ "font-mono text-12", templ.KV("text-accent-11", m.Active), templ.KV("text-foreground-muted", !m.Active) }>{ fmt.Sprint(m.Count) }</span>
-				}
-			}
-		</nav>
-	}
-}
-
 templ NotFound() {
 	<h1 class="font-heading text-32 font-semibold tracking-tight text-foreground-strong">not found</h1>
 	<p class="mt-2">
