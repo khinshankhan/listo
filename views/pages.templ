@@ -1,5 +1,7 @@
 package views
 
+import "fmt"
+
 templ NotFound() {
 	<h1 class="font-heading text-32 font-semibold tracking-tight text-foreground-strong">not found</h1>
 	<p class="mt-2">
@@ -24,6 +26,11 @@ templ EntryPage(e Entry) {
 		<article class="flex flex-col gap-9 md:flex-row">
 			// the rail follows the body on phones
 			<div class="order-last flex shrink-0 flex-col gap-4 md:order-none md:w-[210px]">
+				if e.Next != nil {
+					<div class="hidden md:block">
+						@nextUnit(*e.Next)
+					</div>
+				}
 				@cover(e.Medium, e.Title, e.Year)
 				@factsCard(e.Facts)
 				if len(e.Links) > 0 {
@@ -62,12 +69,24 @@ templ EntryPage(e Entry) {
 					}
 					@partOf(e.Groups)
 				</header>
+				if e.Description != "" {
+					<p class="max-w-[640px] text-15 leading-[25px] text-foreground">{ e.Description }</p>
+				}
+				// on phones the rail comes last, so what's next comes up here
+				if e.Next != nil {
+					<div class="md:hidden">
+						@nextUnit(*e.Next)
+					</div>
+				}
 				if len(e.Tags) > 0 {
 					<ul class="flex flex-wrap gap-[7px]" aria-label="tags">
 						for _, tag := range e.Tags {
 							<li class="flex h-[27px] items-center rounded-full border border-border bg-background-2 px-3 text-12 leading-4 text-foreground-strong">{ tag }</li>
 						}
 					</ul>
+				}
+				if len(e.Episodes) > 0 {
+					@episodeList(e.Episodes)
 				}
 				if len(e.Relations) > 0 {
 					<section class="flex flex-col gap-3 pt-1">
@@ -269,4 +288,51 @@ templ panel(eyebrow string) {
 			{ children... }
 		</ul>
 	</section>
+}
+
+// nextUnit is what airs next and how soon.
+templ nextUnit(n NextUnit) {
+	<p class="flex flex-col gap-[5px] rounded-[10px] bg-accent-3 px-4 py-[14px]">
+		<span class="font-mono text-[10px] leading-3 tracking-[0.1em] text-accent-11 uppercase">next to air</span>
+		<span class="text-[19px] leading-6 font-semibold tracking-[-0.02em] text-foreground-strong">{ n.Label } { n.In }</span>
+	</p>
+}
+
+// episodeList is an entry's units with what's known of each; past the first
+// five, the rest fold away.
+templ episodeList(eps []Episode) {
+	<section class="flex flex-col gap-[14px] pt-1" aria-labelledby="episodes">
+		<h2 id="episodes" class="border-b border-border pb-[10px] text-20 leading-6 font-semibold tracking-[-0.025em] text-foreground-strong">episodes</h2>
+		<ol class="flex flex-col">
+			for _, ep := range eps[:min(len(eps), shownEpisodes)] {
+				@episodeRow(ep)
+			}
+		</ol>
+		if len(eps) > shownEpisodes {
+			<details class="group">
+				<summary class="flex cursor-pointer list-none items-center gap-[7px] text-12 leading-4 font-semibold text-accent-11 group-open:sr-only [&::-webkit-details-marker]:hidden">
+					show all { fmt.Sprint(len(eps)) }
+				</summary>
+				<ol class="flex flex-col">
+					for _, ep := range eps[shownEpisodes:] {
+						@episodeRow(ep)
+					}
+				</ol>
+			</details>
+		}
+	</section>
+}
+
+templ episodeRow(ep Episode) {
+	<li class="flex items-center gap-[14px] border-b border-border-subtle px-[18px] py-3">
+		<span class={ "w-[52px] shrink-0 font-mono text-13 leading-4", templ.KV("text-foreground-muted", ep.Upcoming), templ.KV("text-foreground-strong", !ep.Upcoming) }>{ ep.Number }</span>
+		if ep.Upcoming {
+			<span class="min-w-0 flex-1 text-14 leading-[18px] text-foreground-muted">not yet aired</span>
+		} else if ep.Title != "" {
+			<span class="min-w-0 flex-1 text-14 leading-[18px] font-medium wrap-break-word text-foreground-strong">{ ep.Title }</span>
+		} else {
+			<span class="min-w-0 flex-1 text-14 leading-[18px] text-foreground-muted">untitled</span>
+		}
+		<span class="shrink-0 text-right text-12 leading-4 text-foreground-muted">{ ep.When }</span>
+	</li>
 }

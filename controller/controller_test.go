@@ -222,6 +222,23 @@ func TestCatalogPages(t *testing.T) {
 			location: "/entries"},
 		{name: "page one is the plain address", path: "/entries?genre=many&page=1", status: http.StatusFound,
 			location: "/entries?genre=many"},
+		{name: "an entry tells its own story", path: "/entries/10/airing", status: http.StatusOK,
+			want: []string{"A show still on the air, with a description long enough", `<meta name="description" content="A show still on the air`,
+				`at a word and say so.</p>`},
+			// the head's copy is clipped at a word, the page's is whole
+			dontWant: []string{`say so."`}},
+		{name: "what airs next, and how soon", path: "/entries/10/airing", status: http.StatusOK,
+			want: []string{">next to air</span>", ">Ep. 3 in 3d 4h</span>"}},
+		{name: "who made it, how long, and where it's at", path: "/entries/10/airing", status: http.StatusOK,
+			want: []string{">studio</dt>", ">Studio A, Studio B</dd>", ">publisher</dt>", ">Pub</dd>", ">duration</dt>", ">24 min</dd>",
+				">status</dt>", ">releasing</dd>", ">source</dt>", ">light novel</dd>"}},
+		{name: "episodes, newest first while airing", path: "/entries/10/airing", status: http.StatusOK,
+			want: []string{`id="episodes"`, "Ep. 3</span>", "not yet aired", ">The Middle</span>", ">2 days ago</span>",
+				">The Start</span>", ">1 week ago</span>"},
+			// only the next one ahead, not every scheduled one
+			dontWant: []string{"Ep. 4"}},
+		{name: "a studio, and nothing made up", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
+			want: []string{">White Fox</dd>"}, dontWant: []string{`id="episodes"`, "next to air", ">status</dt>", ">source</dt>"}},
 		{name: "a relation says where it attaches", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
 			want: []string{">here at Ep. 23</span>"}},
 		{name: "group wrong slug redirects", path: "/groups/2/sg?x=1", status: http.StatusMovedPermanently,
@@ -457,6 +474,7 @@ var (
 	sgRelease   = uuid.MustParse("01a151f2-0000-7000-8000-00000000f002")
 	monoSeries  = uuid.MustParse("01a151f2-0000-7000-8000-000000000103")
 	bare        = uuid.MustParse("01a151f2-0000-7000-8000-000000000009")
+	airing      = uuid.MustParse("01a151f2-0000-7000-8000-000000000010")
 	monoOrder   = uuid.MustParse("01a151f2-0000-7000-8000-00000000f103")
 	sgAnime     = uuid.MustParse("01a151f2-0000-7000-8000-000000000007")
 	sgMovie     = uuid.MustParse("01a151f2-0000-7000-8000-000000000008")
@@ -481,6 +499,13 @@ func (fakeCatalog) EntryByPublicID(_ context.Context, id int64) (sqlcgen.EntryBy
 			Title: "Steins;Gate: The Movie - Load Region of Déjà Vu", StartDate: &start,
 			StartPrecision: &day, UnitKind: "none",
 		}, nil
+	case 10:
+		// airing: what's out and what's next come from its units
+		start, month, releasing, desc, source := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC), "month", "releasing", airingDescription, "light_novel"
+		mins := int32(24)
+		return sqlcgen.EntryByPublicIDRow{ID: airing, PublicID: 10, Slug: "airing", Medium: "anime", MediumLabel: "anime",
+			Format: "tv", FormatLabel: "anime", Title: "Airing", Description: &desc, Status: &releasing, StartDate: &start,
+			StartPrecision: &month, UnitKind: "episode", UnitTotal: &total, UnitMinutes: &mins, SourceType: &source}, nil
 	case 9:
 		// nothing but what every entry has: no date, units, titles, tags,
 		// relations, groups or links
@@ -1006,4 +1031,37 @@ func monogatariOrder() []sqlcgen.GroupOrderingsRow {
 		step(5, 107, "monogatari-second-season", "Monogatari Series: Second Season", 26),
 		step(6, 110, "owarimonogatari", "Owarimonogatari", 12),
 	}
+}
+
+// airingDescription is long enough that the meta description clips it.
+const airingDescription = "A show still on the air, with a description long enough to need clipping in a search result. " +
+	"It runs on past the point a search result would show, so the page has to cut it at a word and say so."
+
+func (fakeCatalog) EntryCompanies(_ context.Context, id uuid.UUID) ([]sqlcgen.EntryCompaniesRow, error) {
+	switch id {
+	case sgAnime:
+		return []sqlcgen.EntryCompaniesRow{{Name: "White Fox", Role: "studio"}}, nil
+	case airing:
+		return []sqlcgen.EntryCompaniesRow{{Name: "Studio A", Role: "studio"}, {Name: "Studio B", Role: "studio"},
+			{Name: "Pub", Role: "publisher"}}, nil
+	}
+	return nil, nil
+}
+
+// EntryUnits gives the airing show two episodes out, the third due in three
+// days and a bit, and the fourth later; air dates hang off now so the page's
+// relative times hold.
+func (fakeCatalog) EntryUnits(_ context.Context, id uuid.UUID) ([]sqlcgen.EntryUnitsRow, error) {
+	if id != airing {
+		return nil, nil
+	}
+	now := time.Now()
+	at := func(d time.Duration) *time.Time { t := now.Add(d); return &t }
+	title := func(s string) *string { return &s }
+	return []sqlcgen.EntryUnitsRow{
+		{Ordinal: 1, Kind: "episode", Label: "Ep. 1", Title: title("The Start"), AirDate: at(-8 * 24 * time.Hour)},
+		{Ordinal: 2, Kind: "episode", Label: "Ep. 2", Title: title("The Middle"), AirDate: at(-2*24*time.Hour - time.Hour)},
+		{Ordinal: 3, Kind: "episode", Label: "Ep. 3", AirDate: at(3*24*time.Hour + 4*time.Hour + 5*time.Minute)},
+		{Ordinal: 4, Kind: "episode", Label: "Ep. 4", AirDate: at(10*24*time.Hour + time.Hour)},
+	}, nil
 }

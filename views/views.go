@@ -25,6 +25,24 @@ type Entry struct {
 	Relations []Related
 	Groups    []GroupRef
 	Links     []SiteLink
+	// Description is the entry's own summary, when there is one.
+	Description string
+	// Next is the next unit to air, if one's scheduled; Episodes is the
+	// list, in display order.
+	Next     *NextUnit
+	Episodes []Episode
+}
+
+// NextUnit is what airs next and how soon: "Ep. 20", "in 3d 4h".
+type NextUnit struct {
+	Label, In string
+}
+
+// Episode is one unit in an entry's list; When is relative while it's
+// recent, eg "2 days ago".
+type Episode struct {
+	Number, Title, When string
+	Upcoming            bool
 }
 
 // Fact is one row of an entry's facts card: "episodes", "24".
@@ -178,3 +196,6 @@ func count(n int, one, many string) string {
 	}
 	return fmt.Sprintf("%d %s", n, many)
 }
+
+// shownEpisodes is how many episodes show before the rest fold away.
+const shownEpisodes = 5
