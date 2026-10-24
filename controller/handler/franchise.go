@@ -63,6 +63,10 @@ func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow,
 		by = sorts[0].key
 	}
 	for i, s := range sorts {
+		// nothing to sort
+		if len(rows) == 0 {
+			break
+		}
 		link := views.SortLink{Label: s.label, Href: canonical + "?by=" + s.key, Active: s.key == by}
 		if i == 0 {
 			link.Href = canonical

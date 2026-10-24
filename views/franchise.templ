@@ -69,13 +69,15 @@ templ FranchisePage(f Franchise) {
 		<section id="entries" class="flex scroll-mt-6 flex-col gap-4">
 			<div class="flex flex-wrap items-baseline justify-between gap-3 border-b border-border pb-[10px]">
 				<h2 class="text-20 leading-6 font-semibold tracking-[-0.025em] text-foreground-strong">entries</h2>
-				<nav class="flex flex-wrap gap-[7px]" aria-label="group entries">
-					for _, s := range f.Sorts {
-						@Link(LinkProps{Href: s.Href, Variant: LinkNone, Monochrome: true, Current: s.Active, Class: sortClass(s.Active)}) {
-							{ s.Label }
+				if len(f.Sorts) > 0 {
+					<nav class="flex flex-wrap gap-[7px]" aria-label="group entries">
+						for _, s := range f.Sorts {
+							@Link(LinkProps{Href: s.Href, Variant: LinkNone, Monochrome: true, Current: s.Active, Class: sortClass(s.Active)}) {
+								{ s.Label }
+							}
 						}
-					}
-				</nav>
+					</nav>
+				}
 			</div>
 			if len(f.Sections) == 0 {
 				<p class="rounded-[10px] border border-dashed border-border px-[18px] py-4 text-14 text-foreground-muted">

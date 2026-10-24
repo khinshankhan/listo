@@ -403,6 +403,7 @@ var (
 	sgOrder     = uuid.MustParse("01a151f2-0000-7000-8000-00000000f001")
 	sgRelease   = uuid.MustParse("01a151f2-0000-7000-8000-00000000f002")
 	monoSeries  = uuid.MustParse("01a151f2-0000-7000-8000-000000000103")
+	bare        = uuid.MustParse("01a151f2-0000-7000-8000-000000000009")
 	monoOrder   = uuid.MustParse("01a151f2-0000-7000-8000-00000000f103")
 	sgAnime     = uuid.MustParse("01a151f2-0000-7000-8000-000000000007")
 	sgMovie     = uuid.MustParse("01a151f2-0000-7000-8000-000000000008")
@@ -427,6 +428,11 @@ func (fakeCatalog) EntryByPublicID(_ context.Context, id int64) (sqlcgen.EntryBy
 			Title: "Steins;Gate: The Movie - Load Region of Déjà Vu", StartDate: &start,
 			StartPrecision: &day, UnitKind: "none",
 		}, nil
+	case 9:
+		// nothing but what every entry has: no date, units, titles, tags,
+		// relations, groups or links
+		return sqlcgen.EntryByPublicIDRow{ID: bare, PublicID: 9, Slug: "bare", Medium: "anime", MediumLabel: "anime",
+			Format: "tv", FormatLabel: "anime", Title: "Bare", UnitKind: "none"}, nil
 	case 500:
 		return sqlcgen.EntryByPublicIDRow{}, errors.New("connection reset")
 	case 501:
@@ -637,6 +643,51 @@ func plainLinks(body string) string {
 		}
 		return fmt.Sprintf(`<a href="%s">`, m[1])
 	})
+}
+
+// A page with nothing in it says so or leaves the part out: no empty list for
+// a screen reader to announce, and no controls for content that isn't there.
+// The search suggestions list is empty until the script fills it.
+func TestEmptyPagesLeaveNoHusks(t *testing.T) {
+	srv := httptest.NewServer(newHTTPServer("", &web.Bundle{Files: fstest.MapFS{}}, fakeDB{}, fakeCatalog{}).srv.Handler)
+	t.Cleanup(srv.Close)
+	emptyList := regexp.MustCompile(`<(ul|ol|dl)([^>]*)>\s*</(ul|ol|dl)>`)
+	cases := []struct {
+		path     string
+		dontWant []string
+	}{
+		{"/entries/9/bare", nil},
+		{"/groups/1/science-adventure", []string{`aria-label="group entries"`}},
+		{"/entries?medium=visual_novel", nil},
+		{"/search?q=nothing", nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.path, func(t *testing.T) {
+			res, err := http.Get(srv.URL + tc.path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer res.Body.Close()
+			raw, err := io.ReadAll(res.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			body := string(raw)
+			if res.StatusCode != http.StatusOK {
+				t.Fatalf("status = %d", res.StatusCode)
+			}
+			for _, m := range emptyList.FindAllStringSubmatch(body, -1) {
+				if !strings.Contains(m[2], `id="site-search-results"`) {
+					t.Errorf("empty list: %s", m[0])
+				}
+			}
+			for _, w := range tc.dontWant {
+				if strings.Contains(body, w) {
+					t.Errorf("body has %q", w)
+				}
+			}
+		})
+	}
 }
 
 // A landmark inside main reads as a page region it isn't, so the sidebar is
