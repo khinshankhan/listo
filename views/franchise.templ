@@ -66,6 +66,9 @@ templ FranchisePage(f Franchise) {
 				</dl>
 			</section>
 		}
+		if f.Timeline != nil {
+			@TimelineSection(f.Timeline, f.Name)
+		}
 		<section id="entries" class="flex scroll-mt-6 flex-col gap-4">
 			<div class="flex flex-wrap items-baseline justify-between gap-3 border-b border-border pb-[10px]">
 				<h2 class="text-20 leading-6 font-semibold tracking-[-0.025em] text-foreground-strong">entries</h2>

@@ -1,0 +1,359 @@
+package handler
+
+import (
+	"cmp"
+	"fmt"
+	"math"
+	"slices"
+	"strconv"
+	"strings"
+	"unicode/utf8"
+
+	"github.com/khinshankhan/listo/data/sqlcgen"
+	"github.com/khinshankhan/listo/views"
+)
+
+// the timeline's drawing, in SVG units
+const (
+	tlWidth = 960
+	// the first year starts at tlLeft and the last ends at tlRight
+	tlLeft, tlRight = 56, 904
+	// names keep this far from the edge
+	tlEdge = 24
+	tlRow  = 64
+	// between two works on a row, and between boxes
+	tlGap = 24
+	// rough widths of a character in a work's name and in a dot's label
+	tlNameChar, tlDotChar = 7.2, 6.0
+)
+
+// mergeKinds make two entries one work: the same story in another medium or
+// edition.
+var mergeKinds = map[string]bool{"adaptation_of": true, "remaster_of": true, "recap_of": true, "alternative_version_of": true}
+
+// linkNames are what a link's line says, for every kind drawn but a sequel.
+var linkNames = map[string]string{
+	"side_story_of": "side story", "spin_off_of": "spin-off", "remake_of": "remake", "reboot_of": "reboot",
+	"crossover_with": "crossover", "same_setting_as": "same setting", "references": "reference",
+}
+
+// shortFormats fit under a dot.
+var shortFormats = map[string]string{"visual novel": "VN", "light novel": "LN"}
+
+// tlWork is a work being laid out: its releases in order, the part of the
+// group it sits in, and where it went.
+type tlWork struct {
+	entries []sqlcgen.GroupEntriesRow
+	// branch is the group it's boxed in, or 0 when it sits straight in this one
+	branch     int64
+	branchName string
+	// prequel is the work it follows, or -1
+	prequel     int
+	row         int
+	left, right float64
+	view        views.TimelineWork
+}
+
+// timeline draws a group's entries by year, or is nil when there are fewer
+// than two works to connect.
+func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) *views.Timeline {
+	tl := &views.Timeline{Width: tlWidth}
+
+	// an entry under two branches comes once per branch; the first will do
+	byID := map[int64]sqlcgen.GroupEntriesRow{}
+	var dated []sqlcgen.GroupEntriesRow
+	for _, r := range rows {
+		if _, seen := byID[r.PublicID]; seen {
+			continue
+		}
+		byID[r.PublicID] = r
+		if r.StartDate == nil {
+			tl.Undated++
+			continue
+		}
+		dated = append(dated, r)
+	}
+
+	// adaptations and editions join their source
+	parent := map[int64]int64{}
+	var find func(int64) int64
+	find = func(id int64) int64 {
+		if p, ok := parent[id]; ok && p != id {
+			root := find(p)
+			parent[id] = root
+			return root
+		}
+		return id
+	}
+	for _, rel := range rels {
+		_, from := byID[rel.FromID]
+		_, to := byID[rel.ToID]
+		if mergeKinds[rel.Kind] && from && to {
+			parent[find(rel.FromID)] = find(rel.ToID)
+		}
+	}
+	var works []*tlWork
+	workOf := map[int64]*tlWork{}
+	for _, r := range sortedByDate(dated) {
+		root := find(r.PublicID)
+		w := workOf[root]
+		if w == nil {
+			w = &tlWork{prequel: -1}
+			workOf[root] = w
+			works = append(works, w)
+		}
+		w.entries = append(w.entries, r)
+		workOf[r.PublicID] = w
+	}
+	if len(works) < 2 {
+		return nil
+	}
+	// a work sits where its first release does
+	names := map[string]int{}
+	for _, w := range works {
+		first := w.entries[0]
+		if first.BranchType == "group" {
+			w.branch, w.branchName = first.BranchPublicID, deref(first.BranchName)
+		}
+		w.view.Name = first.Title
+		names[first.Title]++
+	}
+	// in words, works that share a name are told apart by year
+	called := func(e sqlcgen.GroupEntriesRow) string {
+		if names[e.Title] > 1 {
+			return fmt.Sprintf("%s (%d)", e.Title, e.StartDate.Year())
+		}
+		return e.Title
+	}
+
+	// a sequel follows the work it continues
+	index := map[*tlWork]int{}
+	for i, w := range works {
+		index[w] = i
+	}
+	for _, rel := range rels {
+		from, to := workOf[rel.FromID], workOf[rel.ToID]
+		if rel.Family == "sequence" && from != nil && to != nil && from != to && from.prequel == -1 {
+			from.prequel = index[to]
+		}
+	}
+
+	first, last := year(works[0].entries[0]), 0.0
+	for _, w := range works {
+		last = max(last, year(w.entries[len(w.entries)-1]))
+	}
+	minYear := math.Floor(first)
+	span := max(math.Floor(last)+1-minYear, 4)
+	x := func(at float64) float64 { return tlLeft + (at-minYear)*(tlRight-tlLeft)/span }
+	step := int(math.Ceil(span / 8))
+	for y := int(minYear); float64(y) < minYear+span; y += step {
+		tl.Ticks = append(tl.Ticks, views.Tick{X: int(math.Round(x(float64(y)))), Label: strconv.Itoa(y)})
+	}
+
+	for _, w := range works {
+		place(w, x)
+		w.row = -1
+	}
+
+	// the loose works first, then each box in the order it starts
+	var order []int64
+	for _, w := range works {
+		if !slices.Contains(order, w.branch) {
+			order = append(order, w.branch)
+		}
+	}
+	slices.SortStableFunc(order, func(a, b int64) int {
+		return cmp.Compare(min(a, 1), min(b, 1))
+	})
+
+	y := 20
+	for _, branch := range order {
+		// a sequel takes its prequel's row if there's room after it, or
+		// starts one
+		var rights []float64
+		var name string
+		for _, w := range works {
+			if w.branch != branch {
+				continue
+			}
+			name = w.branchName
+			if p := w.prequel; p >= 0 && works[p].branch == branch && works[p].row >= 0 && rights[works[p].row]+tlGap <= w.left {
+				w.row = works[p].row
+				rights[w.row] = w.right
+			}
+			if w.row == -1 {
+				w.row = len(rights)
+				rights = append(rights, w.right)
+			}
+		}
+
+		top := y
+		firstRow := y + 34
+		if branch != 0 {
+			firstRow = y + 62
+		}
+		for _, w := range works {
+			if w.branch == branch {
+				w.view.Y = firstRow + w.row*tlRow
+				w.view.NameY = w.view.Y - 14
+			}
+		}
+		bottom := firstRow + (len(rights)-1)*tlRow + 34
+		if branch != 0 {
+			tl.Boxes = append(tl.Boxes, views.TimelineBox{X: 16, Y: top, W: tlWidth - 32, H: bottom - top, Name: name})
+		}
+		y = bottom + 16
+	}
+	tl.Height = y + 24
+
+	dotAt := func(id int64) (int, int) {
+		w := workOf[id]
+		for i, e := range w.entries {
+			if e.PublicID == id {
+				return w.view.Dots[dotIndex(w, i)].X, w.view.Y
+			}
+		}
+		return 0, 0
+	}
+	type drawn struct {
+		from, to *tlWork
+		name     string
+	}
+	var seen []drawn
+	for _, rel := range rels {
+		from, to := workOf[rel.FromID], workOf[rel.ToID]
+		name, other := linkNames[rel.Kind]
+		sequel := rel.Kind == "sequel_of"
+		if from == nil || to == nil || from == to || (!sequel && !other) {
+			continue
+		}
+		if slices.Contains(seen, drawn{from, to, name}) {
+			continue
+		}
+		seen = append(seen, drawn{from, to, name})
+
+		link := views.TimelineLink{Sequel: rel.Family == "sequence", Spoiler: rel.Spoiler}
+		line := fmt.Sprintf("%s, %s %s", called(byID[rel.FromID]), rel.Label, called(byID[rel.ToID]))
+		if link.Sequel {
+			// from the release it continues to the start of the sequel
+			x1, y1 := dotAt(rel.ToID)
+			x2, y2 := from.view.Dots[0].X-9, from.view.Y
+			if y1 == y2 {
+				link.Path = fmt.Sprintf("M%d %d H%d", x1+7, y1, x2)
+			} else {
+				link.Path = curve(x1+7, y1, x2, y2)
+			}
+			link.Head = fmt.Sprintf("M%d %d L%d %d L%d %dz", x2-1, y2-3, x2+6, y2, x2-1, y2+3)
+			link.Label, link.LabelX, link.LabelY = name, (x1+x2)/2, min(y1, y2)-6
+		} else {
+			when := max(year(byID[rel.FromID]), year(byID[rel.ToID]))
+			if rel.EstablishedOn != nil {
+				when = float64(rel.EstablishedOn.Year())
+			}
+			link.Label = fmt.Sprintf("%s, %d", name, int(when))
+			line += fmt.Sprintf(", %d", int(when))
+			// drawn left to right, whichever way the relation reads
+			x1, y1 := dotAt(rel.FromID)
+			x2, y2 := dotAt(rel.ToID)
+			if x2 < x1 {
+				x1, y1, x2, y2 = x2, y2, x1, y1
+			}
+			mid := (y1 + y2) / 2
+			if y1 == y2 {
+				// over the row, clear of its bars
+				mid = y1 - 34
+				link.Path = fmt.Sprintf("M%d %d C%d %d %d %d %d %d", x1, y1-7, x1, mid, x2, mid, x2, y2-7)
+			} else {
+				link.Path = curve(x1+7, y1, x2-7, y2)
+			}
+			link.LabelX, link.LabelY = (x1+x2)/2, mid+4
+		}
+		tl.Spoilers = tl.Spoilers || link.Spoiler
+		tl.Links = append(tl.Links, link)
+		tl.Lines = append(tl.Lines, views.TimelineLine{Text: line, Spoiler: rel.Spoiler})
+	}
+
+	var lines []views.TimelineLine
+	for _, w := range works {
+		var releases []string
+		for _, e := range w.entries {
+			releases = append(releases, fmt.Sprintf("%s %d", short(e.FormatLabel), e.StartDate.Year()))
+		}
+		lines = append(lines, views.TimelineLine{Text: called(w.entries[0]) + ": " + strings.Join(releases, ", ")})
+		tl.Works = append(tl.Works, w.view)
+	}
+	tl.Lines = append(lines, tl.Lines...)
+	return tl
+}
+
+// curve leaves one dot and meets another level, so it misses the names
+// above them and the labels below.
+func curve(x1, y1, x2, y2 int) string {
+	pull := max((x2-x1)/2, 40)
+	return fmt.Sprintf("M%d %d C%d %d %d %d %d %d", x1, y1, x1+pull, y1, x2-pull, y2, x2, y2)
+}
+
+// place sets a work's dots and name, and the stretch of its row they take.
+func place(w *tlWork, x func(float64) float64) {
+	for i, e := range w.entries {
+		label := short(e.FormatLabel)
+		if i > 0 && e.StartDate.Year() == w.entries[i-1].StartDate.Year() {
+			d := &w.view.Dots[len(w.view.Dots)-1]
+			if !strings.Contains(d.Label, label) {
+				d.Label += ", " + label
+			}
+			continue
+		}
+		w.view.Dots = append(w.view.Dots, views.TimelineDot{X: int(math.Round(x(year(e)))), Label: label})
+	}
+
+	firstX, lastX := float64(w.view.Dots[0].X), float64(w.view.Dots[len(w.view.Dots)-1].X)
+	name := float64(utf8.RuneCountInString(w.view.Name)) * tlNameChar
+	w.view.NameX = int(firstX) - 5
+	w.left, w.right = firstX-5, firstX-5+name
+	// too long to fit, it ends at its dot instead
+	if w.right > tlWidth-tlEdge {
+		w.view.EndAnchored, w.view.NameX = true, int(firstX)+6
+		w.left, w.right = firstX+6-name, firstX+6
+	}
+	for _, d := range w.view.Dots {
+		half := float64(utf8.RuneCountInString(d.Label)) * tlDotChar / 2
+		w.left, w.right = min(w.left, float64(d.X)-half), max(w.right, float64(d.X)+half, lastX)
+	}
+}
+
+// dotIndex is which of a work's dots its i'th release is drawn as.
+func dotIndex(w *tlWork, i int) int {
+	dot := 0
+	for j := 1; j <= i; j++ {
+		if w.entries[j].StartDate.Year() != w.entries[j-1].StartDate.Year() {
+			dot++
+		}
+	}
+	return dot
+}
+
+// year is when an entry came out as a year with the month as a fraction.
+func year(e sqlcgen.GroupEntriesRow) float64 {
+	y := float64(e.StartDate.Year())
+	if deref(e.StartPrecision) != "year" {
+		y += float64(e.StartDate.Month()-1) / 12
+	}
+	return y
+}
+
+func short(format string) string {
+	if s, ok := shortFormats[format]; ok {
+		return s
+	}
+	return format
+}
+
+// sortedByDate is rows oldest first, ties by title.
+func sortedByDate(rows []sqlcgen.GroupEntriesRow) []sqlcgen.GroupEntriesRow {
+	out := slices.Clone(rows)
+	slices.SortStableFunc(out, func(a, b sqlcgen.GroupEntriesRow) int {
+		return cmp.Or(cmp.Compare(year(a), year(b)), cmp.Compare(a.Title, b.Title))
+	})
+	return out
+}

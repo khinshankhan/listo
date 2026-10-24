@@ -14,9 +14,11 @@ type Franchise struct {
 	// ordering to start from.
 	StartHere    string
 	Continuities []ContinuityCard
-	Sorts        []SortLink
-	Sections     []EntrySection
-	Orderings    []Ordering
+	// Timeline draws the entries by year, when there are works to connect.
+	Timeline  *Timeline
+	Sorts     []SortLink
+	Sections  []EntrySection
+	Orderings []Ordering
 	// Elsewhere names the parent the siblings share, for their heading.
 	Elsewhere      string
 	ElsewhereAside string

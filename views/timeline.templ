@@ -1,0 +1,117 @@
+package views
+
+import "fmt"
+
+// TimelineSection is a group's works by year, its spoilers behind a checkbox
+// and the drawing in words for screen readers.
+templ TimelineSection(t *Timeline, group string) {
+	<section id="timeline" class="timeline flex scroll-mt-6 flex-col gap-4">
+		@sectionHead("timeline", "what came out when, and what leads to what")
+		<figure class="flex flex-col gap-[14px] rounded-xl border border-border bg-background-2 px-[19px] pt-5 pb-[18px]">
+			<div class="overflow-x-auto" tabindex="0" role="region" aria-label="timeline, scrolls sideways">
+				<svg viewBox={ fmt.Sprintf("0 0 %d %d", t.Width, t.Height) } class="block h-auto w-full min-w-[720px] font-body" aria-hidden="true">
+					for _, b := range t.Boxes {
+						<rect x={ fmt.Sprint(b.X) } y={ fmt.Sprint(b.Y) } width={ fmt.Sprint(b.W) } height={ fmt.Sprint(b.H) } rx="12" fill="none" stroke="var(--color-border)" stroke-dasharray="5 4"></rect>
+						<text x={ fmt.Sprint(b.X + 18) } y={ fmt.Sprint(b.Y + 26) } font-size="14" font-weight="700" fill="var(--color-foreground-strong)">{ b.Name }</text>
+					}
+					for _, l := range t.Links {
+						@timelineLink(l)
+					}
+					for _, w := range t.Works {
+						@timelineWork(w)
+					}
+					for _, tick := range t.Ticks {
+						<text x={ fmt.Sprint(tick.X) } y={ fmt.Sprint(t.Height - 10) } text-anchor="middle" font-size="10" class="font-mono" fill="var(--color-foreground-muted)">{ tick.Label }</text>
+					}
+				</svg>
+			</div>
+			<figcaption class="flex flex-wrap items-center gap-x-[22px] gap-y-2 px-4 text-12 leading-4 text-foreground-muted">
+				if len(t.Boxes) > 0 {
+					@mapLegend("crossover, reboot or other link", "part of "+group)
+				} else {
+					@mapLegend("crossover, reboot or other link", "")
+				}
+				if t.Undated > 0 {
+					<span>{ count(t.Undated, "entry", "entries") } without a date left off</span>
+				}
+				if t.Spoilers {
+					<label class="flex cursor-pointer items-center gap-2 sm:ml-auto">
+						<input type="checkbox" class="timeline-reveal size-[14px] cursor-pointer accent-accent-9 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast"/>
+						show spoilers
+					</label>
+				}
+			</figcaption>
+		</figure>
+		<ul class="sr-only">
+			for _, line := range t.Lines {
+				<li class={ templ.KV("timeline-spoiler", line.Spoiler) }>{ line.Text }</li>
+			}
+		</ul>
+	</section>
+}
+
+// timelineLink is a sequel's arrow, or a dotted line with what it is.
+templ timelineLink(l TimelineLink) {
+	<g class={ templ.KV("timeline-spoiler", l.Spoiler) }>
+		if l.Sequel {
+			<path d={ l.Path } fill="none" stroke="var(--color-foreground-muted)" stroke-width="1.25"></path>
+			<path d={ l.Head } fill="var(--color-foreground-muted)"></path>
+		} else {
+			<path d={ l.Path } fill="none" stroke="var(--color-foreground-subtle)" stroke-width="1.25" stroke-linecap="round" stroke-dasharray="1.5 4"></path>
+		}
+		if l.Label != "" {
+			<rect x={ fmt.Sprint(l.LabelX - labelWidth(l.Label)/2) } y={ fmt.Sprint(l.LabelY - 12) } width={ fmt.Sprint(labelWidth(l.Label)) } height="16" fill="var(--color-background-2)"></rect>
+			<text x={ fmt.Sprint(l.LabelX) } y={ fmt.Sprint(l.LabelY) } text-anchor="middle" font-size="12" fill="var(--color-foreground-muted)">{ l.Label }</text>
+		}
+	</g>
+}
+
+// timelineWork is a work's name over its releases, joined when there's more
+// than one.
+templ timelineWork(w TimelineWork) {
+	if len(w.Dots) > 1 {
+		<line x1={ fmt.Sprint(w.Dots[0].X) } y1={ fmt.Sprint(w.Y) } x2={ fmt.Sprint(w.Dots[len(w.Dots)-1].X) } y2={ fmt.Sprint(w.Y) } stroke="var(--color-foreground-strong)" stroke-width="3" stroke-linecap="round"></line>
+	}
+	if w.EndAnchored {
+		<text x={ fmt.Sprint(w.NameX) } y={ fmt.Sprint(w.NameY) } text-anchor="end" font-size="13" font-weight="600" fill="var(--color-foreground-strong)">{ w.Name }</text>
+	} else {
+		<text x={ fmt.Sprint(w.NameX) } y={ fmt.Sprint(w.NameY) } font-size="13" font-weight="600" fill="var(--color-foreground-strong)">{ w.Name }</text>
+	}
+	for _, d := range w.Dots {
+		@release(d.X, w.Y, d.Label)
+	}
+}
+
+// mapLegend is the key to a map's lines and boxes. link says what a dotted
+// line is; box, when set, what a dashed box is.
+templ mapLegend(link, box string) {
+	<span class="flex items-center gap-2">
+		<svg width="34" height="10" viewBox="0 0 34 10" class="shrink-0" aria-hidden="true">
+			<line x1="1" y1="5" x2="27" y2="5" stroke="var(--color-foreground-muted)" stroke-width="1.25"></line>
+			<path d="M26 1.5 32 5 26 8.5z" fill="var(--color-foreground-muted)"></path>
+		</svg>
+		sequel
+	</span>
+	<span class="flex items-center gap-2">
+		<svg width="34" height="10" viewBox="0 0 34 10" class="shrink-0" aria-hidden="true">
+			<path d="M1 5 C12 -2 22 12 33 5" fill="none" stroke="var(--color-foreground-subtle)" stroke-width="1.25" stroke-linecap="round" stroke-dasharray="1.5 4"></path>
+		</svg>
+		{ link }
+	</span>
+	if box != "" {
+		<span class="flex items-center gap-2">
+			<svg width="34" height="10" viewBox="0 0 34 10" class="shrink-0" aria-hidden="true">
+				<rect x="1" y="1" width="32" height="8" rx="2" fill="none" stroke="var(--color-border)" stroke-dasharray="5 4"></rect>
+			</svg>
+			{ box }
+		</span>
+	}
+	<span class="flex items-center gap-2">
+		<svg width="34" height="10" viewBox="0 0 34 10" class="shrink-0" aria-hidden="true">
+			<line x1="4" y1="5" x2="30" y2="5" stroke="var(--color-foreground-strong)" stroke-width="3" stroke-linecap="round"></line>
+			<circle cx="4" cy="5" r="3.5" fill="var(--color-background-2)" stroke="var(--color-foreground-strong)" stroke-width="1.5"></circle>
+			<circle cx="30" cy="5" r="3.5" fill="var(--color-background-2)" stroke="var(--color-foreground-strong)" stroke-width="1.5"></circle>
+		</svg>
+		one work, a release in each medium
+	</span>
+}

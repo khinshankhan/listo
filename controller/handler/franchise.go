@@ -48,6 +48,11 @@ func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow,
 		return v, nil, fmt.Errorf("entries: %w", err)
 	}
 	v.Continuities = continuityCards(rows)
+	rels, err := p.catalog.GroupRelations(ctx, g.ID)
+	if err != nil {
+		return v, nil, fmt.Errorf("relations: %w", err)
+	}
+	v.Timeline = timeline(rows, rels)
 
 	v.Stats = entryStats(rows)
 	if len(v.Continuities) > 0 {
@@ -110,6 +115,9 @@ func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow,
 	var anchors []views.Anchor
 	if len(v.Continuities) > 0 {
 		anchors = append(anchors, views.Anchor{Label: "continuities", Href: "#continuities"})
+	}
+	if v.Timeline != nil {
+		anchors = append(anchors, views.Anchor{Label: "timeline", Href: "#timeline"})
 	}
 	anchors = append(anchors, views.Anchor{Label: "entries", Href: "#entries"})
 	if len(v.Orderings) > 0 {

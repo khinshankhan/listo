@@ -1085,6 +1085,10 @@ func (fakeCatalog) GroupEntries(_ context.Context, id uuid.UUID) ([]sqlcgen.Grou
 	}}, nil
 }
 
+func (fakeCatalog) GroupRelations(_ context.Context, id uuid.UUID) ([]sqlcgen.GroupRelationsRow, error) {
+	return nil, nil
+}
+
 func (fakeCatalog) GroupSiblings(_ context.Context, id uuid.UUID) ([]sqlcgen.GroupSiblingsRow, error) {
 	if id != sgFranchise {
 		return nil, nil
