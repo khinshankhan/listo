@@ -23,8 +23,6 @@ const (
 	tlRow  = 64
 	// between two works on a row, and between boxes
 	tlGap = 24
-	// rough widths of a character in a work's name and in a dot's label
-	tlNameChar, tlDotChar = 7.2, 6.0
 )
 
 // mergeKinds make two entries one work: the same story in another medium or
@@ -235,14 +233,14 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 	// labels go where they cover no text
 	var taken []box
 	for _, w := range works {
-		name := float64(utf8.RuneCountInString(w.view.Name)) * tlNameChar
+		name := nameFont.width(w.view.Name)
 		left := float64(w.view.NameX)
 		if w.view.EndAnchored {
 			left -= name
 		}
 		taken = append(taken, box{left, float64(w.view.NameY - 11), left + name, float64(w.view.NameY + 3)})
 		for _, d := range w.view.Dots {
-			half := float64(utf8.RuneCountInString(d.Label)) * tlDotChar / 2
+			half := dotFont.width(d.Label) / 2
 			taken = append(taken, box{float64(d.X) - half, float64(w.view.Y + 8), float64(d.X) + half, float64(w.view.Y + 23)},
 				box{float64(d.X - 7), float64(w.view.Y - 7), float64(d.X + 7), float64(w.view.Y + 7)})
 		}
@@ -414,7 +412,7 @@ func place(w *tlWork, x func(float64) float64) {
 	}
 
 	firstX, lastX := float64(w.view.Dots[0].X), float64(w.view.Dots[len(w.view.Dots)-1].X)
-	name := float64(utf8.RuneCountInString(w.view.Name)) * tlNameChar
+	name := nameFont.width(w.view.Name)
 	w.view.NameX = int(firstX) - 5
 	w.left, w.right = firstX-5, firstX-5+name
 	// too long to fit, it ends at its dot instead
@@ -423,7 +421,7 @@ func place(w *tlWork, x func(float64) float64) {
 		w.left, w.right = firstX+6-name, firstX+6
 	}
 	for _, d := range w.view.Dots {
-		half := float64(utf8.RuneCountInString(d.Label)) * tlDotChar / 2
+		half := dotFont.width(d.Label) / 2
 		w.left, w.right = min(w.left, float64(d.X)-half), max(w.right, float64(d.X)+half, lastX)
 	}
 }
