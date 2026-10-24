@@ -16,7 +16,7 @@ import (
 // needs one
 const (
 	guideFranchise = 2
-	guideBlurb     = "Steins;Gate 0 doesn't continue the ending most people know. It follows a timeline that splits off late in the original, and you need the alternate episode 23β before you start it."
+	guideBlurb     = "Steins;Gate 0 branches off from an episode most people never saw. Watch the alternate episode 23β first, or 0 starts in the middle of a thought."
 	guideGroup     = 103
 	guideOrdering  = "first-timer order"
 

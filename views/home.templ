@@ -11,7 +11,7 @@ templ HomePage(h Home) {
 				keep one list for everything you watch, read, and play.
 			</h1>
 			<p class="max-w-[600px] text-16 leading-[26px] text-foreground-muted">
-				Track everything on one scale, see how it all connects across media, and find out where to start with the franchises that make it hard.
+				Devil May Cry is five games, a reboot, two anime, and a manga, which today means three sites to keep track of. Here it's one list, with a note on where to start. (The third game. Of course it's the third game.)
 			</p>
 			<div class="w-full max-w-[560px]">
 				@siteSearch("", true)
@@ -45,9 +45,9 @@ templ HomePage(h Home) {
 		<section class="flex flex-col gap-[18px]" aria-labelledby="keep">
 			<h2 id="keep" class="text-[22px] leading-7 font-semibold tracking-[-0.02em] text-foreground-strong">yours to keep</h2>
 			<ul class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-				@keep("export everything", "Download your whole list as JSON or CSV, whenever you like.", true)
-				@keep("a public API", "The site runs on the same API anyone can read from. Build on it.", true)
-				@keep("open source", "Apache-2.0, so you can read the code, run it or fork it.", false)
+				@keep("export everything", "Your whole list as JSON or CSV, whenever you want it. No asking nicely.", true)
+				@keep("a public API", "The site reads from the same API you can. If it's on a page, you can fetch it.", true)
+				@keep("open source", "Apache-2.0. If we get something wrong, you can fork it and get it right.", false)
 			</ul>
 		</section>
 		<footer class="flex items-center justify-between border-t border-border pt-[22px]">
@@ -78,9 +78,9 @@ templ oneList() {
 	<section class="flex flex-col gap-7 lg:flex-row lg:items-center" aria-labelledby="one-list">
 		<div class="flex flex-col gap-3 lg:w-[448px] lg:shrink-0">
 			<p class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">01 one list</p>
-			<h2 id="one-list" class="text-[22px] leading-7 font-semibold tracking-[-0.02em] text-foreground-strong">every medium, one scale</h2>
+			<h2 id="one-list" class="text-[22px] leading-7 font-semibold tracking-[-0.02em] text-foreground-strong">all of Dante on one list</h2>
 			<p class="text-14 leading-[22px] text-foreground-muted">
-				Watching Edgerunners, playing Cyberpunk 2077 and reading the Witcher books means three sites and three rating scales today. In listo, it's one list, with progress in whatever unit fits: episodes, pages or percent complete.
+				Each of those sites rates out of a different number and counts progress its own way. On listo everything rates on the same scale, the anime counts episodes, the manga counts volumes, and the games count however far along you think you are.
 			</p>
 		</div>
 		<figure class="flex min-w-0 flex-1 flex-col overflow-clip rounded-xl border border-border bg-background-2">
@@ -89,9 +89,9 @@ templ oneList() {
 				<span>in progress</span>
 			</figcaption>
 			<ul>
-				@exampleRow("Cyberpunk: Edgerunners", "anime", "w-[70%]", "7/10", "watching")
-				@exampleRow("Cyberpunk 2077", "game", "w-[45%]", "45%", "playing")
-				@exampleRow("The Last Wish", "book", "w-[34%]", "p. 98/288", "reading")
+				@exampleRow("Devil May Cry 3: Dante's Awakening", "game", "w-[60%]", "60%", "playing")
+				@exampleRow("Devil May Cry (2025)", "anime", "w-[62%]", "5/8", "watching")
+				@exampleRow("Devil May Cry 3", "manga", "w-[50%]", "vol. 1/2", "reading")
 			</ul>
 			<p class="flex items-center gap-[10px] bg-background-1 px-4 py-[11px] text-12 leading-[18px] text-foreground-muted">
 				<svg width="15" height="15" viewBox="0 0 16 16" class="shrink-0" aria-hidden="true">
@@ -99,7 +99,7 @@ templ oneList() {
 					<circle cx="12.5" cy="8" r="2" fill="none" stroke="currentColor" stroke-width="1.3"></circle>
 					<path d="M5.5 8h5" fill="none" stroke="currentColor" stroke-width="1.3"></path>
 				</svg>
-				Edgerunners is set in the world of Cyberpunk 2077. Three sites couldn't tell you that; one list can.
+				DmC, the one with the lowercase m, is a reboot with a different Dante. It gets its own continuity instead of a spot in the timeline.
 			</p>
 		</figure>
 	</section>
@@ -128,8 +128,8 @@ templ exampleRow(title, medium, done, progress, status string) {
 // than shrinking its labels to nothing.
 templ connections() {
 	<section class="flex flex-col gap-[18px]" aria-labelledby="connections">
-		@sectionIntro("connections", "02 connections · always growing", "see how it all connects",
-			"Chaos;Head and Robotics;Notes aren't sequels or prequels of each other, but they share a world, and its series cross over. Links also arrive late: Robotics;Notes DaSH tied Robotics;Notes to Steins;Gate in 2019, ten years after Steins;Gate. We add them as they're made.")
+		@sectionIntro("connections", "02 connections", "everything connects, eventually",
+			"These five series share a world, and the characters don't stay in their lanes. Some links turn up years later, like Robotics;Notes DaSH crossing over with Steins;Gate in 2019, a decade after Steins;Gate came out. They go on the map when they happen.")
 		<figure class="flex flex-col gap-[14px] rounded-xl border border-border bg-background-2 px-[19px] pt-5 pb-[18px]">
 			<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Science Adventure timeline, scrolls sideways">
 				@scienceAdventure()
@@ -246,7 +246,7 @@ templ release(x, y int, media string) {
 templ guides(h Home) {
 	<section class="flex flex-col gap-[18px]" aria-labelledby="guides">
 		@sectionIntro("guides", "03 guides · in progress", "where do I start?",
-			"We're writing curated guides to franchises where the order matters. Here's a preview of the first two.")
+			"Some franchises come with homework. We're writing guides for those by hand, starting with these two.")
 		<ul class="grid grid-cols-1 gap-4 md:grid-cols-2">
 			if f := h.Franchise; f != nil {
 				<li class="flex flex-col gap-4 rounded-xl border border-border bg-background-2 p-5">
@@ -303,7 +303,7 @@ templ guides(h Home) {
 			<svg width="16" height="16" viewBox="0 0 18 18" class="shrink-0" aria-hidden="true">
 				<path d="M9 4v10M4 9h10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
 			</svg>
-			Guides take time to get right, so they'll arrive a few at a time. We would rather write a few thorough ones than many shallow ones.
+			More are on the way, slowly. A wrong guide is worse than no guide.
 		</p>
 	</section>
 }
