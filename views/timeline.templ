@@ -12,10 +12,14 @@ templ TimelineSection(t *Timeline, group string) {
 				<svg viewBox={ fmt.Sprintf("0 0 %d %d", t.Width, t.Height) } class="block h-auto w-full min-w-[720px] font-body" aria-hidden="true">
 					for _, b := range t.Boxes {
 						<rect x={ fmt.Sprint(b.X) } y={ fmt.Sprint(b.Y) } width={ fmt.Sprint(b.W) } height={ fmt.Sprint(b.H) } rx="12" fill="none" stroke="var(--color-border)" stroke-dasharray="5 4"></rect>
-						<text x={ fmt.Sprint(b.X + 18) } y={ fmt.Sprint(b.Y + 26) } font-size="14" font-weight="700" fill="var(--color-foreground-strong)">{ b.Name }</text>
 					}
 					for _, l := range t.Links {
 						@timelineLink(l)
+					}
+					// text goes over the lines, each haloed in the ground so a line
+					// running under it doesn't strike it through
+					for _, b := range t.Boxes {
+						<text x={ fmt.Sprint(b.X + 18) } y={ fmt.Sprint(b.Y + 26) } font-size="14" font-weight="700" fill="var(--color-foreground-strong)" { halo... }>{ b.Name }</text>
 					}
 					for _, w := range t.Works {
 						@timelineWork(w)
@@ -73,12 +77,13 @@ templ timelineWork(w TimelineWork) {
 		<line x1={ fmt.Sprint(w.Dots[0].X) } y1={ fmt.Sprint(w.Y) } x2={ fmt.Sprint(w.Dots[len(w.Dots)-1].X) } y2={ fmt.Sprint(w.Y) } stroke="var(--color-foreground-strong)" stroke-width="3" stroke-linecap="round"></line>
 	}
 	if w.EndAnchored {
-		<text x={ fmt.Sprint(w.NameX) } y={ fmt.Sprint(w.NameY) } text-anchor="end" font-size="13" font-weight="600" fill="var(--color-foreground-strong)">{ w.Name }</text>
+		<text x={ fmt.Sprint(w.NameX) } y={ fmt.Sprint(w.NameY) } text-anchor="end" font-size="13" font-weight="600" fill="var(--color-foreground-strong)" { halo... }>{ w.Name }</text>
 	} else {
-		<text x={ fmt.Sprint(w.NameX) } y={ fmt.Sprint(w.NameY) } font-size="13" font-weight="600" fill="var(--color-foreground-strong)">{ w.Name }</text>
+		<text x={ fmt.Sprint(w.NameX) } y={ fmt.Sprint(w.NameY) } font-size="13" font-weight="600" fill="var(--color-foreground-strong)" { halo... }>{ w.Name }</text>
 	}
 	for _, d := range w.Dots {
-		@release(d.X, w.Y, d.Label)
+		<circle cx={ fmt.Sprint(d.X) } cy={ fmt.Sprint(w.Y) } r="4.5" fill="var(--color-background-2)" stroke="var(--color-foreground-strong)" stroke-width="1.5"></circle>
+		<text x={ fmt.Sprint(d.X) } y={ fmt.Sprint(w.Y + 19) } text-anchor="middle" font-size="11" fill="var(--color-foreground-muted)" { halo... }>{ d.Label }</text>
 	}
 }
 

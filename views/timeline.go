@@ -1,5 +1,7 @@
 package views
 
+import "github.com/a-h/templ"
+
 // Timeline is a group's works drawn by year: a row per line of the story,
 // boxed by the part of the group each sits in, with the links between them.
 // Everything is in SVG units, Width wide and Height tall.
@@ -62,6 +64,9 @@ type TimelineLine struct {
 	Text    string
 	Spoiler bool
 }
+
+// halo outlines a timeline's text in the ground colour, under the fill.
+var halo = templ.Attributes{"stroke": "var(--color-background-2)", "stroke-width": "4", "stroke-linejoin": "round", "paint-order": "stroke"}
 
 // labelWidth is about how wide a link's label draws, with a little to spare,
 // for the backing that keeps lines from running through it.

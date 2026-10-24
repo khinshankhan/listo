@@ -10,7 +10,7 @@ import (
 )
 
 // branches are the test groups' public ids, by name.
-var branches = map[string]int64{"Chaos;Head": 900, "Steins;Gate": 901, "Classic": 902, "2016 reboot": 903}
+var branches = map[string]int64{"Chaos;Head": 900, "Steins;Gate": 901, "Classic": 902, "2016 reboot": 903, "Index": 904, "Railgun": 905}
 
 // tlEntry is an entry released in year and month (0 for just a year), under
 // branch, or straight in the group when branch is "".
@@ -40,6 +40,8 @@ func tlRelation(from int64, kind string, to int64) sqlcgen.GroupRelationsRow {
 		"crossover_with": {"crossover with", "setting"},
 		"reboot_of":      {"reboot of", "derivative"},
 		"references":     {"references", "setting"},
+		"side_story_of":  {"side story of", "sequence"},
+		"spin_off_of":    {"spin-off of", "sequence"},
 	}
 	return sqlcgen.GroupRelationsRow{FromID: from, Kind: kind, Label: labels[kind][0], Family: labels[kind][1], ToID: to}
 }
@@ -224,5 +226,50 @@ func TestTimelineCrowdedSequels(t *testing.T) {
 	}
 	if !slices.Contains(tl.Lines, views.TimelineLine{Text: "Ben 10 (2005): TV 2005"}) {
 		t.Errorf("lines = %+v, want the first Ben 10 told apart by year", tl.Lines)
+	}
+}
+
+// Rows keep the shape of the story: a side story sits right under the work it
+// hangs off, ahead of anything later, and side stories with room share a row.
+func TestTimelineKeepsStructure(t *testing.T) {
+	rows := []sqlcgen.GroupEntriesRow{
+		tlEntry(1, "Index", "anime", 2008, 10, "Index"),
+		tlEntry(2, "Unrelated", "anime", 2009, 1, "Index"),
+		tlEntry(3, "Side A", "OVA", 2010, 1, "Index"),
+		tlEntry(4, "Index II", "anime", 2010, 10, "Index"),
+		tlEntry(5, "Side B", "OVA", 2014, 1, "Index"),
+	}
+	rels := []sqlcgen.GroupRelationsRow{
+		tlRelation(3, "side_story_of", 1),
+		tlRelation(4, "sequel_of", 1),
+		tlRelation(5, "side_story_of", 1),
+	}
+	tl := timeline(rows, rels)
+	index, ii, a, b, other := workNamed(t, tl, "Index"), workNamed(t, tl, "Index II"), workNamed(t, tl, "Side A"),
+		workNamed(t, tl, "Side B"), workNamed(t, tl, "Unrelated")
+	if ii.Y != index.Y {
+		t.Errorf("Index II on y %d, want Index's %d", ii.Y, index.Y)
+	}
+	if !(index.Y < a.Y && a.Y < other.Y) {
+		t.Errorf("side story on y %d, want between Index (%d) and the later root (%d)", a.Y, index.Y, other.Y)
+	}
+	if b.Y != a.Y {
+		t.Errorf("Side B on y %d, want Side A's %d", b.Y, a.Y)
+	}
+}
+
+// A link between rows is labelled between them, not over a name above.
+func TestTimelineLabelsBetweenRows(t *testing.T) {
+	rows := []sqlcgen.GroupEntriesRow{
+		tlEntry(1, "A Certain Magical Index", "anime", 2008, 10, "Index"),
+		tlEntry(2, "A Certain Scientific Railgun", "anime", 2009, 10, "Railgun"),
+	}
+	tl := timeline(rows, []sqlcgen.GroupRelationsRow{tlRelation(2, "spin_off_of", 1)})
+	index, railgun := workNamed(t, tl, "A Certain Magical Index"), workNamed(t, tl, "A Certain Scientific Railgun")
+	if len(tl.Links) != 1 {
+		t.Fatalf("links = %+v, want the spin-off", tl.Links)
+	}
+	if l := tl.Links[0]; l.Label != "spin-off" || l.LabelY <= index.Y || l.LabelY >= railgun.NameY {
+		t.Errorf("label %q at y %d, want between Index's row (%d) and Railgun's name (%d)", l.Label, l.LabelY, index.Y, railgun.NameY)
 	}
 }

@@ -47,9 +47,10 @@ type tlWork struct {
 	// branch is the group it's boxed in, or 0 when it sits straight in this one
 	branch     int64
 	branchName string
-	// prequel is the work it follows, or -1
-	prequel     int
-	row         int
+	// attach is the work it hangs off, if any; follows when it's a sequel,
+	// which carries on that work's row
+	attach      *tlWork
+	follows     bool
 	left, right float64
 	view        views.TimelineWork
 }
@@ -98,7 +99,7 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 		root := find(r.PublicID)
 		w := workOf[root]
 		if w == nil {
-			w = &tlWork{prequel: -1}
+			w = &tlWork{}
 			workOf[root] = w
 			works = append(works, w)
 		}
@@ -126,15 +127,14 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 		return e.Title
 	}
 
-	// a sequel follows the work it continues
-	index := map[*tlWork]int{}
-	for i, w := range works {
-		index[w] = i
-	}
+	// a work hangs off the one it continues or sits beside, a sequel first
 	for _, rel := range rels {
 		from, to := workOf[rel.FromID], workOf[rel.ToID]
-		if rel.Family == "sequence" && from != nil && to != nil && from != to && from.prequel == -1 {
-			from.prequel = index[to]
+		if rel.Family != "sequence" || from == nil || to == nil || from == to {
+			continue
+		}
+		if from.attach == nil || (rel.Kind == "sequel_of" && !from.follows) {
+			from.attach, from.follows = to, rel.Kind == "sequel_of"
 		}
 	}
 
@@ -152,7 +152,6 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 
 	for _, w := range works {
 		place(w, x)
-		w.row = -1
 	}
 
 	// the loose works first, then each box in the order it starts
@@ -168,23 +167,43 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 
 	y := 20
 	for _, branch := range order {
-		// a sequel takes its prequel's row if there's room after it, or
-		// starts one
-		var rights []float64
+		// a sequel carries on its prequel's row when there's room; anything
+		// else hanging off a work gets a row right under it, shared with the
+		// work's other side stories while there's room
+		var lanes []*lane
+		laneOf := map[*tlWork]*lane{}
 		var name string
 		for _, w := range works {
 			if w.branch != branch {
 				continue
 			}
 			name = w.branchName
-			if p := w.prequel; p >= 0 && works[p].branch == branch && works[p].row >= 0 && rights[works[p].row]+tlGap <= w.left {
-				w.row = works[p].row
-				rights[w.row] = w.right
+			on := laneOf[w.attach]
+			var l *lane
+			switch {
+			case on != nil && w.follows && on.right+tlGap <= w.left:
+				l = on
+			case on != nil:
+				for _, c := range lanes {
+					if c.under == on && c.right+tlGap <= w.left {
+						l = c
+						break
+					}
+				}
+				if l == nil {
+					l = &lane{under: on}
+					at := slices.Index(lanes, on) + 1
+					for at < len(lanes) && lanes[at].within(on) {
+						at++
+					}
+					lanes = slices.Insert(lanes, at, l)
+				}
+			default:
+				l = &lane{}
+				lanes = append(lanes, l)
 			}
-			if w.row == -1 {
-				w.row = len(rights)
-				rights = append(rights, w.right)
-			}
+			l.right = max(l.right, w.right)
+			laneOf[w] = l
 		}
 
 		top := y
@@ -192,13 +211,11 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 		if branch != 0 {
 			firstRow = y + 62
 		}
-		for _, w := range works {
-			if w.branch == branch {
-				w.view.Y = firstRow + w.row*tlRow
-				w.view.NameY = w.view.Y - 14
-			}
+		for w, l := range laneOf {
+			w.view.Y = firstRow + slices.Index(lanes, l)*tlRow
+			w.view.NameY = w.view.Y - 14
 		}
-		bottom := firstRow + (len(rights)-1)*tlRow + 34
+		bottom := firstRow + (len(lanes)-1)*tlRow + 34
 		if branch != 0 {
 			tl.Boxes = append(tl.Boxes, views.TimelineBox{X: 16, Y: top, W: tlWidth - 32, H: bottom - top, Name: name})
 		}
@@ -215,6 +232,43 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 		}
 		return 0, 0
 	}
+	// labels go where they cover no text
+	var taken []box
+	for _, w := range works {
+		name := float64(utf8.RuneCountInString(w.view.Name)) * tlNameChar
+		left := float64(w.view.NameX)
+		if w.view.EndAnchored {
+			left -= name
+		}
+		taken = append(taken, box{left, float64(w.view.NameY - 11), left + name, float64(w.view.NameY + 3)})
+		for _, d := range w.view.Dots {
+			half := float64(utf8.RuneCountInString(d.Label)) * tlDotChar / 2
+			taken = append(taken, box{float64(d.X) - half, float64(w.view.Y + 8), float64(d.X) + half, float64(w.view.Y + 23)},
+				box{float64(d.X - 7), float64(w.view.Y - 7), float64(d.X + 7), float64(w.view.Y + 7)})
+		}
+	}
+	for _, b := range tl.Boxes {
+		taken = append(taken, box{float64(b.X + 18), float64(b.Y + 12), float64(b.X+18) + float64(utf8.RuneCountInString(b.Name))*7.8, float64(b.Y + 30)})
+	}
+	// a label sits on its line, or just beside it; with nowhere clear to go
+	// it's left off, and the words still say it
+	label := func(link *views.TimelineLink, c bezier) {
+		half := float64(len(link.Label)*6+8) / 2
+		for _, beside := range []float64{0, -half - 8, half + 8} {
+			for _, t := range []float64{0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8, 0.1, 0.9} {
+				px, py := c.at(t)
+				px += beside
+				at := box{px - half, py - 8, px + half, py + 8}
+				if at.x1 > 0 && at.x2 < tlWidth && !slices.ContainsFunc(taken, at.overlaps) {
+					taken = append(taken, at)
+					link.LabelX, link.LabelY = int(math.Round(px)), int(math.Round(py+4))
+					return
+				}
+			}
+		}
+		link.Label = ""
+	}
+
 	type drawn struct {
 		from, to *tlWork
 		name     string
@@ -238,13 +292,12 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 			// from the release it continues to the start of the sequel
 			x1, y1 := dotAt(rel.ToID)
 			x2, y2 := from.view.Dots[0].X-9, from.view.Y
-			if y1 == y2 {
-				link.Path = fmt.Sprintf("M%d %d H%d", x1+7, y1, x2)
-			} else {
-				link.Path = curve(x1+7, y1, x2, y2)
-			}
+			c := connect(x1, y1, x2, y2)
+			link.Path = c.path()
 			link.Head = fmt.Sprintf("M%d %d L%d %d L%d %dz", x2-1, y2-3, x2+6, y2, x2-1, y2+3)
-			link.Label, link.LabelX, link.LabelY = name, (x1+x2)/2, min(y1, y2)-6
+			if link.Label = name; name != "" {
+				label(&link, c)
+			}
 		} else {
 			when := max(year(byID[rel.FromID]), year(byID[rel.ToID]))
 			if rel.EstablishedOn != nil {
@@ -258,15 +311,13 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 			if x2 < x1 {
 				x1, y1, x2, y2 = x2, y2, x1, y1
 			}
-			mid := (y1 + y2) / 2
+			c := connect(x1, y1, x2-7, y2)
 			if y1 == y2 {
 				// over the row, clear of its bars
-				mid = y1 - 34
-				link.Path = fmt.Sprintf("M%d %d C%d %d %d %d %d %d", x1, y1-7, x1, mid, x2, mid, x2, y2-7)
-			} else {
-				link.Path = curve(x1+7, y1, x2-7, y2)
+				c = bezier{float64(x1), float64(y1 - 7), float64(x1), float64(y1 - 34), float64(x2), float64(y1 - 34), float64(x2), float64(y2 - 7)}
 			}
-			link.LabelX, link.LabelY = (x1+x2)/2, mid+4
+			link.Path = c.path()
+			label(&link, c)
 		}
 		tl.Spoilers = tl.Spoilers || link.Spoiler
 		tl.Links = append(tl.Links, link)
@@ -286,11 +337,66 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 	return tl
 }
 
-// curve leaves one dot and meets another level, so it misses the names
-// above them and the labels below.
-func curve(x1, y1, x2, y2 int) string {
-	pull := max((x2-x1)/2, 40)
-	return fmt.Sprintf("M%d %d C%d %d %d %d %d %d", x1, y1, x1+pull, y1, x2-pull, y2, x2, y2)
+// lane is a row being filled left to right, and the row it hangs under.
+type lane struct {
+	right float64
+	under *lane
+}
+
+// within reports whether l is top or hangs somewhere beneath it.
+func (l *lane) within(top *lane) bool {
+	for ; l != nil; l = l.under {
+		if l == top {
+			return true
+		}
+	}
+	return false
+}
+
+// box is a rectangle of the drawing, corner to corner.
+type box struct{ x1, y1, x2, y2 float64 }
+
+func (b box) overlaps(o box) bool {
+	return b.x1 < o.x2 && o.x1 < b.x2 && b.y1 < o.y2 && o.y1 < b.y2
+}
+
+// bezier is a cubic curve: its start, two control points and its end.
+type bezier struct{ x0, y0, x1, y1, x2, y2, x3, y3 float64 }
+
+// connect runs from the dot at x1, y1 to x2 on the row at y2, arriving level
+// so it misses the names above the dots and the labels below. Along a row
+// it's straight; a long way across it's an S, leaving the dot level too; a
+// short way, to a row below, it drops from the dot and turns in, rather than
+// loop out and back.
+func connect(x1, y1, x2, y2 int) bezier {
+	switch {
+	case y1 == y2:
+		return straight(x1+7, y1, x2, y2)
+	case x2-x1 >= 80:
+		pull := float64((x2 - x1 - 7) / 2)
+		return bezier{float64(x1 + 7), float64(y1), float64(x1+7) + pull, float64(y1), float64(x2) - pull, float64(y2), float64(x2), float64(y2)}
+	default:
+		down := float64(y1 + 7*cmp.Compare(y2, y1))
+		return bezier{float64(x1), down, float64(x1), float64(y2), float64(x1), float64(y2), float64(x2), float64(y2)}
+	}
+}
+
+// straight is a straight run as a curve, so labels can sit along it the same way.
+func straight(x1, y1, x2, y2 int) bezier {
+	dx, dy := float64(x2-x1)/3, float64(y2-y1)/3
+	return bezier{float64(x1), float64(y1), float64(x1) + dx, float64(y1) + dy, float64(x2) - dx, float64(y2) - dy, float64(x2), float64(y2)}
+}
+
+// at is the point t of the way along the curve.
+func (c bezier) at(t float64) (float64, float64) {
+	u := 1 - t
+	a, b, d, e := u*u*u, 3*u*u*t, 3*u*t*t, t*t*t
+	return a*c.x0 + b*c.x1 + d*c.x2 + e*c.x3, a*c.y0 + b*c.y1 + d*c.y2 + e*c.y3
+}
+
+func (c bezier) path() string {
+	r := func(f float64) int { return int(math.Round(f)) }
+	return fmt.Sprintf("M%d %d C%d %d %d %d %d %d", r(c.x0), r(c.y0), r(c.x1), r(c.y1), r(c.x2), r(c.y2), r(c.x3), r(c.y3))
 }
 
 // place sets a work's dots and name, and the stretch of its row they take.
