@@ -8,7 +8,10 @@ select catalog.add_group('steins-gate', 'franchise', 'Steins;Gate', p_public_id 
 select catalog.add_group('steins-gate-main', 'continuity', 'Main timeline', 'primary', p_public_id => 3);
 select catalog.add_group('steins-gate-zero', 'continuity', 'Divergence (0)', 'concluded', p_public_id => 4);
 select catalog.add_group('robotics-notes', 'franchise', 'Robotics;Notes', p_public_id => 5);
-select catalog.member('science-adventure', 'steins-gate', 'robotics-notes');
+select catalog.add_group('chaos-head', 'franchise', 'Chaos;Head', p_public_id => 118);
+select catalog.add_group('occultic-nine', 'franchise', 'Occultic;Nine', p_public_id => 119);
+select catalog.add_group('anonymous-code', 'franchise', 'Anonymous;Code', p_public_id => 120);
+select catalog.member('science-adventure', 'chaos-head', 'steins-gate', 'robotics-notes', 'occultic-nine', 'anonymous-code');
 select catalog.member('steins-gate', 'steins-gate-main', 'steins-gate-zero');
 
 select catalog.add_entry('steins-gate-vn', 'visual_novel', 'full', 'Steins;Gate', '2009', 'JP', p_public_id => 6);
@@ -24,6 +27,15 @@ select catalog.add_entry('steins-gate-0-anime', 'anime', 'tv', 'Steins;Gate 0', 
 select catalog.add_units('steins-gate-0-anime', 23);
 select catalog.add_entry('robotics-notes-vn', 'visual_novel', 'full', 'Robotics;Notes', '2012', 'JP', p_public_id => 12);
 select catalog.add_entry('robotics-notes-dash', 'visual_novel', 'full', 'Robotics;Notes DaSH', '2019', 'JP', p_public_id => 13);
+select catalog.add_entry('robotics-notes-anime', 'anime', 'tv', 'Robotics;Notes', '2012-10', 'JP', 'episode', 22, p_public_id => 121);
+select catalog.add_entry('chaos-head-vn', 'visual_novel', 'full', 'Chaos;Head', '2008-04', 'JP', p_public_id => 122);
+select catalog.add_entry('chaos-head-anime', 'anime', 'tv', 'Chaos;Head', '2008-10', 'JP', 'episode', 12, p_public_id => 123);
+select catalog.add_entry('chaos-child-vn', 'visual_novel', 'full', 'Chaos;Child', '2014-12', 'JP', p_public_id => 124);
+select catalog.add_entry('chaos-child-anime', 'anime', 'tv', 'Chaos;Child', '2017-01', 'JP', 'episode', 12, p_public_id => 125);
+select catalog.add_entry('occultic-nine-ln', 'book', 'light_novel', 'Occultic;Nine', '2014-08', 'JP', p_public_id => 126);
+select catalog.add_entry('occultic-nine-anime', 'anime', 'tv', 'Occultic;Nine', '2016-10', 'JP', 'episode', 12, p_public_id => 127);
+select catalog.add_entry('occultic-nine-vn', 'visual_novel', 'full', 'Occultic;Nine', '2017-11', 'JP', p_public_id => 128);
+select catalog.add_entry('anonymous-code-vn', 'visual_novel', 'full', 'Anonymous;Code', '2022-07', 'JP', p_public_id => 129);
 
 select catalog.member('steins-gate-main', 'steins-gate-vn', 'steins-gate-anime', 'steins-gate-movie', 'steins-gate-elite');
 select catalog.member('steins-gate-zero', 'steins-gate-0-vn', 'steins-gate-0-anime');
@@ -33,7 +45,10 @@ select catalog.set_role('steins-gate-main', 'steins-gate-movie', 'sequel to the 
 select catalog.set_role('steins-gate-main', 'steins-gate-elite', 'remake of the VN');
 select catalog.set_role('steins-gate-zero', 'steins-gate-0-vn', 'sequel from another worldline');
 select catalog.set_role('steins-gate-zero', 'steins-gate-0-anime', 'adaptation of 0');
-select catalog.member('robotics-notes', 'robotics-notes-vn', 'robotics-notes-dash');
+select catalog.member('robotics-notes', 'robotics-notes-vn', 'robotics-notes-anime', 'robotics-notes-dash');
+select catalog.member('chaos-head', 'chaos-head-vn', 'chaos-head-anime', 'chaos-child-vn', 'chaos-child-anime');
+select catalog.member('occultic-nine', 'occultic-nine-ln', 'occultic-nine-anime', 'occultic-nine-vn');
+select catalog.member('anonymous-code', 'anonymous-code-vn');
 
 select catalog.ext('steins-gate-vn', 'wikidata', 'Q482494');
 select catalog.ext('steins-gate-vn', 'vndb', 'v2002');
@@ -56,6 +71,13 @@ select catalog.relate('steins-gate-elite', 'remake_of', 'steins-gate-vn');
 select catalog.relate('steins-gate-0-anime', 'adaptation_of', 'steins-gate-0-vn');
 select catalog.relate('steins-gate-0-anime', 'sequel_of', 'steins-gate-anime', p_to_unit => '23',
                       p_note => 'branches off episode 23');
+select catalog.relate('robotics-notes-anime', 'adaptation_of', 'robotics-notes-vn');
+select catalog.relate('robotics-notes-dash', 'sequel_of', 'robotics-notes-vn');
+select catalog.relate('chaos-head-anime', 'adaptation_of', 'chaos-head-vn');
+select catalog.relate('chaos-child-vn', 'sequel_of', 'chaos-head-vn');
+select catalog.relate('chaos-child-anime', 'adaptation_of', 'chaos-child-vn');
+select catalog.relate('occultic-nine-anime', 'adaptation_of', 'occultic-nine-ln');
+select catalog.relate('occultic-nine-vn', 'adaptation_of', 'occultic-nine-ln');
 select catalog.relate('robotics-notes-dash', 'crossover_with', 'steins-gate-vn',
                       p_spoiler => true, p_established_on => '2019-01-31', p_established_by => 'robotics-notes-dash');
 
