@@ -1,0 +1,23 @@
+# make dev: air rebuilds and restarts listo on save, and its proxy reloads the
+# browser; the ports come from the Makefile
+root = "."
+tmp_dir = "var/air"
+
+[build]
+# the same build as make serve, so the bundle and templates are fresh too
+cmd = "make listo"
+entrypoint = ["./bin/listo", "serve"]
+include_ext = ["go", "templ", "ts", "tsx", "css"]
+exclude_dir = ["bin", "var", ".direnv", "web/dist", "web/node_modules"]
+# generated, so watching it would rebuild forever
+exclude_regex = ["_templ\\.go$", "_test\\.go$"]
+delay = 200
+# listo shuts down on SIGINT, so let it finish what it's serving
+send_interrupt = true
+kill_delay = "2s"
+
+[proxy]
+enabled = true
+
+[misc]
+clean_on_exit = true

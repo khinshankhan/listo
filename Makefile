@@ -70,6 +70,14 @@ templ:
 serve: listo
 	./bin/listo serve
 
+# serve, rebuilding on every save and reloading the browser: open DEV_PORT,
+# air's proxy, which forwards to listo on the port after it
+DEV_PORT ?= 8080
+.PHONY: dev
+dev: db-up web/node_modules
+	app=$$(($(DEV_PORT) + 1))
+	LISTO_ADDR=127.0.0.1:$$app go tool air --proxy.proxy_port $(DEV_PORT) --proxy.app_port $$app
+
 # DATABASE
 #
 # Postgres 18 from the flake (`direnv allow` or `nix develop`), as a cluster
