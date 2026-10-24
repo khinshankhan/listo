@@ -14,11 +14,12 @@ import (
 	"github.com/khinshankhan/listo/views"
 )
 
-// perShelf is how many entries each medium's shelf shows.
-const perShelf = 6
+// perShelf is how many entries each medium's shelf holds: a row across a wide
+// screen.
+const perShelf = 12
 
-// browsePage is how many entries a page of results holds. It divides by 2, 3,
-// 4 and 6, so a grid's last row is full whatever the screen.
+// browsePage is how many entries a page of results holds. It divides by most
+// column counts the grid lands on, so the last row is usually full.
 const browsePage = 48
 
 // viewCookie remembers how someone likes to browse.
@@ -143,7 +144,7 @@ func (p *Pages) Entries(w http.ResponseWriter, r *http.Request) {
 		p.serverError(w, r, err)
 		return
 	}
-	chrome.HideSearch = true
+	chrome.Wide = true
 	// the view can come from a cookie, so no shared cache may keep this
 	w.Header().Set("Cache-Control", "private, max-age=60")
 	w.Header().Add("Vary", "Cookie")

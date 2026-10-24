@@ -404,8 +404,8 @@ func TestFrontPages(t *testing.T) {
 				">anime · spring 2011 · 24 episodes</span>", ">visual novel · 2009</span>"},
 			// shelves, not the filtered grid
 			dontWant: []string{`id="matches"`, "clear filters"}},
-		{name: "browse has the one search, up top", path: "/entries", status: http.StatusOK,
-			want: []string{`relative h-[52px] w-full`}, dontWant: []string{"max-w-[420px]"}},
+		{name: "browse searches from the top bar, leaving the page to the catalog", path: "/entries", status: http.StatusOK,
+			want: []string{"max-w-[420px]"}, dontWant: []string{`relative h-[52px] w-full`}},
 		{name: "the filters, each with any", path: "/entries", status: http.StatusOK,
 			want: []string{`<label for="filter-medium"`, `<option value="" selected>any</option>`, `<option value="visual_novel">visual novel</option>`,
 				`<option value="sci-fi">sci-fi</option>`, `<option value="2009">2009</option>`, `<option value="fall">fall</option>`,

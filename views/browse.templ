@@ -2,18 +2,21 @@ package views
 
 import "fmt"
 
-// BrowsePage is the catalog under a search: filters, then shelves or the
-// filtered grid. The filters wait for "apply" rather than jumping on change.
+// BrowsePage is the catalog: filters, then shelves or the filtered grid. The
+// filters wait for "apply" rather than jumping on change.
 templ BrowsePage(b Browse) {
-	<div class="flex flex-col gap-[26px]">
-		<header class="flex flex-col gap-[18px]">
-			<div class="flex flex-col gap-[9px]">
-				<p class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">catalog</p>
-				<h1 class="font-heading text-32 leading-10 font-semibold tracking-[-0.035em] text-foreground-strong sm:text-44 sm:leading-[44px]">browse</h1>
-			</div>
-			@siteSearch("", true)
+	<div class="flex flex-col gap-6">
+		<header class="flex flex-wrap items-center justify-between gap-3">
+			<h1 class="font-heading text-24 leading-8 font-semibold tracking-[-0.03em] text-foreground-strong">browse</h1>
+			<nav class="flex gap-[7px]" aria-label="view">
+				for _, vl := range b.Views {
+					@Link(LinkProps{Href: vl.Href, Variant: LinkNone, Monochrome: true, Current: vl.Active, Class: sortClass(vl.Active)}) {
+						{ vl.Label }
+					}
+				}
+			</nav>
 		</header>
-		<form action="/entries" method="get" aria-label="filter the catalog" class="grid grid-cols-2 items-end gap-3 border-b border-border pb-[22px] md:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
+		<form action="/entries" method="get" aria-label="filter the catalog" class="grid grid-cols-2 items-end gap-3 border-b border-border pb-[22px] md:grid-cols-[repeat(4,minmax(0,220px))_auto]">
 			for _, f := range b.Filters {
 				<div class="flex min-w-0 flex-col gap-[7px]">
 					<label for={ "filter-" + f.Name } class="font-mono text-[10px] leading-3 tracking-[0.1em] text-foreground-muted uppercase">{ f.Label }</label>
@@ -39,27 +42,14 @@ templ BrowsePage(b Browse) {
 			// the same in every state, so applying doesn't shift the row
 			<button type="submit" class="col-span-2 h-[38px] cursor-pointer justify-self-start rounded-lg bg-foreground-strong px-4 text-13 leading-4 font-semibold text-background-2 hover:bg-cream-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast md:col-span-1">apply</button>
 		</form>
-		<div class="flex flex-col gap-4">
-			<div class="flex flex-wrap items-baseline justify-between gap-3">
-				if b.Filtered {
-					<div class="flex items-baseline gap-4">
-						<h2 id="matches" class="text-20 leading-6 font-semibold tracking-[-0.025em] text-foreground-strong">{ count(b.Total, "entry", "entries") }</h2>
-						@Link(LinkProps{Href: "/entries", Variant: LinkNone, Class: "text-12 leading-4 font-semibold text-accent-11"}) {
-							clear filters
-						}
-					</div>
-				} else {
-					<p class="text-13 leading-4 text-foreground-muted">the newest in each medium</p>
-				}
-				<nav class="flex gap-[7px]" aria-label="view">
-					for _, vl := range b.Views {
-						@Link(LinkProps{Href: vl.Href, Variant: LinkNone, Monochrome: true, Current: vl.Active, Class: sortClass(vl.Active)}) {
-							{ vl.Label }
-						}
+		if b.Filtered {
+			<div class="flex flex-col gap-4">
+				<div class="flex items-baseline gap-4">
+					<h2 id="matches" class="text-20 leading-6 font-semibold tracking-[-0.025em] text-foreground-strong">{ count(b.Total, "entry", "entries") }</h2>
+					@Link(LinkProps{Href: "/entries", Variant: LinkNone, Class: "text-12 leading-4 font-semibold text-accent-11"}) {
+						clear filters
 					}
-				</nav>
-			</div>
-			if b.Filtered {
+				</div>
 				if len(b.Cards) > 0 {
 					@entryView(b.View, b.Cards)
 				} else {
@@ -86,9 +76,8 @@ templ BrowsePage(b Browse) {
 						}
 					</nav>
 				}
-			}
-		</div>
-		if !b.Filtered {
+			</div>
+		} else {
 			if len(b.Shelves) > 0 {
 				for _, s := range b.Shelves {
 					<section class="flex flex-col gap-4" aria-labelledby={ "shelf-" + s.ID }>
@@ -98,7 +87,11 @@ templ BrowsePage(b Browse) {
 								view all<span class="sr-only">{ " " + s.Title }</span>
 							}
 						</div>
-						@entryView(b.View, s.Cards)
+						if b.View == "cards" {
+							@cardRow(s.Title, s.Cards)
+						} else {
+							@entryView(b.View, s.Cards[:min(len(s.Cards), listShelf)])
+						}
 					</section>
 				}
 			} else {
@@ -149,19 +142,36 @@ templ entryList(cards []Card, covers bool) {
 	</ul>
 }
 
-// cardGrid is entries as covers: two across on a phone, six on a wide screen.
+// cardGrid is entries as covers: two across on a phone, then as many as fit.
 templ cardGrid(cards []Card) {
-	<ul class="grid grid-cols-2 gap-x-[18px] gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+	<ul class="grid grid-cols-2 gap-x-[18px] gap-y-6 sm:grid-cols-[repeat(auto-fill,minmax(150px,1fr))]">
 		for _, c := range cards {
-			<li class="flex min-w-0 flex-col gap-[10px]">
-				<span class="aspect-[172/250] rounded-[9px] bg-placeholder" aria-hidden="true"></span>
-				<span class="flex flex-col gap-1">
-					@Link(LinkProps{Href: c.Href, Variant: LinkNone, Class: "text-14 leading-[19px] font-semibold tracking-[-0.012em] wrap-break-word text-foreground-strong"}) {
-						{ c.Title }
-					}
-					<span class="text-12 leading-4 text-foreground-muted">{ c.Meta }</span>
-				</span>
-			</li>
+			@card(c)
 		}
 	</ul>
+}
+
+// cardRow is a shelf of covers in one row, scrolling sideways when the screen
+// can't fit them all.
+templ cardRow(title string, cards []Card) {
+	<div class="overflow-x-auto rounded-sm pb-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast" tabindex="0" role="region" aria-label={ title + ", scrolls sideways" }>
+		<ul class="grid auto-cols-[140px] grid-flow-col gap-x-[18px] sm:auto-cols-[150px]">
+			for _, c := range cards {
+				@card(c)
+			}
+		</ul>
+	</div>
+}
+
+// card is one entry's cover, title and what it is.
+templ card(c Card) {
+	<li class="flex min-w-0 flex-col gap-[10px]">
+		<span class="aspect-[172/250] rounded-[9px] bg-placeholder" aria-hidden="true"></span>
+		<span class="flex flex-col gap-1">
+			@Link(LinkProps{Href: c.Href, Variant: LinkNone, Class: "text-14 leading-[19px] font-semibold tracking-[-0.012em] wrap-break-word text-foreground-strong"}) {
+				{ c.Title }
+			}
+			<span class="text-12 leading-4 text-foreground-muted">{ c.Meta }</span>
+		</span>
+	</li>
 }

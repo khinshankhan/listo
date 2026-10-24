@@ -37,6 +37,10 @@ type Shelf struct {
 	Cards           []Card
 }
 
+// listShelf is how much of a shelf the list views show; a list doesn't
+// scroll sideways, so it stops sooner than the covers do.
+const listShelf = 6
+
 // Card is an entry with its cover; Meta is what it is and how long, eg
 // "anime, 2011, 24 episodes".
 type Card struct {
