@@ -195,7 +195,29 @@ function suggest(
       close();
       return;
     }
+    // alt+down opens the suggestions without choosing one, alt+up closes them
+    if (event.altKey && event.key === "ArrowDown") {
+      event.preventDefault();
+      if (hits.length > 0 || !note.hidden) {
+        open();
+      } else if (input.value.trim() !== "") {
+        void fetchSuggestions();
+      }
+      return;
+    }
+    if (event.altKey && event.key === "ArrowUp") {
+      event.preventDefault();
+      close();
+      return;
+    }
     if (hits.length === 0) {
+      return;
+    }
+    // home and end jump the list while it's being walked, and move the caret
+    // otherwise
+    if ((event.key === "Home" || event.key === "End") && !panel.hidden && active >= 0) {
+      event.preventDefault();
+      highlight(event.key === "Home" ? 0 : hits.length - 1);
       return;
     }
     switch (event.key) {
