@@ -79,7 +79,7 @@ serve: listo
 DEV_PORT ?= 8080
 .PHONY: dev
 dev: db-up web/node_modules
-	app=$$(($(DEV_PORT) + 1))
+	@app=$$(($(DEV_PORT) + 1))
 	for port in $(DEV_PORT) $$app; do
 		if (exec 3<>/dev/tcp/127.0.0.1/$$port) 2>/dev/null; then
 			echo "port $$port is taken, maybe by an old listo; find it with: lsof -i :$$port"
