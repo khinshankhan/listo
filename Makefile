@@ -73,10 +73,19 @@ serve: listo
 # serve, rebuilding on every save and reloading the browser: open DEV_PORT,
 # air's proxy, which forwards to listo on the port after it. Nothing is
 # cached, so every click shows the latest build.
+# A server left over from an earlier run would quietly answer for the new one,
+# so it stops if either port is taken. NOTE: bash's /dev/tcp connects only if
+# something is listening.
 DEV_PORT ?= 8080
 .PHONY: dev
 dev: db-up web/node_modules
 	app=$$(($(DEV_PORT) + 1))
+	for port in $(DEV_PORT) $$app; do
+		if (exec 3<>/dev/tcp/127.0.0.1/$$port) 2>/dev/null; then
+			echo "port $$port is taken, maybe by an old listo; find it with: lsof -i :$$port"
+			exit 1
+		fi
+	done
 	LISTO_DEV=1 LISTO_ADDR=127.0.0.1:$$app go tool air --proxy.proxy_port $(DEV_PORT) --proxy.app_port $$app
 
 # DATABASE
