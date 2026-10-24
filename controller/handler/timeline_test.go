@@ -374,6 +374,200 @@ func TestTimelineBackwardSequel(t *testing.T) {
 	}
 }
 
+// A work released over and over, as Detective Conan's games were, gets one
+// label for a run of dots too close to label each, so none sit on another.
+func TestTimelineCrowdedReleases(t *testing.T) {
+	rows := []sqlcgen.GroupEntriesRow{
+		tlEntry(1, "Detective Conan", "manga", 1994, 1, ""),
+		tlEntry(2, "Detective Conan", "anime", 1996, 1, ""),
+		tlEntry(3, "Magic Kaito", "manga", 1960, 1, ""),
+	}
+	rels := []sqlcgen.GroupRelationsRow{tlRelation(2, "adaptation_of", 1)}
+	for i := range 16 {
+		id := int64(10 + i)
+		rows = append(rows, tlEntry(id, fmt.Sprintf("Game %d", i), "game", 1997+i, 1, ""))
+		rels = append(rels, tlRelation(id, "adaptation_of", 1))
+	}
+	tl := timeline(rows, rels)
+	conan := workNamed(t, tl, "Detective Conan")
+	if len(conan.Dots) != 18 {
+		t.Errorf("%d dots, want one a year: 18", len(conan.Dots))
+	}
+	games := 0
+	var prev *views.TimelineDot
+	for i, d := range conan.Dots {
+		if d.Label == "" {
+			continue
+		}
+		for _, part := range strings.Split(d.Label, ", ") {
+			if n, ok := strings.CutPrefix(part, "game \u00d7"); ok {
+				c, _ := strconv.Atoi(n)
+				games += c
+			} else if part == "game" {
+				games++
+			}
+		}
+		if prev != nil && float64(prev.LabelX)+dotFont.width(prev.Label)/2 > float64(d.LabelX)-dotFont.width(d.Label)/2 {
+			t.Errorf("dot labels %q and %q overlap", prev.Label, d.Label)
+		}
+		prev = &conan.Dots[i]
+	}
+	if games != 16 {
+		t.Errorf("labels %q count %d games, want 16", dotLabels(conan), games)
+	}
+}
+
+// Nothing is drawn under a card or off the edge: no label, and no run but
+// into or out of the cards a link joins. Side stories sharing a row are each
+// reached on their own, not through the one before, and a sequel whose long
+// name starts its card before its prequel's doesn't go round the long way.
+func TestTimelineNothingUnderCards(t *testing.T) {
+	rows := []sqlcgen.GroupEntriesRow{
+		tlEntry(1, "Detective Conan", "manga", 1994, 1, "Index"),
+		tlEntry(2, "Short Stories", "manga", 1996, 1, "Index"),
+		tlEntry(3, "Sonoko's Case Files", "OVA", 2004, 1, "Index"),
+		tlEntry(4, "Science Files", "nonfiction", 2012, 1, "Index"),
+		tlEntry(5, "Detective Conan", "anime", 2024, 1, "Index"),
+		tlEntry(6, "Venom", "film", 2018, 1, "Index"),
+		tlEntry(7, "Venom: Let There Be Carnage, a Name Too Long to Start at Its Dot", "film", 2021, 1, "Index"),
+	}
+	rels := []sqlcgen.GroupRelationsRow{
+		tlRelation(2, "spin_off_of", 1),
+		tlRelation(3, "side_story_of", 1),
+		tlRelation(4, "spin_off_of", 1),
+		tlRelation(5, "adaptation_of", 1),
+		tlRelation(6, "spin_off_of", 1),
+		tlRelation(7, "sequel_of", 6),
+	}
+	tl := timeline(rows, rels)
+	if a, b := workNamed(t, tl, "Short Stories"), workNamed(t, tl, "Sonoko's Case Files"); a.Y != b.Y {
+		t.Fatalf("side stories on y %d and %d, want them sharing a row", a.Y, b.Y)
+	}
+	for _, l := range tl.Links {
+		if l.LabelW > 0 && (l.LabelLeft() < 0 || l.LabelLeft()+l.LabelW > tl.Width) {
+			t.Errorf("label %q runs x %d to %d, off the %d wide drawing", l.Label, l.LabelLeft(), l.LabelLeft()+l.LabelW, tl.Width)
+		}
+		for _, w := range tl.Works {
+			c := w.Card
+			if l.LabelW > 0 && l.LabelLeft() < c.X+c.W && l.LabelLeft()+l.LabelW > c.X && l.LabelY+7 > c.Y && l.LabelY-7 < c.Y+c.H {
+				t.Errorf("label %q at %d, %d sits under %s", l.Label, l.LabelX, l.LabelY, w.Name)
+			}
+			if w.ID == l.Source || w.ID == l.Target {
+				continue
+			}
+			pts := pathPoints(t, l.Path)
+			for i := 1; i < len(pts); i++ {
+				a, b := pts[i-1], pts[i]
+				if a[1] == b[1] && a[1] > float64(c.Y) && a[1] < float64(c.Y+c.H) && min(a[0], b[0]) < float64(c.X+c.W) && max(a[0], b[0]) > float64(c.X) {
+					t.Errorf("link %d to %d runs under %s", l.Source, l.Target, w.Name)
+				}
+			}
+		}
+	}
+}
+
+// A name too long to start at its dot ends there instead, but never past
+// the left edge.
+func TestTimelineLongNameStaysInside(t *testing.T) {
+	rows := []sqlcgen.GroupEntriesRow{
+		tlEntry(1, "Detective Conan", "manga", 1994, 1, "Index"),
+		tlEntry(2, `Detective Conan Magic File 2 "Shinichi Kudo The Case of the Mysterious Wall and the Black Labrador"`, "OVA", 2008, 1, "Index"),
+		tlEntry(3, "Detective Conan", "anime", 2024, 1, "Index"),
+	}
+	rels := []sqlcgen.GroupRelationsRow{tlRelation(2, "side_story_of", 1), tlRelation(3, "adaptation_of", 1)}
+	tl := timeline(rows, rels)
+	if w := workNamed(t, tl, rows[1].Title); w.Card.X < 16 || w.Card.X+w.Card.W > 944 {
+		t.Errorf("card runs x %d to %d, want inside the box, 16 to 944", w.Card.X, w.Card.X+w.Card.W)
+	}
+}
+
+// Works linked to nothing share rows while there's room, rather than taking
+// one each.
+func TestTimelineLoneWorksShareRows(t *testing.T) {
+	rows := []sqlcgen.GroupEntriesRow{
+		tlEntry(1, "Amazing Fantasy", "comic", 1962, 1, ""),
+		tlEntry(2, "Marvel Tales", "comic", 1975, 1, ""),
+		tlEntry(3, "Web of Spider-Man", "comic", 1990, 1, ""),
+		tlEntry(4, "Spider-Man Unlimited", "comic", 2004, 1, ""),
+		tlEntry(5, "Spider-Gwen", "comic", 2022, 1, ""),
+	}
+	tl := timeline(rows, nil)
+	ys := map[int]bool{}
+	for _, w := range tl.Works {
+		ys[w.Y] = true
+	}
+	if len(ys) != 1 {
+		t.Errorf("five lone works on %d rows, want one", len(ys))
+	}
+}
+
+// Past a dozen, works linked to nothing go on one card that points at the
+// list, a dot a year, so they don't bury the ones that lead somewhere.
+func TestTimelineManyLoneWorks(t *testing.T) {
+	rows := []sqlcgen.GroupEntriesRow{
+		tlEntry(1, "The Amazing Spider-Man", "comic", 1963, 1, ""),
+		tlEntry(2, "Venom", "film", 2018, 1, ""),
+	}
+	rels := []sqlcgen.GroupRelationsRow{tlRelation(2, "spin_off_of", 1)}
+	for i := range 30 {
+		rows = append(rows, tlEntry(int64(10+i), fmt.Sprintf("Spider-Man Annual %d", i), "comic", 1980+i, 1, ""))
+	}
+	tl := timeline(rows, rels)
+	if len(tl.Works) != 3 {
+		t.Fatalf("%d works, want the two linked and one for the rest", len(tl.Works))
+	}
+	rest := workNamed(t, tl, "30 more, linked to nothing")
+	if rest.Href != "#entries" {
+		t.Errorf("href %q, want the list below, #entries", rest.Href)
+	}
+	if len(rest.Dots) != 30 {
+		t.Errorf("%d dots, want one a year: 30", len(rest.Dots))
+	}
+	comics := 0
+	for _, l := range dotLabels(rest) {
+		if n, ok := strings.CutPrefix(l, "comic \u00d7"); ok {
+			c, _ := strconv.Atoi(n)
+			comics += c
+		} else if l == "comic" {
+			comics++
+		}
+	}
+	if comics != 30 {
+		t.Errorf("labels %q count %d comics, want 30", dotLabels(rest), comics)
+	}
+	if !slices.Contains(tl.Lines, views.TimelineLine{Text: "30 more, linked to nothing, listed under entries"}) {
+		t.Errorf("lines = %+v, want the rest summed up in words", tl.Lines)
+	}
+}
+
+// pathPoints is the ends of a path's runs, corners rounded off: every M and
+// L, and where each Q comes out.
+func pathPoints(t *testing.T, path string) [][2]float64 {
+	t.Helper()
+	xs := pathXs(t, path)
+	ys := []float64{}
+	for _, seg := range strings.FieldsFunc(path, func(r rune) bool { return r == 'M' || r == 'L' || r == 'Q' }) {
+		nums := strings.Fields(seg)
+		for i := 1; i < len(nums); i += 2 {
+			y, _ := strconv.ParseFloat(nums[i], 64)
+			ys = append(ys, y)
+		}
+	}
+	var pts [][2]float64
+	i := 0
+	for _, op := range path {
+		switch op {
+		case 'M', 'L':
+			pts = append(pts, [2]float64{xs[i], ys[i]})
+			i++
+		case 'Q':
+			pts = append(pts, [2]float64{xs[i+1], ys[i+1]})
+			i += 2
+		}
+	}
+	return pts
+}
+
 // pathXs is every x a path visits.
 func pathXs(t *testing.T, path string) []float64 {
 	t.Helper()

@@ -60,10 +60,12 @@ type TimelineCard struct {
 }
 
 // TimelineDot is a release, or a few at once, with what they are, eg "VN,
-// anime".
+// anime", centred on LabelX. Dots too close to label one by one share a
+// label, eg "game ×9", on the first; the rest have none.
 type TimelineDot struct {
-	X     int    `json:"x"`
-	Label string `json:"label"`
+	X      int    `json:"x"`
+	Label  string `json:"label"`
+	LabelX int    `json:"labelX"`
 }
 
 // TimelineLink is a step line from the Source work to the Target, left to

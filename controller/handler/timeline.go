@@ -17,9 +17,9 @@ const (
 	tlWidth = 960
 	// the first year starts at tlLeft and the last ends at tlRight
 	tlLeft, tlRight = 56, 904
-	// names keep this far from the edge
-	tlEdge = 24
-	tlRow  = 88
+	// names keep this far from the edge, and labels under dots this far apart
+	tlEdge, tlLabelGap = 24, 6
+	tlRow              = 88
 	// between two works on a row
 	tlGap = 40
 	// a work's card: this much either side of its stretch of row, from this
@@ -31,6 +31,8 @@ const (
 	// a step line leaves and meets a card this straight, turns this round, and
 	// runs across this far short of a card it meets from above or below
 	tlOffset, tlRadius, tlTurn = 14, 10, 10
+	// past this many works linked to nothing in a box, they share one card
+	tlLoneMax = 12
 )
 
 // mergeKinds make two entries one work: the same story in another medium or
@@ -59,6 +61,8 @@ type tlWork struct {
 	follows     bool
 	left, right float64
 	view        views.TimelineWork
+	// lone is how many works linked to nothing this card stands for, if any
+	lone int
 }
 
 // timeline draws a group's entries by year, or is nil when there are fewer
@@ -115,6 +119,13 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 	if len(works) < 2 {
 		return nil
 	}
+	linked := map[*tlWork]bool{}
+	for _, rel := range rels {
+		if from, to := workOf[rel.FromID], workOf[rel.ToID]; from != nil && to != nil && from != to {
+			linked[from], linked[to] = true, true
+		}
+	}
+	works = foldLone(works, linked)
 	// a work sits where its first release does
 	names := map[string]int{}
 	for _, w := range works {
@@ -123,6 +134,11 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 			w.branch, w.branchName = first.BranchPublicID, deref(first.BranchName)
 		}
 		w.view.ID, w.view.Name, w.view.Href = first.PublicID, first.Title, EntryPath(first.PublicID, first.Slug)
+		if w.lone > 0 {
+			// not an entry's id, so no link can mean it
+			w.view.ID, w.view.Name, w.view.Href = -w.branch-1, fmt.Sprintf("%d more, linked to nothing", w.lone), "#entries"
+			continue
+		}
 		names[first.Title]++
 	}
 	// in words, works that share a name are told apart by year
@@ -175,7 +191,8 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 	for _, branch := range order {
 		// a sequel carries on its prequel's row when there's room; anything
 		// else hanging off a work gets a row right under it, shared with the
-		// work's other side stories while there's room
+		// work's other side stories while there's room; works linked to
+		// nothing share rows with each other the same way
 		var lanes []*lane
 		laneOf := map[*tlWork]*lane{}
 		var name string
@@ -203,6 +220,17 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 						at++
 					}
 					lanes = slices.Insert(lanes, at, l)
+				}
+			case !linked[w]:
+				for _, c := range lanes {
+					if c.lone && c.right+tlGap <= w.left {
+						l = c
+						break
+					}
+				}
+				if l == nil {
+					l = &lane{lone: true}
+					lanes = append(lanes, l)
 				}
 			default:
 				l = &lane{}
@@ -275,7 +303,16 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 			}
 		}
 		link.Source, link.Target = source.view.ID, target.view.ID
-		route(&link, source.view.Card, sourceX, target.view.Card, targetX)
+		// a run in along the target's row would pass under any card there
+		// between the trunk and the target
+		clear := true
+		for _, w := range works {
+			c := w.view.Card
+			if w != target && w.view.Y == target.view.Y && c.X < target.view.Card.X && c.X+c.W > source.view.Card.X+tlTrunk {
+				clear = false
+			}
+		}
+		route(&link, source.view.Card, sourceX, target.view.Card, targetX, clear)
 		tl.Spoilers = tl.Spoilers || link.Spoiler
 		tl.Links = append(tl.Links, link)
 		tl.Lines = append(tl.Lines, views.TimelineLine{Text: line, Spoiler: rel.Spoiler})
@@ -283,21 +320,65 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 
 	var lines []views.TimelineLine
 	for _, w := range works {
+		tl.Works = append(tl.Works, w.view)
+		if w.lone > 0 {
+			lines = append(lines, views.TimelineLine{Text: w.view.Name + ", listed under entries"})
+			continue
+		}
 		var releases []string
 		for _, e := range w.entries {
 			releases = append(releases, fmt.Sprintf("%s %d", short(e.FormatLabel), e.StartDate.Year()))
 		}
 		lines = append(lines, views.TimelineLine{Text: called(w.entries[0]) + ": " + strings.Join(releases, ", ")})
-		tl.Works = append(tl.Works, w.view)
 	}
 	tl.Lines = append(lines, tl.Lines...)
 	return tl
 }
 
+// foldLone puts a box's works linked to nothing on one card when there are
+// more than tlLoneMax of them: one by one they'd bury the works that lead
+// somewhere, and the list under the timeline has them all anyway.
+func foldLone(works []*tlWork, linked map[*tlWork]bool) []*tlWork {
+	// by box, 0 for none
+	box := func(w *tlWork) int64 {
+		if w.entries[0].BranchType == "group" {
+			return w.entries[0].BranchPublicID
+		}
+		return 0
+	}
+	lone := map[int64][]*tlWork{}
+	for _, w := range works {
+		if !linked[w] {
+			lone[box(w)] = append(lone[box(w)], w)
+		}
+	}
+	var out []*tlWork
+	for _, w := range works {
+		ws := lone[box(w)]
+		if linked[w] || len(ws) <= tlLoneMax {
+			out = append(out, w)
+			continue
+		}
+		// the box's first lone work stands in for the rest
+		if ws[0] != w {
+			continue
+		}
+		all := &tlWork{lone: len(ws)}
+		for _, o := range ws {
+			all.entries = append(all.entries, o.entries...)
+		}
+		all.entries = sortedByDate(all.entries)
+		out = append(out, all)
+	}
+	return out
+}
+
 // lane is a row being filled left to right, and the row it hangs under.
+// A lone lane holds only works linked to nothing.
 type lane struct {
 	right float64
 	under *lane
+	lone  bool
 }
 
 // within reports whether l is top or hangs somewhere beneath it.
@@ -314,12 +395,13 @@ func (l *lane) within(top *lane) bool {
 // sourceX or meeting the one at targetX where it needs to. Along a row it
 // runs card to card, arcing over the row unless it's a sequel. To another
 // row a sequel, side story or spin-off hangs off its card's trunk and runs
-// in, labelled on that run or beside the trunk; one whose target came out
-// first leaves its card's left edge and goes round the left of both, and so
-// of every card between, which came out later still; anything else, or one
-// whose target starts too near the trunk, drops from its dot and meets the
-// target from above or below, labelled on the run across.
-func route(l *views.TimelineLink, from views.TimelineCard, sourceX float64, to views.TimelineCard, targetX float64) {
+// in when nothing's in the way, labelled on that run or beside the trunk; one
+// whose target came out first leaves its card's left edge and goes round the
+// left of both, and so of every card between, which came out later still;
+// anything else, or one whose target starts too near the trunk, has cards
+// before it on its row or no room for its label, drops and meets the target
+// from above or below, labelled on the run across.
+func route(l *views.TimelineLink, from views.TimelineCard, sourceX float64, to views.TimelineCard, targetX float64, clear bool) {
 	type pt struct{ x, y float64 }
 	top := func(c views.TimelineCard) float64 { return float64(c.Y) }
 	bottom := func(c views.TimelineCard) float64 { return float64(c.Y + c.H) }
@@ -330,11 +412,17 @@ func route(l *views.TimelineLink, from views.TimelineCard, sourceX float64, to v
 		edge, meet, turn = bottom, top, -tlTurn
 	}
 	labelW := math.Ceil(dotFont.width(l.Label)) + 12
-	// right-aligned on the run in, or left of the line down when it won't fit
+	// right-aligned on the run in, or left of the line down when it won't
+	// fit, or past the line down when that's off the edge
+	onRun := func(run, down float64) bool { return run-14-labelW > down+8 }
+	offEdge := func(down float64) bool { return down-6-labelW < 0 }
 	beside := func(run, y, down float64) {
 		l.LabelEnd, l.LabelX, l.LabelY = true, int(down-6), int(y)
-		if run-14-labelW > down+8 {
+		switch {
+		case onRun(run, down):
 			l.LabelX = int(run - 14)
+		case offEdge(down):
+			l.LabelEnd, l.LabelX = false, int(math.Ceil(down+8+labelW/2))
 		}
 	}
 
@@ -348,11 +436,11 @@ func route(l *views.TimelineLink, from views.TimelineCard, sourceX float64, to v
 		over := top(from) - tlOffset
 		pts = []pt{{sourceX, top(from)}, {sourceX, over}, {targetX, over}, {targetX, top(to)}}
 		l.LabelX, l.LabelY = int((sourceX+targetX)/2), int(over)
-	case l.Sequel && left > trunk+tlOffset+tlRadius:
+	case l.Sequel && clear && left > trunk+tlOffset+tlRadius && (onRun(left, trunk) || !offEdge(trunk)):
 		y := row(to)
 		pts = []pt{{trunk, edge(from)}, {trunk, y}, {left, y}}
 		beside(left, y, trunk)
-	case l.Sequel && left < trunk:
+	case l.Sequel && targetX < trunk:
 		gutter := max(float64(min(from.X, to.X))-tlOffset, 4)
 		y := row(to)
 		pts = []pt{{float64(from.X), row(from)}, {gutter, row(from)}, {gutter, y}, {left, y}}
@@ -395,28 +483,77 @@ func route(l *views.TimelineLink, from views.TimelineCard, sourceX float64, to v
 
 // place sets a work's dots, and the stretch of its row they and its name take.
 func place(w *tlWork, x func(float64) float64) {
+	// a dot a year, and the formats out that year
+	var formats [][]string
 	for i, e := range w.entries {
-		label := short(e.FormatLabel)
 		if i > 0 && e.StartDate.Year() == w.entries[i-1].StartDate.Year() {
-			d := &w.view.Dots[len(w.view.Dots)-1]
-			if !strings.Contains(d.Label, label) {
-				d.Label += ", " + label
-			}
+			formats[len(formats)-1] = append(formats[len(formats)-1], short(e.FormatLabel))
 			continue
 		}
-		w.view.Dots = append(w.view.Dots, views.TimelineDot{X: int(math.Round(x(year(e)))), Label: label})
+		w.view.Dots = append(w.view.Dots, views.TimelineDot{X: int(math.Round(x(year(e))))})
+		formats = append(formats, []string{short(e.FormatLabel)})
+	}
+
+	// dots too close to label one by one share a label under them, so a run
+	// of yearly games reads "game ×12", not a pile of "game"s
+	type run struct{ from, to int }
+	label := func(r run) string {
+		var order []string
+		count := map[string]int{}
+		for _, fs := range formats[r.from:r.to] {
+			for _, f := range fs {
+				if count[f] == 0 {
+					order = append(order, f)
+				}
+				count[f]++
+			}
+		}
+		for i, f := range order {
+			if count[f] > 1 {
+				order[i] = fmt.Sprintf("%s \u00d7%d", f, count[f])
+			}
+		}
+		return strings.Join(order, ", ")
+	}
+	// centred under its dots, but not past the edge
+	centre := func(r run) float64 {
+		half := dotFont.width(label(r)) / 2
+		mid := float64(w.view.Dots[r.from].X+w.view.Dots[r.to-1].X) / 2
+		return min(max(mid, tlEdge+half), tlWidth-tlEdge-half)
+	}
+	var runs []run
+	for i := range w.view.Dots {
+		runs = append(runs, run{i, i + 1})
+	}
+	for i := 1; i < len(runs); {
+		a, b := runs[i-1], runs[i]
+		if centre(a)+dotFont.width(label(a))/2+tlLabelGap > centre(b)-dotFont.width(label(b))/2 {
+			runs[i-1].to = b.to
+			runs = slices.Delete(runs, i, i+1)
+			i = max(i-1, 1)
+			continue
+		}
+		i++
+	}
+	for _, r := range runs {
+		d := &w.view.Dots[r.from]
+		d.Label, d.LabelX = label(r), int(math.Round(centre(r)))
 	}
 
 	firstX, lastX := float64(w.view.Dots[0].X), float64(w.view.Dots[len(w.view.Dots)-1].X)
 	name := nameFont.width(w.view.Name)
-	w.left, w.right = firstX-5, firstX-5+name
-	// too long to fit, it ends at its dot instead
-	if w.right > tlWidth-tlEdge {
-		w.left, w.right = firstX+6-name, firstX+6
+	w.left = firstX - 5
+	// too long to fit, it ends at its dot instead, or as near as the left
+	// edge lets it
+	if w.left+name > tlWidth-tlEdge {
+		w.left = max(firstX+6-name, tlEdge+tlPad)
 	}
+	w.right = max(w.left+name, lastX)
 	for _, d := range w.view.Dots {
-		half := dotFont.width(d.Label) / 2
-		w.left, w.right = min(w.left, float64(d.X)-half), max(w.right, float64(d.X)+half, lastX)
+		if d.Label != "" {
+			half := dotFont.width(d.Label) / 2
+			w.left, w.right = min(w.left, float64(d.LabelX)-half), max(w.right, float64(d.LabelX)+half)
+		}
 	}
 }
 

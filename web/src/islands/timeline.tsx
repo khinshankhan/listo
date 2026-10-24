@@ -19,7 +19,7 @@ const Props = z.object({
       href: z.string(),
       card: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }),
       y: z.number(),
-      dots: z.array(z.object({ x: z.number(), label: z.string() })),
+      dots: z.array(z.object({ x: z.number(), label: z.string(), labelX: z.number() })),
     }),
   ),
   links: z.nullable(
@@ -59,17 +59,20 @@ const WorkCard = ({ id, data: { work, light } }: NodeProps<WorkNode>): ReactNode
         href={work.href}
         onFocus={() => light(id)}
         onBlur={() => light(null)}
-        className="absolute top-[7px] right-[10px] left-[10px] truncate text-13 leading-4 font-semibold text-foreground-strong after:absolute after:inset-[-7px_-10px_-27px] hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stark-contrast"
+        className="absolute top-[7px] right-[10px] left-[10px] text-13 leading-4 font-semibold text-foreground-strong after:absolute after:inset-[-7px_-10px_-35px] hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stark-contrast"
       >
-        {work.name}
+        {/* sized to fit; cut short only if the font isn't the one measured */}
+        <span className="block truncate">{work.name}</span>
       </a>
       {last > first && <span className="absolute h-[3px] -translate-y-1/2 rounded-full bg-foreground-strong" style={{ left: first, width: last - first, top: row }} aria-hidden="true" />}
       {work.dots.map((d, i) => (
         <span key={i} aria-hidden="true">
           <span className="absolute size-[9px] -translate-1/2 rounded-full border-[1.5px] border-foreground-strong bg-background-2" style={{ left: d.x - card.x, top: row }} />
-          <span className="absolute -translate-x-1/2 text-11 leading-[14px] whitespace-nowrap text-foreground-muted" style={{ left: d.x - card.x, top: row + 7 }}>
-            {d.label}
-          </span>
+          {d.label && (
+            <span className="absolute -translate-x-1/2 text-11 leading-[14px] whitespace-nowrap text-foreground-muted" style={{ left: d.labelX - card.x, top: row + 7 }}>
+              {d.label}
+            </span>
+          )}
         </span>
       ))}
       {/* the server draws the lines; these only satisfy xyflow */}

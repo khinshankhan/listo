@@ -97,7 +97,9 @@ templ timelineWork(w TimelineWork) {
 			}
 			for _, d := range w.Dots {
 				<circle cx={ fmt.Sprint(d.X) } cy={ fmt.Sprint(w.Y) } r="3.75" fill="var(--color-background-2)" stroke="var(--color-foreground-strong)" stroke-width="1.5"></circle>
-				<text x={ fmt.Sprint(d.X) } y={ fmt.Sprint(w.Y + 18) } text-anchor="middle" font-size="11" fill="var(--color-foreground-muted)">{ d.Label }</text>
+				if d.Label != "" {
+					<text x={ fmt.Sprint(d.LabelX) } y={ fmt.Sprint(w.Y + 18) } text-anchor="middle" font-size="11" fill="var(--color-foreground-muted)">{ d.Label }</text>
+				}
 			}
 		</g>
 	</a>
