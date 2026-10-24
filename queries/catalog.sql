@@ -21,8 +21,25 @@ left join catalog.entry e on e.id = n.id
 left join catalog.grp g on g.id = n.id
 left join catalog.medium m on m.medium = e.medium
 left join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
+-- a medium narrows before the limit, so its hits aren't crowded out
+where sqlc.narg(medium)::text is null or e.medium = sqlc.narg(medium)::text
 order by hit.score desc, title, e.start_date nulls first, n.public_id
 limit sqlc.arg(max_results)::int;
+
+-- name: SearchMedia :many
+-- How many nodes a search finds in each medium, however many that is; groups
+-- have no medium.
+select e.medium, m.label as medium_label, count(*)::int as hits
+from (
+  select distinct t.node_id
+  from catalog.title t
+  where t.title_norm % catalog.norm(sqlc.arg(q)::text)
+     or catalog.norm(sqlc.arg(q)::text) <% t.title_norm
+) hit
+left join catalog.entry e on e.id = hit.node_id
+left join catalog.medium m on m.medium = e.medium
+group by e.medium, m.label
+order by hits desc, m.label nulls last;
 
 -- name: TitleSuggestions :many
 -- Titles near a query that found nothing, closest first, scored both ways

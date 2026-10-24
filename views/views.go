@@ -174,7 +174,9 @@ type MediumLink struct {
 type Search struct {
 	Query    string
 	Searched bool
-	Results  []Result
+	// Results are the closest of Total hits.
+	Results []Result
+	Total   int
 	// Media filters the results, when there's more than one kind to filter.
 	Media []MediumLink
 	// Suggestions are nearby titles, after a search that found nothing.

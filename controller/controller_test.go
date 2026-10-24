@@ -367,6 +367,13 @@ func TestFrontPages(t *testing.T) {
 		{name: "a medium keeps only its hits", path: "/search?q=steins&medium=anime", status: http.StatusOK,
 			want:     []string{">1 result</span>", `href="/search?medium=anime&amp;q=steins" aria-current="page">anime</a>`},
 			dontWant: []string{">franchise</span>", `href="/entries/6/steins-gate-vn">`}},
+		// the manga is 31st overall: past the limit unless the filter comes first
+		{name: "a medium past the limit can still be reached", path: "/search?q=crowded&medium=manga", status: http.StatusOK,
+			want:     []string{">1 result</span>", `href="/entries/600/crowd-manga">Crowd Manga</a>`, `aria-current="page">manga</a>`},
+			dontWant: []string{">Crowd 00</a>"}},
+		{name: "the count is every hit, and says when it shows fewer", path: "/search?q=crowded", status: http.StatusOK,
+			want:     []string{">31 results</span>", "the closest 30 shown", `href="/search?medium=manga&amp;q=crowded">manga</a>`},
+			dontWant: []string{"Crowd Manga"}},
 		{name: "a medium not among the hits shows them all", path: "/search?q=steins&medium=manga", status: http.StatusOK,
 			want: []string{">3 results</span>", `href="/search?q=steins" aria-current="page">all</a>`}},
 		{name: "one kind of hit has nothing to filter", path: "/search?q=just+one", status: http.StatusOK,
@@ -664,7 +671,48 @@ func (fakeCatalog) NodeGroups(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeGr
 	}, nil
 }
 
+// SearchNodes narrows to a medium, then takes the limit, as the SQL does.
 func (fakeCatalog) SearchNodes(_ context.Context, arg sqlcgen.SearchNodesParams) ([]sqlcgen.SearchNodesRow, error) {
+	rows, err := searchRows(arg)
+	if err != nil {
+		return nil, err
+	}
+	var out []sqlcgen.SearchNodesRow
+	for _, r := range rows {
+		if arg.Medium != nil && (r.Medium == nil || *r.Medium != *arg.Medium) {
+			continue
+		}
+		if len(out) == int(arg.MaxResults) {
+			break
+		}
+		out = append(out, r)
+	}
+	return out, nil
+}
+
+// SearchMedia counts every row the fake search has, by medium.
+func (fakeCatalog) SearchMedia(_ context.Context, q string) ([]sqlcgen.SearchMediaRow, error) {
+	rows, err := searchRows(sqlcgen.SearchNodesParams{Q: q, MaxResults: 1000})
+	if err != nil {
+		return nil, err
+	}
+	var out []sqlcgen.SearchMediaRow
+	at := map[string]int{}
+	for _, r := range rows {
+		key := deref(r.Medium)
+		i, ok := at[key]
+		if !ok {
+			i = len(out)
+			at[key] = i
+			out = append(out, sqlcgen.SearchMediaRow{Medium: r.Medium, MediumLabel: r.MediumLabel})
+		}
+		out[i].Hits++
+	}
+	return out, nil
+}
+
+// searchRows is every hit the fake search has for a query, best first.
+func searchRows(arg sqlcgen.SearchNodesParams) ([]sqlcgen.SearchNodesRow, error) {
 	franchise, anime, tv, vn, full, month, episode := "franchise", "anime", "tv", "visual_novel", "full", "month", "episode"
 	vnLabel, total := "visual novel", int32(24)
 	start := time.Date(2011, 4, 6, 0, 0, 0, 0, time.UTC)
@@ -686,6 +734,16 @@ func (fakeCatalog) SearchNodes(_ context.Context, arg sqlcgen.SearchNodesParams)
 		return []sqlcgen.SearchNodesRow{alias}, nil
 	case "just one":
 		return []sqlcgen.SearchNodesRow{sgAnimeHit}, nil
+	case "crowded":
+		// thirty anime fill the limit; the manga sorts after them all
+		manga := "manga"
+		var rows []sqlcgen.SearchNodesRow
+		for i := range 30 {
+			rows = append(rows, sqlcgen.SearchNodesRow{PublicID: int64(500 + i), Slug: "crowd", Type: "entry", Title: fmt.Sprintf("Crowd %02d", i),
+				Matched: "Crowd", Medium: &anime, MediumLabel: &anime, FormatLabel: &anime})
+		}
+		return append(rows, sqlcgen.SearchNodesRow{PublicID: 600, Slug: "crowd-manga", Type: "entry", Title: "Crowd Manga",
+			Matched: "Crowd Manga", Medium: &manga, MediumLabel: &manga, FormatLabel: &manga}), nil
 	case "boom":
 		return nil, errors.New("connection reset")
 	case "many":
@@ -1091,4 +1149,11 @@ func (fakeCatalog) EntryUnits(_ context.Context, id uuid.UUID) ([]sqlcgen.EntryU
 		{Ordinal: 3, Kind: "episode", Label: "Ep. 3", AirDate: at(3*24*time.Hour + 4*time.Hour + 5*time.Minute)},
 		{Ordinal: 4, Kind: "episode", Label: "Ep. 4", AirDate: at(10*24*time.Hour + time.Hour)},
 	}, nil
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

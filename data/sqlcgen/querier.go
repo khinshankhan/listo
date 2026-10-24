@@ -53,8 +53,12 @@ type Querier interface {
 	NodeTags(ctx context.Context, nodeID uuid.UUID) ([]NodeTagsRow, error)
 	// Every title a node goes by, the likeliest to be searched for first.
 	NodeTitles(ctx context.Context, nodeID uuid.UUID) ([]NodeTitlesRow, error)
+	// How many nodes a search finds in each medium, however many that is; groups
+	// have no medium.
+	SearchMedia(ctx context.Context, q_ string) ([]SearchMediaRow, error)
 	// Fuzzy title search over entries and groups, one hit per node by its best
 	// matching title. Ties go a group before its entries, then oldest first.
+	// a medium narrows before the limit, so its hits aren't crowded out
 	SearchNodes(ctx context.Context, arg SearchNodesParams) ([]SearchNodesRow, error)
 	// Titles near a query that found nothing, closest first, scored both ways
 	// round: the query within a title, and a title within the query. It scans

@@ -1,5 +1,7 @@
 package views
 
+import "fmt"
+
 // SearchPage is a GET form over the catalog and what it found: results with
 // a medium filter, or nearby titles and other places to look.
 templ SearchPage(s Search) {
@@ -37,8 +39,12 @@ templ SearchPage(s Search) {
 			<section class="flex flex-col gap-6" aria-labelledby="results">
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<h2 class="flex items-baseline gap-[9px]">
-						<span id="results" class="text-20 leading-6 font-semibold tracking-[-0.025em] text-foreground-strong">{ count(len(s.Results), "result", "results") }</span>
-						<span class="text-13 leading-4 font-normal text-foreground-muted">in the listo catalog</span>
+						<span id="results" class="text-20 leading-6 font-semibold tracking-[-0.025em] text-foreground-strong">{ count(s.Total, "result", "results") }</span>
+						if s.Total > len(s.Results) {
+							<span class="text-13 leading-4 font-normal text-foreground-muted">the closest { fmt.Sprint(len(s.Results)) } shown</span>
+						} else {
+							<span class="text-13 leading-4 font-normal text-foreground-muted">in the listo catalog</span>
+						}
 					</h2>
 					if len(s.Media) > 0 {
 						<nav class="flex flex-wrap gap-[7px]" aria-label="filter by medium">

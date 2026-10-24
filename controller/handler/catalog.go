@@ -32,13 +32,23 @@ func (p *Pages) Search(w http.ResponseWriter, r *http.Request) {
 
 	if q != "" {
 		ctx := r.Context()
-		hits, err := p.catalog.SearchNodes(ctx, sqlcgen.SearchNodesParams{Q: q, MaxResults: searchResults})
+		counts, err := p.catalog.SearchMedia(ctx, q)
+		if err != nil {
+			p.serverError(w, r, err)
+			return
+		}
+		var medium string
+		v.Media, medium, v.Total = searchFilters(q, r.URL.Query().Get("medium"), counts)
+		args := sqlcgen.SearchNodesParams{Q: q, MaxResults: searchResults}
+		if medium != "" {
+			args.Medium = &medium
+		}
+		hits, err := p.catalog.SearchNodes(ctx, args)
 		if err != nil {
 			p.serverError(w, r, err)
 			return
 		}
 		v.Searched = true
-		v.Media, hits = searchFilters(q, r.URL.Query().Get("medium"), hits)
 		v.Results = resultsFor(hits)
 
 		if len(hits) == 0 {
@@ -68,45 +78,37 @@ func (p *Pages) Search(w http.ResponseWriter, r *http.Request) {
 	p.render(w, r, http.StatusOK, head, chrome, views.SearchPage(v))
 }
 
-// searchFilters is a link per medium among the hits, and the hits the chosen
-// one keeps. There are no links when filtering wouldn't change anything, and
-// a medium that isn't among the hits shows them all.
-func searchFilters(q, medium string, hits []sqlcgen.SearchNodesRow) ([]views.MediumLink, []sqlcgen.SearchNodesRow) {
-	var order []string
-	labels, counts := map[string]string{}, map[string]int{}
-	groups := 0
-	for _, h := range hits {
-		if h.Medium == nil {
-			groups++
+// searchFilters is a link per medium the search finds, from counts over every
+// hit, not just the page shown; the medium it narrows to; and how many hits
+// that leaves. There are no links when filtering wouldn't change anything,
+// and a medium with no hits shows them all.
+func searchFilters(q, chosen string, counts []sqlcgen.SearchMediaRow) ([]views.MediumLink, string, int) {
+	all, groups := 0, 0
+	byMedium := map[string]int{}
+	var media []sqlcgen.SearchMediaRow
+	for _, c := range counts {
+		all += int(c.Hits)
+		if c.Medium == nil {
+			groups += int(c.Hits)
 			continue
 		}
-		if counts[*h.Medium] == 0 {
-			order = append(order, *h.Medium)
-			labels[*h.Medium] = deref(h.MediumLabel)
-		}
-		counts[*h.Medium]++
+		byMedium[*c.Medium] = int(c.Hits)
+		media = append(media, c)
 	}
-	if len(order) < 2 && (len(order) == 0 || groups == 0) {
-		return nil, hits
+	medium, total := "", all
+	if n := byMedium[chosen]; n > 0 {
+		medium, total = chosen, n
 	}
-	if counts[medium] == 0 {
-		medium = ""
+	if len(media) < 2 && (len(media) == 0 || groups == 0) {
+		return nil, medium, total
 	}
 
-	links := []views.MediumLink{{Label: "all", Href: searchPath(q, ""), Count: len(hits), Active: medium == ""}}
-	for _, m := range order {
-		links = append(links, views.MediumLink{Medium: m, Label: labels[m], Href: searchPath(q, m), Count: counts[m], Active: m == medium})
+	links := []views.MediumLink{{Label: "all", Href: searchPath(q, ""), Count: all, Active: medium == ""}}
+	for _, m := range media {
+		links = append(links, views.MediumLink{Medium: *m.Medium, Label: deref(m.MediumLabel), Href: searchPath(q, *m.Medium),
+			Count: int(m.Hits), Active: *m.Medium == medium})
 	}
-	if medium == "" {
-		return links, hits
-	}
-	kept := make([]sqlcgen.SearchNodesRow, 0, counts[medium])
-	for _, h := range hits {
-		if h.Medium != nil && *h.Medium == medium {
-			kept = append(kept, h)
-		}
-	}
-	return links, kept
+	return links, medium, total
 }
 
 func searchPath(q, medium string) string {

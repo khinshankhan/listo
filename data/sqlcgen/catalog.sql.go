@@ -253,6 +253,48 @@ func (q *Queries) MediumCounts(ctx context.Context) ([]MediumCountsRow, error) {
 	return items, nil
 }
 
+const searchMedia = `-- name: SearchMedia :many
+select e.medium, m.label as medium_label, count(*)::int as hits
+from (
+  select distinct t.node_id
+  from catalog.title t
+  where t.title_norm % catalog.norm($1::text)
+     or catalog.norm($1::text) <% t.title_norm
+) hit
+left join catalog.entry e on e.id = hit.node_id
+left join catalog.medium m on m.medium = e.medium
+group by e.medium, m.label
+order by hits desc, m.label nulls last
+`
+
+type SearchMediaRow struct {
+	Medium      *string
+	MediumLabel *string
+	Hits        int32
+}
+
+// How many nodes a search finds in each medium, however many that is; groups
+// have no medium.
+func (q *Queries) SearchMedia(ctx context.Context, q_ string) ([]SearchMediaRow, error) {
+	rows, err := q.db.Query(ctx, searchMedia, q_)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SearchMediaRow{}
+	for rows.Next() {
+		var i SearchMediaRow
+		if err := rows.Scan(&i.Medium, &i.MediumLabel, &i.Hits); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const searchNodes = `-- name: SearchNodes :many
 select n.public_id, n.slug, n.type,
        coalesce(e.title, g.name)::text as title,
@@ -274,12 +316,14 @@ left join catalog.entry e on e.id = n.id
 left join catalog.grp g on g.id = n.id
 left join catalog.medium m on m.medium = e.medium
 left join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
+where $2::text is null or e.medium = $2::text
 order by hit.score desc, title, e.start_date nulls first, n.public_id
-limit $2::int
+limit $3::int
 `
 
 type SearchNodesParams struct {
 	Q          string
+	Medium     *string
 	MaxResults int32
 }
 
@@ -304,8 +348,9 @@ type SearchNodesRow struct {
 
 // Fuzzy title search over entries and groups, one hit per node by its best
 // matching title. Ties go a group before its entries, then oldest first.
+// a medium narrows before the limit, so its hits aren't crowded out
 func (q *Queries) SearchNodes(ctx context.Context, arg SearchNodesParams) ([]SearchNodesRow, error) {
-	rows, err := q.db.Query(ctx, searchNodes, arg.Q, arg.MaxResults)
+	rows, err := q.db.Query(ctx, searchNodes, arg.Q, arg.Medium, arg.MaxResults)
 	if err != nil {
 		return nil, err
 	}

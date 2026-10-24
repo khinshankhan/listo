@@ -127,6 +127,43 @@ func TestCatalogQueries(t *testing.T) {
 		}
 	})
 
+	t.Run("a medium narrows the search before the limit", func(t *testing.T) {
+		// media of its own, so the browse counts below don't see these
+		first, other := medium+"_first", medium+"_other"
+		for _, m := range []string{first, other} {
+			exec(`insert into catalog.medium (medium, label, verb_current, verb_planning, verb_repeating)
+			      values ($1, 'a medium', 'watching', 'plan to watch', 'rewatching')`, m)
+			exec(`insert into catalog.medium_format (medium, format, label) values ($1, 'tv', 'tv')`, m)
+		}
+		// tied on score, so A sorts first and fills a limit of one
+		a, _ := node("entry", "quorvex-a")
+		b, _ := node("entry", "quorvex-b")
+		exec(`insert into catalog.entry (id, medium, format, title) values ($1, $3, 'tv', 'Quorvex A'), ($2, $4, 'tv', 'Quorvex B')`, a, b, first, other)
+		exec(`insert into catalog.title (node_id, kind, title) values ($1, 'english', 'Quorvex A'), ($2, 'english', 'Quorvex B')`, a, b)
+
+		hits, err := q.SearchNodes(ctx, sqlcgen.SearchNodesParams{Q: "quorvex", Medium: &other, MaxResults: 1})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(hits) != 1 || hits[0].Title != "Quorvex B" {
+			t.Errorf("got %+v, want Quorvex B", hits)
+		}
+
+		counts, err := q.SearchMedia(ctx, "quorvex")
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := map[string]int32{}
+		for _, c := range counts {
+			if c.Medium != nil {
+				got[*c.Medium] = c.Hits
+			}
+		}
+		if got[first] != 1 || got[other] != 1 {
+			t.Errorf("counts = %v, want one in each medium", got)
+		}
+	})
+
 	t.Run("search honours the limit", func(t *testing.T) {
 		hits, err := q.SearchNodes(ctx, sqlcgen.SearchNodesParams{Q: "zorblax", MaxResults: 1})
 		if err != nil {
