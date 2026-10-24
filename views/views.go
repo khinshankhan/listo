@@ -1,7 +1,11 @@
 // Package views is every page, in templ.
 package views
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
 
 // Head is what a page puts in <head>.
 type Head struct {
@@ -68,6 +72,7 @@ type GroupRef struct {
 
 // Ordering is a curated path through a group. Names render as typed.
 type Ordering struct {
+	ID uuid.UUID
 	// Kind is "recommended", "release" or "chronological".
 	Kind, Name, Rationale string
 	Origin, Href          string

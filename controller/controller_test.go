@@ -192,29 +192,41 @@ func TestCatalogPages(t *testing.T) {
 				`href="/entries/11/steins-gate-0-anime">Steins;Gate 0</a>`},
 			dontWant: []string{">or</span>"}},
 		{name: "an ordering links to its own page", path: "/groups/2/steins-gate", status: http.StatusOK,
-			want: []string{`href="/groups/2/steins-gate/orderings/first-timer-order">first-timer order</a>`}},
-		{name: "an ordering's page", path: "/groups/2/steins-gate/orderings/first-timer-order", status: http.StatusOK,
-			want: []string{"first-timer order</h1>", `<link rel="canonical" href="/groups/2/steins-gate/orderings/first-timer-order">`,
+			want: []string{`href="/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f001/first-timer-order">first-timer order</a>`}},
+		{name: "an ordering's page", path: "/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f001/first-timer-order", status: http.StatusOK,
+			want: []string{"first-timer order</h1>", `<link rel="canonical" href="/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f001/first-timer-order">`,
 				`<a href="/groups/2/steins-gate">Steins;Gate</a>`, `aria-current="page">ordering</span>`,
 				">2 steps</span>", ">2 required</span>", ">maintained by staff</span>",
 				">why this order</p>", "Watch the series, then the branch"}},
-		{name: "an ordering's steps, forks and notes", path: "/groups/2/steins-gate/orderings/first-timer-order", status: http.StatusOK,
+		{name: "an ordering's steps, forks and notes", path: "/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f001/first-timer-order", status: http.StatusOK,
 			want: []string{">pick one</p>", ">optional</span>", "<span>epilogue</span>", ">the branch</span>",
 				`href="/entries/11/steins-gate-0-anime">Steins;Gate 0</a>`, ">required</span>"},
 			dontWant: []string{"more steps"}},
-		{name: "a first-timer's ordering points rewatchers elsewhere", path: "/groups/2/steins-gate/orderings/first-timer-order", status: http.StatusOK,
+		{name: "a first-timer's ordering points rewatchers elsewhere", path: "/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f001/first-timer-order", status: http.StatusOK,
 			want: []string{"rewatching, or already know the story?", "release order goes in the order they came out.",
-				`href="/groups/2/steins-gate/orderings/release-order">view release order</a>`}},
-		{name: "and the others point first-timers back", path: "/groups/2/steins-gate/orderings/release-order", status: http.StatusOK,
-			want: []string{"watching for the first time?", `href="/groups/2/steins-gate/orderings/first-timer-order">view first-timer order</a>`,
+				`href="/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f002/release-order">view release order</a>`}},
+		{name: "and the others point first-timers back", path: "/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f002/release-order", status: http.StatusOK,
+			want: []string{"watching for the first time?", `href="/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f001/first-timer-order">view first-timer order</a>`,
 				">auto-seeded</span>"}},
-		{name: "the sidebar lists the group's orderings", path: "/groups/2/steins-gate/orderings/release-order", status: http.StatusOK,
-			want: []string{"orderings</p>", ">recommended · staff</span>", `href="/groups/2/steins-gate/orderings/release-order" aria-current="page"`,
+		{name: "the sidebar lists the group's orderings", path: "/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f002/release-order", status: http.StatusOK,
+			want: []string{"orderings</p>", ">recommended · staff</span>", `href="/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f002/release-order" aria-current="page"`,
 				`href="/groups/2/steins-gate" aria-current="page"`}},
-		{name: "an ordering follows its group's slug", path: "/groups/2/wrong/orderings/first-timer-order", status: http.StatusMovedPermanently,
-			location: "/groups/2/steins-gate/orderings/first-timer-order"},
-		{name: "an ordering the group doesn't have", path: "/groups/2/steins-gate/orderings/vibes", status: http.StatusNotFound},
-		{name: "an ordering of no group", path: "/groups/999/x/orderings/first-timer-order", status: http.StatusNotFound},
+		{name: "an ordering follows its group's slug", path: "/groups/2/wrong/orderings/01a151f2-0000-7000-8000-00000000f001/first-timer-order", status: http.StatusMovedPermanently,
+			location: "/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f001/first-timer-order"},
+		{name: "an ordering the group doesn't have", path: "/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000ffff/vibes", status: http.StatusNotFound},
+		{name: "an ordering's id isn't its name", path: "/groups/2/steins-gate/orderings/first-timer-order", status: http.StatusNotFound},
+		{name: "an ordering's name is decoration", path: "/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f001/wrong", status: http.StatusMovedPermanently,
+			location: "/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f001/first-timer-order"},
+		{name: "or can be left off", path: "/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f001", status: http.StatusMovedPermanently,
+			location: "/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f001/first-timer-order"},
+		// names that slugify alike, or to nothing, each keep a page
+		{name: "two names, one slug, two pages", path: "/groups/1/science-adventure/orderings/01a151f2-0000-7000-8000-00000000f201/release-order",
+			status: http.StatusOK, want: []string{"Release order</h1>"}},
+		{name: "the other of the two", path: "/groups/1/science-adventure/orderings/01a151f2-0000-7000-8000-00000000f202/release-order",
+			status: http.StatusOK, want: []string{"Release-order</h1>"}},
+		{name: "a name with no slug", path: "/groups/1/science-adventure/orderings/01a151f2-0000-7000-8000-00000000f203",
+			status: http.StatusOK, want: []string{"初見順</h1>", `<link rel="canonical" href="/groups/1/science-adventure/orderings/01a151f2-0000-7000-8000-00000000f203">`}},
+		{name: "an ordering of no group", path: "/groups/999/x/orderings/01a151f2-0000-7000-8000-00000000f001/first-timer-order", status: http.StatusNotFound},
 		// the form sends "any" as empty; one address per view
 		{name: "browse drops empty filters", path: "/entries?medium=&genre=sci-fi&year=&season=", status: http.StatusFound,
 			location: "/entries?genre=sci-fi"},
@@ -329,7 +341,7 @@ func TestFrontPages(t *testing.T) {
 			want: []string{`<a href="/groups/2/steins-gate">Steins;Gate</a></h3>`, "<span>1 entry</span>", "alternate episode 23β",
 				">Main timeline</span>", `href="/entries/7/steins-gate-anime">Steins;Gate</a>`, ">anime · 2011</span>"}},
 		{name: "home previews an ordering guide", path: "/", status: http.StatusOK,
-			want: []string{`<a href="/groups/103/monogatari/orderings/first-timer-order">Monogatari</a></h3>`,
+			want: []string{`<a href="/groups/103/monogatari/orderings/01a151f2-0000-7000-8000-00000000f103/first-timer-order">Monogatari</a></h3>`,
 				"<span>6 steps</span>", "<span>68 episodes</span>", `href="/entries/104/bakemonogatari">Bakemonogatari</a>`,
 				"a prequel, but not first</span>", ">recommended</span>", "preview · 5 of 6 steps"},
 			// the sixth step stays on the ordering's page
@@ -559,6 +571,18 @@ func (fakeCatalog) GroupByPublicID(_ context.Context, id int64) (sqlcgen.GroupBy
 func (fakeCatalog) GroupOrderings(_ context.Context, id uuid.UUID) ([]sqlcgen.GroupOrderingsRow, error) {
 	if id == monoSeries {
 		return monogatariOrder(), nil
+	}
+	if id == saUniverse {
+		// names that slugify alike, and one with no slug at all
+		one := func(o, name string) sqlcgen.GroupOrderingsRow {
+			return sqlcgen.GroupOrderingsRow{OrderingID: uuid.MustParse(o), Kind: "release", Name: name, Origin: "staff",
+				Position: 1, Branch: 1, Step: 1, PublicID: 7, Slug: "steins-gate-anime", Title: "Steins;Gate", Necessity: "required", UnitKind: "none"}
+		}
+		return []sqlcgen.GroupOrderingsRow{
+			one("01a151f2-0000-7000-8000-00000000f201", "Release order"),
+			one("01a151f2-0000-7000-8000-00000000f202", "Release-order"),
+			one("01a151f2-0000-7000-8000-00000000f203", "初見順"),
+		}, nil
 	}
 	if id != sgFranchise {
 		return nil, nil
@@ -876,8 +900,8 @@ func TestOneAsidePerPage(t *testing.T) {
 	srv := httptest.NewServer(newHTTPServer("", &web.Bundle{Files: fstest.MapFS{}}, fakeDB{}, fakeCatalog{}).srv.Handler)
 	t.Cleanup(srv.Close)
 	for _, path := range []string{"/", "/search?q=steins", "/search?q=nothing", "/entries", "/entries/7/steins-gate-anime",
-		"/groups/2/steins-gate", "/groups/3/steins-gate-main", "/groups/2/steins-gate/orderings/first-timer-order",
-		"/groups/2/steins-gate/orderings/release-order"} {
+		"/groups/2/steins-gate", "/groups/3/steins-gate-main", "/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f001/first-timer-order",
+		"/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f002/release-order"} {
 		t.Run(path, func(t *testing.T) {
 			res, err := http.Get(srv.URL + path)
 			if err != nil {

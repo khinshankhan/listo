@@ -52,10 +52,15 @@ func GroupPath(publicID int64, slug string) string {
 	return fmt.Sprintf("/groups/%d/%s", publicID, slug)
 }
 
-// OrderingPath is an ordering's URL, under its group's: orderings have no id
-// of their own, and their names are unique within a group.
-func OrderingPath(group, name string) string {
-	return group + "/orderings/" + slugify(name)
+// OrderingPath is an ordering's URL, under its group's. The id is the key and
+// the name a slug for people, left off when it has none to give: names that
+// differ can slug alike, and some, eg all CJK, slug to nothing.
+func OrderingPath(group string, id uuid.UUID, name string) string {
+	path := group + "/orderings/" + id.String()
+	if slug := slugify(name); slug != "" {
+		path += "/" + slug
+	}
+	return path
 }
 
 // slugify is "first-timer order" as "first-timer-order".

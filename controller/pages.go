@@ -18,4 +18,5 @@ func pageRoutes(mux *http.ServeMux, pages *handler.Pages) {
 	mux.HandleFunc("GET /groups/{id}", pages.Group)
 	mux.HandleFunc("GET /groups/{id}/{slug}", pages.Group)
 	mux.HandleFunc("GET /groups/{id}/{slug}/orderings/{ordering}", pages.Ordering)
+	mux.HandleFunc("GET /groups/{id}/{slug}/orderings/{ordering}/{name}", pages.Ordering)
 }

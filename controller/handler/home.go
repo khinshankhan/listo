@@ -18,7 +18,7 @@ const (
 	guideFranchise = 2
 	guideBlurb     = "Steins;Gate 0 doesn't continue the ending most people know. It follows a timeline that splits off late in the original, and you need the alternate episode 23β before you start it."
 	guideGroup     = 103
-	guideOrdering  = "first-timer-order"
+	guideOrdering  = "first-timer order"
 
 	// guideSteps and guideRows are how much of each guide a preview shows
 	guideSteps = 5
@@ -106,7 +106,7 @@ func (p *Pages) orderingGuide(ctx context.Context) (*views.OrderingGuide, error)
 	}
 
 	for _, o := range orderings(rows, GroupPath(g.PublicID, g.Slug)) {
-		if slugify(o.Name) != guideOrdering {
+		if o.Name != guideOrdering {
 			continue
 		}
 		guide := &views.OrderingGuide{Name: g.Name, Href: o.Href, Total: len(o.Positions),

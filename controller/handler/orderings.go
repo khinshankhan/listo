@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/khinshankhan/listo/data/sqlcgen"
@@ -20,7 +21,8 @@ var origins = map[string]string{"staff": "maintained by staff", "community": "fr
 // a group, step by step.
 func (p *Pages) Ordering(w http.ResponseWriter, r *http.Request) {
 	id, ok := publicID(r)
-	if !ok {
+	orderingID, err := uuid.Parse(r.PathValue("ordering"))
+	if !ok || err != nil {
 		p.NotFound(w, r)
 		return
 	}
@@ -45,7 +47,7 @@ func (p *Pages) Ordering(w http.ResponseWriter, r *http.Request) {
 	all := orderings(rows, group)
 	at := -1
 	for i, o := range all {
-		if slugify(o.Name) == r.PathValue("ordering") {
+		if o.ID == orderingID {
 			at = i
 			break
 		}
@@ -55,7 +57,9 @@ func (p *Pages) Ordering(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	o := all[at]
-	if redirectCanonical(w, r, o.Href, g.Slug) {
+	// a wrong or missing slug, the group's or the ordering's, is a redirect
+	if r.URL.Path != o.Href {
+		moved(w, r, o.Href)
 		return
 	}
 

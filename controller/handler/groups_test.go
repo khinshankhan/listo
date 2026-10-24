@@ -34,7 +34,7 @@ func TestOrderingsKeepTheirShape(t *testing.T) {
 		return views.Step{Title: title, Href: "/entries/" + id + "/s"}
 	}
 	want := []views.Ordering{
-		{Kind: "recommended", Name: "start here", Href: "/groups/9/g/orderings/start-here", Positions: []views.Position{
+		{ID: first, Kind: "recommended", Name: "start here", Href: "/groups/9/g/orderings/" + first.String() + "/start-here", Positions: []views.Position{
 			{Ordinal: 1, Number: "01", Choices: []views.Choice{{Steps: []views.Step{step("1", "Series")}}}},
 			{Ordinal: 2, Number: "02", Section: "the movie arc", Choices: []views.Choice{
 				{Steps: []views.Step{step("2", "Film")}},
@@ -42,7 +42,7 @@ func TestOrderingsKeepTheirShape(t *testing.T) {
 			}},
 			{Ordinal: 3, Number: "03", Choices: []views.Choice{{Steps: []views.Step{step("5", "Sequel")}}}},
 		}},
-		{Kind: "recommended", Name: "release order", Href: "/groups/9/g/orderings/release-order", Positions: []views.Position{
+		{ID: second, Kind: "recommended", Name: "release order", Href: "/groups/9/g/orderings/" + second.String() + "/release-order", Positions: []views.Position{
 			{Ordinal: 1, Number: "01", Section: "the movie arc", Choices: []views.Choice{{Steps: []views.Step{step("2", "Film")}}}},
 		}},
 	}

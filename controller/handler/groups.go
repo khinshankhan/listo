@@ -79,7 +79,8 @@ func orderings(rows []sqlcgen.GroupOrderingsRow, group string) []views.Ordering 
 				Name:      row.Name,
 				Rationale: deref(row.Rationale),
 				Origin:    row.Origin,
-				Href:      OrderingPath(group, row.Name),
+				ID:        row.OrderingID,
+				Href:      OrderingPath(group, row.OrderingID, row.Name),
 			})
 			section = ""
 		}
