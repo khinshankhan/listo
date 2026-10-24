@@ -62,10 +62,9 @@ templ HomePage(h Home) {
 	</div>
 }
 
-// sectionIntro is a numbered section's label, title and lead.
-templ sectionIntro(id, label, title, lead string) {
+// sectionIntro is a section's title and lead.
+templ sectionIntro(id, title, lead string) {
 	<div class="flex max-w-[640px] flex-col gap-1.5">
-		<p class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">{ label }</p>
 		<h2 id={ id } class="text-[22px] leading-7 font-semibold tracking-[-0.02em] text-foreground-strong">{ title }</h2>
 		if lead != "" {
 			<p class="text-14 leading-[22px] text-foreground-muted">{ lead }</p>
@@ -76,8 +75,7 @@ templ sectionIntro(id, label, title, lead string) {
 // oneList shows one list across media with an example, not real data.
 templ oneList() {
 	<section class="flex flex-col gap-7 lg:flex-row lg:items-center" aria-labelledby="one-list">
-		<div class="flex flex-col gap-3 lg:w-[448px] lg:shrink-0">
-			<p class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">01 one list</p>
+		<div class="flex flex-col gap-1.5 lg:w-[448px] lg:shrink-0">
 			<h2 id="one-list" class="text-[22px] leading-7 font-semibold tracking-[-0.02em] text-foreground-strong">all of Dante on one list</h2>
 			<p class="text-14 leading-[22px] text-foreground-muted">
 				Each of those sites rates out of a different number and counts progress its own way. On listo everything rates on the same scale, the anime counts episodes, the manga counts volumes, and the games count however far along you think you are.
@@ -128,7 +126,7 @@ templ exampleRow(title, medium, done, progress, status string) {
 // than shrinking its labels to nothing.
 templ connections() {
 	<section class="flex flex-col gap-[18px]" aria-labelledby="connections">
-		@sectionIntro("connections", "02 connections", "everything connects, eventually",
+		@sectionIntro("connections", "everything connects, eventually",
 			"These five series share a world, and the characters don't stay in their lanes. Some links turn up years later, like Robotics;Notes DaSH crossing over with Steins;Gate in 2019, a decade after Steins;Gate came out. They go on the map when they happen.")
 		<figure class="flex flex-col gap-[14px] rounded-xl border border-border bg-background-2 px-[19px] pt-5 pb-[18px]">
 			<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Science Adventure timeline, scrolls sideways">
@@ -245,7 +243,7 @@ templ release(x, y int, media string) {
 // guides previews the first franchise and ordering guides from the catalog.
 templ guides(h Home) {
 	<section class="flex flex-col gap-[18px]" aria-labelledby="guides">
-		@sectionIntro("guides", "03 guides · in progress", "where do I start?",
+		@sectionIntro("guides", "where do I start?",
 			"Some franchises come with homework. We're writing guides for those by hand, starting with these two.")
 		<ul class="grid grid-cols-1 gap-4 md:grid-cols-2">
 			if f := h.Franchise; f != nil {
