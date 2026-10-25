@@ -26,7 +26,7 @@ const browsePage = 48
 const viewCookie = "listo_view"
 
 // the filters, in the order the form and its URLs use them
-var browseFilters = []string{"medium", "genre", "year", "season"}
+var browseFilters = []string{"medium", "format", "genre", "year", "season"}
 
 // seasons are a season filter's values, winter first: the query takes the
 // index
@@ -35,10 +35,11 @@ var seasons = []string{"winter", "spring", "summer", "fall"}
 // browseViews are the ways to show entries, the default first.
 var browseViews = []struct{ key, label string }{{"cards", "cards"}, {"list", "list"}, {"text", "text only"}}
 
-// Entries is the catalog: a shelf per medium, or with ?medium=, ?genre=,
-// ?year= or ?season=, a page of everything that matches. ?view= picks cards,
-// a list or plain text, and is remembered. A value the filters don't offer,
-// or a page past the end, is a 404, so each view has one address.
+// Entries is the catalog: a shelf per medium, or with ?medium=, ?format=,
+// ?genre=, ?year= or ?season=, a page of everything that matches. ?view=
+// picks cards, a list or plain text, and is remembered. A value the filters
+// don't offer, or a page past the end, is a 404, so each view has one
+// address; a format goes with its medium, so one without it is dropped.
 func (p *Pages) Entries(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	clean := url.Values{}
@@ -75,13 +76,28 @@ func (p *Pages) Entries(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	var formats []sqlcgen.BrowseFormatsRow
+	if m := clean.Get("medium"); m != "" {
+		var err error
+		if formats, err = p.catalog.BrowseFormats(ctx, m); err != nil {
+			p.serverError(w, r, err)
+			return
+		}
+	}
+	// one left over from another type in the form, or with no type at all
+	if f := clean.Get("format"); f != "" && !slices.ContainsFunc(formats, func(row sqlcgen.BrowseFormatsRow) bool { return row.Format == f }) {
+		clean.Del("format")
+		http.Redirect(w, r, browsePath(clean), http.StatusFound)
+		return
+	}
+
 	medium := clean.Get("medium")
 	media, err := p.mediumLinks(r, &medium)
 	if err != nil {
 		p.serverError(w, r, err)
 		return
 	}
-	filters, args, ok, err := p.browseFilters(ctx, media, clean)
+	filters, args, ok, err := p.browseFilters(ctx, media, formats, clean)
 	if err != nil {
 		p.serverError(w, r, err)
 		return
@@ -129,7 +145,7 @@ func (p *Pages) Entries(w http.ResponseWriter, r *http.Request) {
 
 	head := views.Head{Title: "browse | listo", Description: "Every entry in listo's catalog.", Canonical: "/entries"}
 	switch {
-	case medium != "" && !clean.Has("genre") && !clean.Has("year") && !clean.Has("season"):
+	case medium != "" && !clean.Has("format") && !clean.Has("genre") && !clean.Has("year") && !clean.Has("season"):
 		head.Canonical = browsePath(url.Values{"medium": {medium}, "page": clean["page"]})
 	case filtered:
 		// every mix of filters is a page; only the plain ones are worth indexing
@@ -179,6 +195,11 @@ func browsePath(values url.Values) string {
 	return "/entries?" + values.Encode()
 }
 
+// formatPath browses one format, which only means something with its medium.
+func formatPath(medium, format string) string {
+	return browsePath(url.Values{"medium": {medium}, "format": {format}})
+}
+
 // with is values with one more set. Page one is the plain address, so it
 // drops the page instead.
 func with(values url.Values, key, value string) url.Values {
@@ -196,7 +217,8 @@ func with(values url.Values, key, value string) url.Values {
 
 // browseFilters is the form's dropdowns with the chosen values selected, and
 // the query those values make. ok is false when a value isn't on offer.
-func (p *Pages) browseFilters(ctx context.Context, media []views.MediumLink, chosen url.Values) ([]views.Filter, sqlcgen.BrowseEntriesParams, bool, error) {
+// formats are the chosen medium's; with none chosen, there are none to pick.
+func (p *Pages) browseFilters(ctx context.Context, media []views.MediumLink, formats []sqlcgen.BrowseFormatsRow, chosen url.Values) ([]views.Filter, sqlcgen.BrowseEntriesParams, bool, error) {
 	var args sqlcgen.BrowseEntriesParams
 	pick := func(name, label string, values, labels []string) (views.Filter, bool) {
 		f := views.Filter{Name: name, Label: label, Options: []views.Option{{Label: "any", Selected: !chosen.Has(name)}}}
@@ -228,6 +250,15 @@ func (p *Pages) browseFilters(ctx context.Context, media []views.MediumLink, cho
 	}
 
 	typeFilter, okType := pick("medium", "type", mediaValues, mediaLabels)
+	var formatValues, formatLabels []string
+	for _, f := range formats {
+		formatValues = append(formatValues, f.Format)
+		formatLabels = append(formatLabels, f.Label)
+	}
+	formatFilter, _ := pick("format", "format", formatValues, formatLabels)
+	if len(formats) == 0 {
+		formatFilter.Options[0].Label, formatFilter.Disabled = "pick a type first", true
+	}
 	genreFilter, okGenre := pick("genre", "genre", genres, genres)
 	yearFilter, okYear := pick("year", "year", yearValues, yearValues)
 	seasonFilter, okSeason := pick("season", "season", seasons, seasons)
@@ -237,6 +268,9 @@ func (p *Pages) browseFilters(ctx context.Context, media []views.MediumLink, cho
 
 	if m := chosen.Get("medium"); m != "" {
 		args.Medium = &m
+	}
+	if f := chosen.Get("format"); f != "" {
+		args.Format = &f
 	}
 	if g := chosen.Get("genre"); g != "" {
 		args.Genre = &g
@@ -250,7 +284,7 @@ func (p *Pages) browseFilters(ctx context.Context, media []views.MediumLink, cho
 		i := int32(slices.Index(seasons, s))
 		args.Season = &i
 	}
-	return []views.Filter{typeFilter, genreFilter, yearFilter, seasonFilter}, args, true, nil
+	return []views.Filter{typeFilter, formatFilter, genreFilter, yearFilter, seasonFilter}, args, true, nil
 }
 
 // shelves is each medium's newest entries, the media in the sidebar's order.
@@ -283,14 +317,16 @@ func pagedCard(e sqlcgen.BrowseEntriesRow) sqlcgen.BrowseShelvesRow {
 		UnitKind: e.UnitKind, UnitTotal: e.UnitTotal}
 }
 
-// card is an entry for browsing, its meta eg "anime, spring 2011, 24 episodes".
+// card is an entry for browsing: its format, and the rest of its meta eg
+// "spring 2011 · 24 episodes".
 func card(e sqlcgen.BrowseShelvesRow) views.Card {
-	meta := []string{e.FormatLabel}
+	var meta []string
 	if e.StartDate != nil && e.StartPrecision != nil {
 		meta = append(meta, when(e.Medium, e.Format, *e.StartDate, *e.StartPrecision))
 	}
 	if e.UnitTotal != nil && e.UnitKind != "none" {
 		meta = append(meta, plural(int(*e.UnitTotal), e.UnitKind, e.UnitKind+"s"))
 	}
-	return views.Card{Title: e.Title, Href: EntryPath(e.PublicID, e.Slug), Meta: strings.Join(meta, " · ")}
+	return views.Card{Title: e.Title, Href: EntryPath(e.PublicID, e.Slug), Format: e.FormatLabel,
+		FormatHref: formatPath(e.Medium, e.Format), Meta: strings.Join(meta, " · ")}
 }

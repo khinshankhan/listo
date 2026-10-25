@@ -19,20 +19,22 @@ join catalog.node n on n.id = e.id
 join catalog.medium m on m.medium = e.medium
 join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
 where ($1::text is null or e.medium = $1::text)
-  and ($2::text is null or exists (
+  and ($2::text is null or e.format = $2::text)
+  and ($3::text is null or exists (
         select 1
         from catalog.node_tag nt
         join catalog.tag t on t.id = nt.tag_id
-        where nt.node_id = e.id and t.kind = 'genre' and t.name = $2::text))
-  and ($3::int is null or extract(year from e.start_date)::int = $3::int)
-  and ($4::int is null
-       or (e.start_precision <> 'year' and (extract(month from e.start_date)::int - 1) / 3 = $4::int))
+        where nt.node_id = e.id and t.kind = 'genre' and t.name = $3::text))
+  and ($4::int is null or extract(year from e.start_date)::int = $4::int)
+  and ($5::int is null
+       or (e.start_precision <> 'year' and (extract(month from e.start_date)::int - 1) / 3 = $5::int))
 order by e.start_date desc nulls last, e.title, n.public_id
-limit $6::int offset $5::int
+limit $7::int offset $6::int
 `
 
 type BrowseEntriesParams struct {
 	Medium   *string
+	Format   *string
 	Genre    *string
 	Year     *int32
 	Season   *int32
@@ -56,11 +58,13 @@ type BrowseEntriesRow struct {
 }
 
 // A page of the entries the filters let through, newest first, each row
-// carrying how many match in all. A season is 0 for winter to 3 for fall, and
+// carrying how many match in all. A format is only ever asked for with its
+// medium. A season is 0 for winter to 3 for fall, and
 // only matches entries dated to the month.
 func (q *Queries) BrowseEntries(ctx context.Context, arg BrowseEntriesParams) ([]BrowseEntriesRow, error) {
 	rows, err := q.db.Query(ctx, browseEntries,
 		arg.Medium,
+		arg.Format,
 		arg.Genre,
 		arg.Year,
 		arg.Season,
@@ -88,6 +92,40 @@ func (q *Queries) BrowseEntries(ctx context.Context, arg BrowseEntriesParams) ([
 			&i.UnitTotal,
 			&i.Total,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const browseFormats = `-- name: BrowseFormats :many
+select mf.format, mf.label
+from catalog.medium_format mf
+where mf.medium = $1
+  and exists (select 1 from catalog.entry e where e.medium = mf.medium and e.format = mf.format)
+order by mf.label
+`
+
+type BrowseFormatsRow struct {
+	Format string
+	Label  string
+}
+
+// A medium's formats some entry has, for the filter.
+func (q *Queries) BrowseFormats(ctx context.Context, medium string) ([]BrowseFormatsRow, error) {
+	rows, err := q.db.Query(ctx, browseFormats, medium)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []BrowseFormatsRow{}
+	for rows.Next() {
+		var i BrowseFormatsRow
+		if err := rows.Scan(&i.Format, &i.Label); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

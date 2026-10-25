@@ -68,17 +68,18 @@ func (p *Pages) entryView(ctx context.Context, e sqlcgen.EntryByPublicIDRow) (vi
 		Title:      e.Title,
 		Medium:     e.MediumLabel,
 		MediumHref: "/entries?medium=" + url.QueryEscape(e.Medium),
-		Eyebrow:    []string{e.MediumLabel},
+		Eyebrow:    []views.EyebrowPart{{Text: e.MediumLabel}},
 	}
+	formatHref := formatPath(e.Medium, e.Format)
 	if e.FormatLabel != e.MediumLabel {
 		v.Format = e.FormatLabel
-		v.Eyebrow = append(v.Eyebrow, e.FormatLabel)
+		v.Eyebrow = append(v.Eyebrow, views.EyebrowPart{Text: e.FormatLabel, Href: formatHref})
 	}
 
 	v.Description = deref(e.Description)
 	status := deref(e.Status)
 
-	v.Facts = append(v.Facts, views.Fact{Label: "format", Value: e.FormatLabel})
+	v.Facts = append(v.Facts, views.Fact{Label: "format", Value: e.FormatLabel, Href: formatHref})
 	if e.UnitKind != "none" {
 		if count := units(e.UnitTotal, e.UnitAvailable, status); count != "" {
 			v.Facts = append(v.Facts, views.Fact{Label: e.UnitKind + "s", Value: count})
@@ -110,7 +111,7 @@ func (p *Pages) entryView(ctx context.Context, e sqlcgen.EntryByPublicIDRow) (vi
 
 	if e.StartDate != nil && e.StartPrecision != nil {
 		v.Year = e.StartDate.Format("2006")
-		v.Eyebrow = append(v.Eyebrow, when(e.Medium, e.Format, *e.StartDate, *e.StartPrecision))
+		v.Eyebrow = append(v.Eyebrow, views.EyebrowPart{Text: when(e.Medium, e.Format, *e.StartDate, *e.StartPrecision)})
 		v.Facts = append(v.Facts, views.Fact{Label: startLabel(e.Medium, e.Format), Value: released(*e.StartDate, *e.StartPrecision)})
 	}
 	if e.EndDate != nil && e.EndPrecision != nil {

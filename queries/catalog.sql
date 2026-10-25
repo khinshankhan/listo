@@ -89,7 +89,8 @@ order by entries desc, m.label;
 
 -- name: BrowseEntries :many
 -- A page of the entries the filters let through, newest first, each row
--- carrying how many match in all. A season is 0 for winter to 3 for fall, and
+-- carrying how many match in all. A format is only ever asked for with its
+-- medium. A season is 0 for winter to 3 for fall, and
 -- only matches entries dated to the month.
 select n.public_id, n.slug, e.title, e.medium, m.label as medium_label, e.format, mf.label as format_label,
        e.start_date, e.start_precision, e.unit_kind, e.unit_total,
@@ -99,6 +100,7 @@ join catalog.node n on n.id = e.id
 join catalog.medium m on m.medium = e.medium
 join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
 where (sqlc.narg(medium)::text is null or e.medium = sqlc.narg(medium)::text)
+  and (sqlc.narg(format)::text is null or e.format = sqlc.narg(format)::text)
   and (sqlc.narg(genre)::text is null or exists (
         select 1
         from catalog.node_tag nt
@@ -133,6 +135,14 @@ from catalog.tag t
 where t.kind = 'genre'
   and exists (select 1 from catalog.node_tag nt join catalog.entry e on e.id = nt.node_id where nt.tag_id = t.id)
 order by t.name;
+
+-- name: BrowseFormats :many
+-- A medium's formats some entry has, for the filter.
+select mf.format, mf.label
+from catalog.medium_format mf
+where mf.medium = $1
+  and exists (select 1 from catalog.entry e where e.medium = mf.medium and e.format = mf.format)
+order by mf.label;
 
 -- name: BrowseYears :many
 -- Years some entry started in, newest first, for the filter.

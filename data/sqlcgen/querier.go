@@ -12,9 +12,12 @@ import (
 
 type Querier interface {
 	// A page of the entries the filters let through, newest first, each row
-	// carrying how many match in all. A season is 0 for winter to 3 for fall, and
+	// carrying how many match in all. A format is only ever asked for with its
+	// medium. A season is 0 for winter to 3 for fall, and
 	// only matches entries dated to the month.
 	BrowseEntries(ctx context.Context, arg BrowseEntriesParams) ([]BrowseEntriesRow, error)
+	// A medium's formats some entry has, for the filter.
+	BrowseFormats(ctx context.Context, medium string) ([]BrowseFormatsRow, error)
 	// Genres some entry has, for the filter.
 	BrowseGenres(ctx context.Context) ([]string, error)
 	// Each medium's newest entries, at most per_shelf apiece.

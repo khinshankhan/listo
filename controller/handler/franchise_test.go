@@ -41,11 +41,13 @@ func TestFranchiseGrouping(t *testing.T) {
 		loose,
 	}
 
-	vnRow := views.EntryRow{Title: "Steins;Gate", Href: "/entries/6/vn", Role: "source material", Medium: "visual novel", Detail: "2009"}
-	animeRow := views.EntryRow{Title: "Steins;Gate", Href: "/entries/7/anime", Role: "adaptation of the VN", Medium: "anime", Detail: "spring 2011 · 24 episodes"}
-	filmRow := views.EntryRow{Title: "The Movie", Href: "/entries/8/film", Medium: "film", Detail: "2013"}
-	zeroRow := views.EntryRow{Title: "Steins;Gate 0", Href: "/entries/11/zero", Medium: "anime", Detail: "spring 2018"}
-	looseRow := views.EntryRow{Title: "Loose", Href: "/entries/20/loose", Medium: "anime"}
+	vnRow := views.EntryRow{Title: "Steins;Gate", Href: "/entries/6/vn", Role: "source material", Medium: "visual novel",
+		FormatHref: "/entries?format=full&medium=visual_novel", Detail: "2009"}
+	animeRow := views.EntryRow{Title: "Steins;Gate", Href: "/entries/7/anime", Role: "adaptation of the VN", Medium: "anime",
+		FormatHref: "/entries?format=tv&medium=anime", Detail: "spring 2011 · 24 episodes"}
+	filmRow := views.EntryRow{Title: "The Movie", Href: "/entries/8/film", Medium: "film", FormatHref: "/entries?format=movie&medium=anime", Detail: "2013"}
+	zeroRow := views.EntryRow{Title: "Steins;Gate 0", Href: "/entries/11/zero", Medium: "anime", FormatHref: "/entries?format=tv&medium=anime", Detail: "spring 2018"}
+	looseRow := views.EntryRow{Title: "Loose", Href: "/entries/20/loose", Medium: "anime", FormatHref: "/entries?format=tv&medium=anime"}
 
 	cases := []struct {
 		by   string

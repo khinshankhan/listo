@@ -120,7 +120,7 @@ templ FranchisePage(f Franchise) {
 									}
 								</div>
 								<p class="flex flex-wrap items-center gap-[7px]">
-									<span class="font-mono text-[10px] leading-3 text-foreground-muted uppercase">{ row.Medium }</span>
+									@formatLink(row.Medium, row.FormatHref, "font-mono text-[10px] leading-3 text-foreground-muted uppercase")
 									if row.Detail != "" {
 										<span class="inline-block size-[2px] shrink-0 rounded-full bg-border" aria-hidden="true"></span>
 										<span class="text-12 leading-4 text-foreground-muted">{ row.Detail }</span>

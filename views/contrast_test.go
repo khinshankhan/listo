@@ -16,7 +16,7 @@ import (
 func TestSubtleIsOnlyDecoration(t *testing.T) {
 	entry := Entry{
 		Title: "Steins;Gate", Medium: "anime", MediumHref: "/entries?medium=anime", Year: "2011",
-		Eyebrow: []string{"anime", "spring 2011"},
+		Eyebrow: []EyebrowPart{{Text: "anime"}, {Text: "spring 2011"}},
 		Titles:  []Title{{Kind: "native", Title: "シュタインズ・ゲート", Lang: "ja"}},
 		Tags:    []string{"sci-fi"},
 		Facts:   []Fact{{Label: "episodes", Value: "24"}},

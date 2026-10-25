@@ -55,9 +55,10 @@ type EntrySection struct {
 
 // EntryRow is one entry in a group's list. Position is its place in its own
 // group, eg "#1"; Role is its part there, eg "source material"; Detail is
-// when and how long, eg "spring 2011, 24 episodes".
+// when and how long, eg "spring 2011, 24 episodes". Medium is its format,
+// which FormatHref browses.
 type EntryRow struct {
-	Position, Title, Href, Role, Medium, Detail string
+	Position, Title, Href, Role, Medium, FormatHref, Detail string
 }
 
 // SiblingCard is a group beside this one under the same parent.

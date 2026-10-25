@@ -102,13 +102,14 @@ func orderings(rows []sqlcgen.GroupOrderingsRow, group string) []views.Ordering 
 		choice := &pos.Choices[len(pos.Choices)-1]
 
 		step := views.Step{
-			Title:  row.Title,
-			Href:   EntryPath(row.PublicID, row.Slug),
-			Units:  unitRange(row.UnitFrom, row.UnitTo),
-			Note:   deref(row.Note),
-			Medium: row.FormatLabel,
-			Detail: stepDetail(row),
-			Skip:   row.Necessity == "skip_first_time",
+			Title:      row.Title,
+			Href:       EntryPath(row.PublicID, row.Slug),
+			Units:      unitRange(row.UnitFrom, row.UnitTo),
+			Note:       deref(row.Note),
+			Medium:     row.FormatLabel,
+			FormatHref: formatPath(row.Medium, row.Format),
+			Detail:     stepDetail(row),
+			Skip:       row.Necessity == "skip_first_time",
 		}
 		if row.Necessity != "required" {
 			step.Necessity = necessity(row.Necessity)

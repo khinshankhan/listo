@@ -357,4 +357,30 @@ func TestBrowseQueries(t *testing.T) {
 			t.Errorf("years = %v, want 2018 and 2011, newest first", years)
 		}
 	})
+
+	// last, since it adds an entry the counts above don't expect
+	t.Run("a format narrows its medium, and only formats with entries are offered", func(t *testing.T) {
+		exec(`insert into catalog.medium_format (medium, format, label) values ($1, 'ova', 'OVA'), ($1, 'special', 'special')`, medium)
+		var id uuid.UUID
+		if err := tx.QueryRow(ctx, `insert into catalog.node (type, slug) values ('entry', $1) returning id`, "test-ova-"+run).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		exec(`insert into catalog.entry (id, medium, format, title) values ($1, $2, 'ova', 'ova')`, id, medium)
+		format := "ova"
+		rows, err := q.BrowseEntries(ctx, sqlcgen.BrowseEntriesParams{Medium: &medium, Format: &format, PageSize: 100})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rows) != 1 || rows[0].Title != "ova" {
+			t.Errorf("got %+v, want just the ova", rows)
+		}
+		formats, err := q.BrowseFormats(ctx, medium)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := []sqlcgen.BrowseFormatsRow{{Format: "ova", Label: "OVA"}, {Format: "tv", Label: "tv"}}
+		if !slices.Equal(formats, want) {
+			t.Errorf("formats = %+v, want %+v", formats, want)
+		}
+	})
 }

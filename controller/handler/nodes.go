@@ -43,6 +43,7 @@ type Catalog interface {
 	BrowseShelves(ctx context.Context, perShelf int32) ([]sqlcgen.BrowseShelvesRow, error)
 	BrowseGenres(ctx context.Context) ([]string, error)
 	BrowseYears(ctx context.Context) ([]int32, error)
+	BrowseFormats(ctx context.Context, medium string) ([]sqlcgen.BrowseFormatsRow, error)
 }
 
 // EntryPath is an entry's canonical URL: the id is the key, the slug decoration.

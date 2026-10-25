@@ -15,7 +15,8 @@ func TestOrderingsKeepTheirShape(t *testing.T) {
 	arc := "the movie arc"
 	row := func(o uuid.UUID, name string, pos, branch, step int32, id int64, title string, section *string) sqlcgen.GroupOrderingsRow {
 		return sqlcgen.GroupOrderingsRow{OrderingID: o, Kind: "recommended", Name: name, Position: pos, Branch: branch,
-			Step: step, Section: section, PublicID: id, Slug: "s", Title: title, Necessity: "required"}
+			Step: step, Section: section, PublicID: id, Slug: "s", Title: title, Necessity: "required",
+			Medium: "anime", Format: "tv", FormatLabel: "anime"}
 	}
 
 	got := orderings([]sqlcgen.GroupOrderingsRow{
@@ -31,7 +32,7 @@ func TestOrderingsKeepTheirShape(t *testing.T) {
 	}, "/groups/9/g")
 
 	step := func(id, title string) views.Step {
-		return views.Step{Title: title, Href: "/entries/" + id + "/s"}
+		return views.Step{Title: title, Href: "/entries/" + id + "/s", Medium: "anime", FormatHref: "/entries?format=tv&medium=anime"}
 	}
 	want := []views.Ordering{
 		{ID: first, Kind: "recommended", Name: "start here", Href: "/groups/9/g/orderings/" + first.String() + "/start-here", Positions: []views.Position{

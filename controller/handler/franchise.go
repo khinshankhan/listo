@@ -277,8 +277,9 @@ func entryRow(r sqlcgen.GroupEntriesRow) views.EntryRow {
 		Href:     EntryPath(r.PublicID, r.Slug),
 		Role:     deref(r.Role),
 		// the format's label reads better here: an anime movie is "film"
-		Medium: r.FormatLabel,
-		Detail: strings.Join(detail, " · "),
+		Medium:     r.FormatLabel,
+		FormatHref: formatPath(r.Medium, r.Format),
+		Detail:     strings.Join(detail, " · "),
 	}
 }
 

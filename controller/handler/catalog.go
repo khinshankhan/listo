@@ -196,6 +196,7 @@ func resultsFor(hits []sqlcgen.SearchNodesRow) []views.Result {
 		if h.Type == "entry" {
 			res.Meta = withYear(deref(h.MediumLabel), h.StartDate)
 			res.Medium = deref(h.FormatLabel)
+			res.FormatHref = formatPath(deref(h.Medium), deref(h.Format))
 			res.Detail = hitDetail(h)
 		}
 		if h.Matched != h.Title {

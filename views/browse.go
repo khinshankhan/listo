@@ -18,10 +18,12 @@ type Browse struct {
 	Views          []SortLink
 }
 
-// Filter is one dropdown; its first option is "any".
+// Filter is one dropdown; its first option is "any". Disabled is a filter
+// with nothing to pick yet.
 type Filter struct {
 	Name, Label string
 	Options     []Option
+	Disabled    bool
 }
 
 // Option is one choice in a filter. An empty Value is "any".
@@ -41,10 +43,10 @@ type Shelf struct {
 // scroll sideways, so it stops sooner than the covers do.
 const listShelf = 6
 
-// Card is an entry with its cover; Meta is what it is and how long, eg
-// "anime, 2011, 24 episodes".
+// Card is an entry with its cover: its format, which FormatHref browses, and
+// Meta, when and how long, eg "2011 · 24 episodes".
 type Card struct {
-	Title, Href, Meta string
+	Title, Href, Format, FormatHref, Meta string
 }
 
 // filterClass greys a select still on "any".

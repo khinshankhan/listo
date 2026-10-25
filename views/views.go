@@ -20,8 +20,9 @@ type Entry struct {
 	Title, Medium, Format, Year string
 	// MediumHref browses the entry's medium, for the breadcrumb.
 	MediumHref string
-	// Eyebrow is the line over the title: medium, format, when.
-	Eyebrow []string
+	// Eyebrow is the line over the title: medium, format, when. The format
+	// browses everything in it.
+	Eyebrow []EyebrowPart
 	// Titles are every other title the entry goes by.
 	Titles    []Title
 	Tags      []string
@@ -49,9 +50,15 @@ type Episode struct {
 	Upcoming            bool
 }
 
-// Fact is one row of an entry's facts card: "episodes", "24".
+// EyebrowPart is one piece of an entry's eyebrow, a link when Href is set.
+type EyebrowPart struct {
+	Text, Href string
+}
+
+// Fact is one row of an entry's facts card: "episodes", "24". Href, when set,
+// makes the value a link.
 type Fact struct {
-	Label, Value string
+	Label, Value, Href string
 }
 
 // Title is one of a node's titles. Lang is set when known.
@@ -110,10 +117,10 @@ type Choice struct {
 
 // Step is one entry in a choice. Necessity is empty when it's required.
 // Medium and Detail describe the entry, eg "anime", "spring 2011, 24
-// episodes".
+// episodes"; Medium is its format, which FormatHref browses.
 type Step struct {
 	Title, Href, Units, Necessity, Note string
-	Medium, Detail                      string
+	Medium, FormatHref, Detail          string
 	Skip                                bool
 }
 
@@ -193,9 +200,10 @@ type Suggestion struct {
 // Result is one search hit. Matched is set when an alias matched, and
 // MatchedAs says which kind, eg "romanized title". Meta is the one-line
 // summary the top bar shows; the search page uses Medium and Detail.
+// FormatHref browses an entry's format.
 type Result struct {
-	Title, Href, Meta, Matched string
-	MatchedAs, Medium, Detail  string
+	Title, Href, Meta, Matched            string
+	MatchedAs, Medium, Detail, FormatHref string
 }
 
 // count is "1 entry", "36 entries".

@@ -1,6 +1,9 @@
 package views
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // BrowsePage is the catalog: filters, then shelves or the filtered grid. The
 // filters wait for "apply" rather than jumping on change.
@@ -16,7 +19,7 @@ templ BrowsePage(b Browse) {
 				}
 			</nav>
 		</header>
-		<form action="/entries" method="get" aria-label="filter the catalog" class="grid grid-cols-2 items-end gap-3 border-b border-border pb-[22px] md:grid-cols-[repeat(4,minmax(0,220px))_auto]">
+		<form action="/entries" method="get" aria-label="filter the catalog" class="grid grid-cols-2 items-end gap-3 border-b border-border pb-[22px] md:grid-cols-[repeat(5,minmax(0,200px))_auto]">
 			for _, f := range b.Filters {
 				<div class="flex min-w-0 flex-col gap-[7px]">
 					<label for={ "filter-" + f.Name } class="font-mono text-[10px] leading-3 tracking-[0.1em] text-foreground-muted uppercase">{ f.Label }</label>
@@ -24,7 +27,8 @@ templ BrowsePage(b Browse) {
 						<select
 							id={ "filter-" + f.Name }
 							name={ f.Name }
-							class={ "h-[38px] w-full cursor-pointer appearance-none rounded-lg border border-border bg-background-2 pr-8 pl-[13px] text-13 leading-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast", filterClass(f) }
+							disabled?={ f.Disabled }
+							class={ "h-[38px] w-full cursor-pointer appearance-none disabled:cursor-not-allowed rounded-lg border border-border bg-background-2 pr-8 pl-[13px] text-13 leading-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast", filterClass(f) }
 						>
 							for _, o := range f.Options {
 								<option value={ o.Value } selected?={ o.Selected }>{ o.Label }</option>
@@ -127,7 +131,7 @@ templ entryList(cards []Card, covers bool) {
 						@Link(LinkProps{Href: c.Href, Variant: LinkNone, Class: "text-14 leading-[18px] font-semibold wrap-break-word text-foreground-strong"}) {
 							{ c.Title }
 						}
-						<span class="text-12 leading-4 text-foreground-muted">{ c.Meta }</span>
+						@cardMeta(c, "")
 					</span>
 				</li>
 			} else {
@@ -135,11 +139,31 @@ templ entryList(cards []Card, covers bool) {
 					@Link(LinkProps{Href: c.Href, Variant: LinkNone, Class: "text-14 leading-[18px] font-semibold wrap-break-word text-foreground-strong"}) {
 						{ c.Title }
 					}
-					<span class="text-12 leading-4 text-foreground-muted sm:ml-auto sm:shrink-0">{ c.Meta }</span>
+					@cardMeta(c, "sm:ml-auto sm:shrink-0")
 				</li>
 			}
 		}
 	</ul>
+}
+
+// cardMeta is what an entry is, a link to everything of that format, then
+// when and how long.
+templ cardMeta(c Card, class string) {
+	<span class={ "text-12 leading-4 text-foreground-muted", class }>
+		@formatLink(c.Format, c.FormatHref, "")
+		if c.Meta != "" {
+			{ " · " + c.Meta }
+		}
+	</span>
+}
+
+// formatLink is a format, quiet like the text around it until pointed at,
+// leading to everything else in it. LinkNone brings the focus ring and the
+// hover colour.
+templ formatLink(label, href, class string) {
+	@Link(LinkProps{Href: href, Variant: LinkNone, Class: strings.TrimSpace("underline-offset-2 hover:underline " + class)}) {
+		{ label }
+	}
 }
 
 // cardGrid is entries as covers: two across on a phone, then as many as fit.
@@ -171,7 +195,7 @@ templ card(c Card) {
 			@Link(LinkProps{Href: c.Href, Variant: LinkNone, Class: "text-14 leading-[19px] font-semibold tracking-[-0.012em] wrap-break-word text-foreground-strong"}) {
 				{ c.Title }
 			}
-			<span class="text-12 leading-4 text-foreground-muted">{ c.Meta }</span>
+			@cardMeta(c, "")
 		</span>
 	</li>
 }

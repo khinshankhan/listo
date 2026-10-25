@@ -123,7 +123,7 @@ templ stepRow(st Step, aside string) {
 				@necessityBadge(st)
 			</div>
 			<p class="flex flex-wrap items-center gap-[7px]">
-				<span class="font-mono text-[10px] leading-3 text-foreground-muted uppercase">{ st.Medium }</span>
+				@formatLink(st.Medium, st.FormatHref, "font-mono text-[10px] leading-3 text-foreground-muted uppercase")
 				if st.Detail != "" {
 					<span class="inline-block size-[2px] shrink-0 rounded-full bg-border" aria-hidden="true"></span>
 					<span class="text-12 leading-4 text-foreground-muted">{ st.Detail }</span>

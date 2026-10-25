@@ -53,7 +53,11 @@ templ EntryPage(e Entry) {
 							if i > 0 {
 								<span class="inline-block size-[3px] shrink-0 rounded-full bg-border" aria-hidden="true"></span>
 							}
-							<span class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">{ part }</span>
+							if part.Href != "" {
+								@formatLink(part.Text, part.Href, "font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase")
+							} else {
+								<span class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">{ part.Text }</span>
+							}
 						}
 					</p>
 					<h1 class="font-heading text-32 leading-10 font-semibold tracking-tight wrap-break-word text-foreground-strong sm:text-44 sm:leading-12">{ e.Title }</h1>
@@ -109,7 +113,13 @@ templ factsCard(facts []Fact) {
 		for i, f := range facts {
 			<div class={ "flex justify-between gap-3 px-[13px] py-[9px]", templ.KV("border-t border-border-subtle", i > 0) }>
 				<dt class="text-12 leading-4 text-foreground-muted">{ f.Label }</dt>
-				<dd class="text-right text-12 leading-4 font-semibold text-foreground-strong">{ f.Value }</dd>
+				<dd class="text-right text-12 leading-4 font-semibold text-foreground-strong">
+					if f.Href != "" {
+						@formatLink(f.Value, f.Href, "")
+					} else {
+						{ f.Value }
+					}
+				</dd>
 			</div>
 		}
 	</dl>

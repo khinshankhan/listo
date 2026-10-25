@@ -65,7 +65,11 @@ templ SearchPage(s Search) {
 									{ res.Title }
 								}
 								<p class="flex flex-wrap items-center gap-[7px]">
-									<span class="font-mono text-[10px] leading-3 text-foreground-muted uppercase">{ res.Medium }</span>
+									if res.FormatHref != "" {
+										@formatLink(res.Medium, res.FormatHref, "font-mono text-[10px] leading-3 text-foreground-muted uppercase")
+									} else {
+										<span class="font-mono text-[10px] leading-3 text-foreground-muted uppercase">{ res.Medium }</span>
+									}
 									if res.Detail != "" {
 										<span class="inline-block size-[3px] shrink-0 rounded-full bg-border" aria-hidden="true"></span>
 										<span class="text-12 leading-4 text-foreground-muted">{ res.Detail }</span>

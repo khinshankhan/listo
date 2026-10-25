@@ -124,10 +124,14 @@ func TestCatalogPages(t *testing.T) {
 		{name: "a tv anime's eyebrow has its season, and the format only when it adds something", path: "/entries/7/steins-gate-anime",
 			status: http.StatusOK, want: []string{`uppercase">spring 2011</span>`},
 			once: []string{`leading-[14px] tracking-wide text-foreground-muted uppercase">anime</span>`}},
+		{name: "a format browses everything in it, from the eyebrow and the facts", path: "/entries/8/steins-gate-movie", status: http.StatusOK,
+			want: []string{`href="/entries?format=movie&amp;medium=anime"`},
+			// the medium is the breadcrumb's to link
+			once: []string{`href="/entries?medium=anime">`}},
 		{name: "tags", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
 			want: []string{`aria-label="tags"`, ">sci-fi</li>", ">thriller</li>"}},
 		{name: "a film names its format, is released, and shows no units", path: "/entries/8/steins-gate-movie", status: http.StatusOK,
-			want: []string{"Load Region", `uppercase">film</span>`, `uppercase">2013</span>`, ">released</dt>", ">Apr 20, 2013</dd>",
+			want: []string{"Load Region", `href="/entries?format=movie&amp;medium=anime">film</a>`, `uppercase">2013</span>`, ">released</dt>", ">Apr 20, 2013</dd>",
 				`content="Steins;Gate: The Movie - Load Region of Déjà Vu, an anime film from 2013."`},
 			dontWant: []string{">episodes</dt>", `aria-label="tags"`}},
 		{name: "a link out is never a script", path: "/entries/8/steins-gate-movie", status: http.StatusOK,
@@ -155,6 +159,8 @@ func TestCatalogPages(t *testing.T) {
 			want: []string{`id="entries"`, `href="/entries/7/steins-gate-anime">Steins;Gate</a>`, ">adaptation of the VN</span>",
 				">spring 2011 · 24 episodes</span>", `href="/groups/2/steins-gate" aria-current="page">by continuity</a>`,
 				`href="/groups/2/steins-gate?by=release">by release</a>`}},
+		{name: "an entry row's format browses that format", path: "/groups/2/steins-gate", status: http.StatusOK,
+			want: []string{`href="/entries?format=tv&amp;medium=anime"`}},
 		{name: "a franchise can group by medium", path: "/groups/2/steins-gate?by=medium", status: http.StatusOK,
 			want: []string{`href="/groups/2/steins-gate?by=medium" aria-current="page">by medium</a>`}},
 		{name: "an unknown grouping is the default", path: "/groups/2/steins-gate?by=vibes", status: http.StatusOK,
@@ -234,6 +240,10 @@ func TestCatalogPages(t *testing.T) {
 			location: "/entries"},
 		{name: "page one is the plain address", path: "/entries?genre=many&page=1", status: http.StatusFound,
 			location: "/entries?genre=many"},
+		{name: "a format needs its type", path: "/entries?format=tv", status: http.StatusFound, location: "/entries"},
+		// eg the type changed in the form and the old format went with it
+		{name: "a format the type doesn't have goes", path: "/entries?format=tv&medium=visual_novel&year=2009", status: http.StatusFound,
+			location: "/entries?medium=visual_novel&year=2009"},
 		{name: "an entry tells its own story", path: "/entries/10/airing", status: http.StatusOK,
 			want: []string{"A show still on the air, with a description long enough", `<meta name="description" content="A show still on the air`,
 				`at a word and say so.</p>`},
@@ -357,7 +367,7 @@ func TestFrontPages(t *testing.T) {
 		{name: "search finds groups and entries", path: "/search?q=steins", status: http.StatusOK,
 			want: []string{`id="q" name="q" type="search" value="steins"`, ">3 results</span>",
 				`href="/groups/2/steins-gate">Steins;Gate</a>`, `href="/entries/7/steins-gate-anime">Steins;Gate</a>`,
-				">franchise</span>", ">anime</span>", ">spring 2011 · 24 episodes</span>",
+				">franchise</span>", `href="/entries?format=tv&amp;medium=anime"`, ">spring 2011 · 24 episodes</span>",
 				`<a href="/search">clear</a>`},
 			// the page has the box, so the top bar's stays empty
 			dontWant: []string{`id="site-search" name="q" type="search" value="steins"`, "matched"}},
@@ -403,7 +413,7 @@ func TestFrontPages(t *testing.T) {
 		{name: "unfiltered, a shelf per medium", path: "/entries", status: http.StatusOK,
 			want: []string{`id="shelf-anime"`, ">anime</h2>", ">visual novel</h2>",
 				`<a href="/entries?medium=anime">view all<span class="sr-only"> anime</span></a>`,
-				">anime · spring 2011 · 24 episodes</span>", ">visual novel · 2009</span>"},
+				">anime</a> · spring 2011 · 24 episodes</span>", ">visual novel</a> · 2009</span>"},
 			// shelves, not the filtered grid
 			dontWant: []string{`id="matches"`, "clear filters"}},
 		{name: "browse searches from the top bar, leaving the page to the catalog", path: "/entries", status: http.StatusOK,
@@ -412,6 +422,16 @@ func TestFrontPages(t *testing.T) {
 			want: []string{`<label for="filter-medium"`, `<option value="" selected>any</option>`, `<option value="visual_novel">visual novel</option>`,
 				`<option value="sci-fi">sci-fi</option>`, `<option value="2009">2009</option>`, `<option value="fall">fall</option>`,
 				`<button type="submit"`}},
+		{name: "browse one format", path: "/entries?format=tv&medium=anime", status: http.StatusOK,
+			want: []string{`<option value="tv" selected>anime</option>`, `<option value="ova">OVA</option>`,
+				`href="/entries/7/steins-gate-anime">Steins;Gate</a>`, `<meta name="robots" content="noindex">`},
+			dontWant: []string{`<link rel="canonical" href="/entries?medium=anime">`, "/entries/6/steins-gate-vn"}},
+		{name: "a format with nothing in it", path: "/entries?format=ova&medium=anime", status: http.StatusOK,
+			want: []string{">0 entries</h2>"}},
+		{name: "without a type, formats wait for one", path: "/entries", status: http.StatusOK,
+			want: []string{`<label for="filter-format"`, `name="format" disabled`, ">pick a type first</option>"}},
+		{name: "a card's format browses that format", path: "/entries?genre=sci-fi", status: http.StatusOK,
+			want: []string{`href="/entries?format=tv&amp;medium=anime"`}},
 		{name: "a filter shows what it chose", path: "/entries?genre=sci-fi", status: http.StatusOK,
 			want: []string{`<option value="sci-fi" selected>sci-fi</option>`, ">1 entry</h2>", "clear filters",
 				`href="/entries/7/steins-gate-anime">Steins;Gate</a>`, `<meta name="robots" content="noindex">`},
@@ -794,7 +814,7 @@ func browseRows() []sqlcgen.BrowseShelvesRow {
 	}
 }
 
-// BrowseEntries filters by medium, year and the sci-fi genre, and pages like
+// BrowseEntries filters by medium, format, year and the sci-fi genre, and pages like
 // limit and offset; the SQL itself is the data package's to test. The "many"
 // genre is 100 entries, to have pages to turn.
 func (fakeCatalog) BrowseEntries(_ context.Context, arg sqlcgen.BrowseEntriesParams) ([]sqlcgen.BrowseEntriesRow, error) {
@@ -810,6 +830,9 @@ func (fakeCatalog) BrowseEntries(_ context.Context, arg sqlcgen.BrowseEntriesPar
 			continue
 		}
 		if arg.Medium != nil && *arg.Medium != r.Medium {
+			continue
+		}
+		if arg.Format != nil && *arg.Format != r.Format {
 			continue
 		}
 		if arg.Year != nil && int(*arg.Year) != r.StartDate.Year() {
@@ -838,6 +861,13 @@ func (fakeCatalog) BrowseGenres(context.Context) ([]string, error) {
 }
 
 func (fakeCatalog) BrowseYears(context.Context) ([]int32, error) { return []int32{2011, 2009}, nil }
+
+func (fakeCatalog) BrowseFormats(_ context.Context, medium string) ([]sqlcgen.BrowseFormatsRow, error) {
+	return map[string][]sqlcgen.BrowseFormatsRow{
+		"anime":        {{Format: "tv", Label: "anime"}, {Format: "ova", Label: "OVA"}},
+		"visual_novel": {{Format: "full", Label: "visual novel"}},
+	}[medium], nil
+}
 
 func (fakeCatalog) NodeTags(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeTagsRow, error) {
 	if id != sgAnime {
