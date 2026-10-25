@@ -17,11 +17,6 @@
   cursor: default;
 }
 
-/* boxes sit over the lines, so their names do, but let the cards be hovered */
-.timeline .react-flow__node-box {
-  pointer-events: none;
-}
-
 .timeline .timeline-sequel .react-flow__edge-path {
   stroke: var(--color-foreground-muted);
   stroke-width: 1.25;
