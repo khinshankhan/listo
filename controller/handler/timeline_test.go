@@ -645,9 +645,11 @@ func pathEnds(t *testing.T, path string) (string, string) {
 	return path[1:first], path[last+1:]
 }
 
-// On a phone the timeline is an outline: each box's works row by row, so a
-// line reads in order, with whatever hangs off a row indented under it and
-// saying what it hangs off.
+// On a phone the timeline is an outline: each work under the one it hangs
+// off, its side stories and spin-offs indented right after it, then its
+// sequel level with it, so a line reads in story order. A sequel that came
+// out first still comes after the work it continues, and a box after the box
+// its works hang off.
 func TestTimelineOutline(t *testing.T) {
 	rows := []sqlcgen.GroupEntriesRow{
 		tlEntry(1, "Devil May Cry", "game", 2001, 1, ""),
@@ -658,6 +660,10 @@ func TestTimelineOutline(t *testing.T) {
 		tlEntry(6, "Visions of V", "manga", 2019, 6, ""),
 		tlEntry(7, "Railgun", "manga", 2007, 1, "Railgun"),
 		tlEntry(8, "Railgun S", "anime", 2013, 1, "Railgun"),
+		tlEntry(9, "Bakemonogatari", "light novel", 2006, 1, "Index"),
+		tlEntry(10, "Kizumonogatari", "light novel", 2008, 1, "Index"),
+		tlEntry(11, "Hyakumonogatari", "audio drama", 2009, 1, "Index"),
+		tlEntry(12, "Railgun Radio", "podcast", 2009, 1, ""),
 	}
 	spoiler := tlRelation(5, "side_story_of", 4)
 	spoiler.Spoiler = true
@@ -668,17 +674,26 @@ func TestTimelineOutline(t *testing.T) {
 		spoiler,
 		tlRelation(6, "remaster_of", 5),
 		tlRelation(8, "sequel_of", 7),
+		tlRelation(9, "sequel_of", 10),
+		tlRelation(11, "spin_off_of", 9),
+		tlRelation(12, "side_story_of", 7),
 	}
 	want := []views.TimelinePart{
-		{Items: []views.TimelineItem{
-			{Name: "Devil May Cry", Href: "/entries/1/", Formats: "game, anime", Years: "2001"},
-			{Name: "Devil May Cry 2", Href: "/entries/4/", Formats: "game", Years: "2010", Via: "sequel of Devil May Cry"},
-			{Name: "Devil May Cry: Volume 1", Href: "/entries/3/", Formats: "light novel", Years: "2002", Via: "side story of Devil May Cry", Depth: 1},
-			{Name: "Visions of V", Href: "/entries/5/", Formats: "manga ×2", Years: "2019", Via: "side story of Devil May Cry 2", Depth: 1, Spoiler: true},
+		{Name: "Index", Items: []views.TimelineItem{
+			{Name: "Kizumonogatari", Href: "/entries/10/", Formats: "light novel", Years: "2008"},
+			{Name: "Bakemonogatari", Href: "/entries/9/", Formats: "light novel", Years: "2006", Via: "sequel of Kizumonogatari"},
+			{Name: "Hyakumonogatari", Href: "/entries/11/", Formats: "audio drama", Years: "2009", Via: "spin-off of Bakemonogatari", Depth: 1},
 		}},
 		{Name: "Railgun", Items: []views.TimelineItem{
 			{Name: "Railgun", Href: "/entries/7/", Formats: "manga", Years: "2007"},
 			{Name: "Railgun S", Href: "/entries/8/", Formats: "anime", Years: "2013", Via: "sequel of Railgun"},
+		}},
+		{Items: []views.TimelineItem{
+			{Name: "Devil May Cry", Href: "/entries/1/", Formats: "game, anime", Years: "2001"},
+			{Name: "Devil May Cry: Volume 1", Href: "/entries/3/", Formats: "light novel", Years: "2002", Via: "side story of Devil May Cry", Depth: 1},
+			{Name: "Devil May Cry 2", Href: "/entries/4/", Formats: "game", Years: "2010", Via: "sequel of Devil May Cry"},
+			{Name: "Visions of V", Href: "/entries/5/", Formats: "manga ×2", Years: "2019", Via: "side story of Devil May Cry 2", Depth: 1, Spoiler: true},
+			{Name: "Railgun Radio", Href: "/entries/12/", Formats: "podcast", Years: "2009", Via: "side story of Railgun"},
 		}},
 	}
 	if got := timeline(rows, rels).Outline; !reflect.DeepEqual(got, want) {

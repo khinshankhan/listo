@@ -3,7 +3,6 @@ package handler
 import (
 	"cmp"
 	"fmt"
-	"maps"
 	"math"
 	"slices"
 	"strconv"
@@ -192,6 +191,12 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 		return cmp.Compare(min(a, 1), min(b, 1))
 	})
 
+	type part struct {
+		branch int64
+		part   views.TimelinePart
+		after  []int64
+	}
+	var parts []part
 	y := 20
 	for _, branch := range order {
 		// a sequel carries on its prequel's row when there's room; anything
@@ -201,10 +206,12 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 		var lanes []*lane
 		laneOf := map[*tlWork]*lane{}
 		var name string
+		var boxed []*tlWork
 		for _, w := range works {
 			if w.branch != branch {
 				continue
 			}
+			boxed = append(boxed, w)
 			name = w.branchName
 			on := laneOf[w.attach]
 			var l *lane
@@ -257,13 +264,24 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 			w.view.NameX, w.view.NameY = w.view.Card.X+tlPad, w.view.Card.Y+20
 		}
 		bottom := firstRow + (len(lanes)-1)*tlRow + 44
-		tl.Outline = append(tl.Outline, outline(name, laneOf))
+		p, after := outline(name, boxed, linked, laneOf)
+		parts = append(parts, part{branch, p, after})
 		if branch != 0 {
 			tl.Boxes = append(tl.Boxes, views.TimelineBox{X: 16, Y: top, W: tlWidth - 32, H: bottom - top, Name: name})
 		}
 		y = bottom + 16
 	}
 	tl.Height = y + 24
+
+	// in words, a box comes after the boxes its works hang off, where it can
+	done := map[int64]bool{}
+	for len(parts) > 0 {
+		i := max(slices.IndexFunc(parts, func(p part) bool {
+			return !slices.ContainsFunc(p.after, func(b int64) bool { return !done[b] })
+		}), 0)
+		tl.Outline, done[parts[i].branch] = append(tl.Outline, parts[i].part), true
+		parts = slices.Delete(parts, i, i+1)
+	}
 
 	dotX := func(id int64) float64 {
 		w := workOf[id]
@@ -538,18 +556,47 @@ func route(l *views.TimelineLink, from views.TimelineCard, sourceX float64, to v
 	l.Path = b.String()
 }
 
-// outline lists a box's works row by row, each as deep as its row hangs.
-func outline(name string, laneOf map[*tlWork]*lane) views.TimelinePart {
-	works := slices.Collect(maps.Keys(laneOf))
-	slices.SortFunc(works, func(a, b *tlWork) int {
-		return cmp.Or(cmp.Compare(a.view.Y, b.view.Y), cmp.Compare(a.left, b.left))
-	})
-	part := views.TimelinePart{Name: name}
+// outline lists a box's works, in order of release, as a story reads: each
+// work, then what hangs off it indented, then its sequel level with it. The
+// works linked to nothing come last. after is the other boxes its works
+// hang off.
+func outline(name string, works []*tlWork, linked map[*tlWork]bool, laneOf map[*tlWork]*lane) (views.TimelinePart, []int64) {
+	var roots []*tlWork
+	var after []int64
+	hanging := map[*tlWork][]*tlWork{}
 	for _, w := range works {
-		item := views.TimelineItem{Name: w.view.Name, Href: w.view.Href, Via: w.via, Spoiler: w.viaSpoiler}
-		for l := laneOf[w].under; l != nil; l = l.under {
-			item.Depth++
+		switch {
+		case laneOf[w.attach] != nil:
+			hanging[w.attach] = append(hanging[w.attach], w)
+		case w.attach != nil:
+			after = append(after, w.attach.branch)
+			fallthrough
+		default:
+			roots = append(roots, w)
 		}
+	}
+	slices.SortStableFunc(roots, func(a, b *tlWork) int {
+		rank := func(w *tlWork) int {
+			switch {
+			case w.lone > 0:
+				return 2
+			case !linked[w]:
+				return 1
+			}
+			return 0
+		}
+		return cmp.Compare(rank(a), rank(b))
+	})
+
+	part := views.TimelinePart{Name: name}
+	seen := map[*tlWork]bool{}
+	var add func(w *tlWork, depth int)
+	add = func(w *tlWork, depth int) {
+		if seen[w] {
+			return
+		}
+		seen[w] = true
+		item := views.TimelineItem{Name: w.view.Name, Href: w.view.Href, Via: w.via, Spoiler: w.viaSpoiler, Depth: depth}
 		if w.lone == 0 {
 			var formats []string
 			for _, e := range w.entries {
@@ -563,8 +610,25 @@ func outline(name string, laneOf map[*tlWork]*lane) views.TimelinePart {
 			}
 		}
 		part.Items = append(part.Items, item)
+		for _, h := range hanging[w] {
+			if !h.follows {
+				add(h, depth+1)
+			}
+		}
+		for _, h := range hanging[w] {
+			if h.follows {
+				add(h, depth)
+			}
+		}
 	}
-	return part
+	for _, w := range roots {
+		add(w, 0)
+	}
+	// sequels of each other in a loop have no root; each starts where it can
+	for _, w := range works {
+		add(w, 0)
+	}
+	return part, after
 }
 
 // counted lists formats once each, in the order they first come, with how
