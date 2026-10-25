@@ -663,7 +663,7 @@ select catalog.ext('devil-may-cry-3', 'wikidata', 'Q839794');
 select catalog.ext('devil-may-cry-3', 'imdb', 'tt0426437');
 select catalog.ext('devil-may-cry-3', 'igdb', 'devil-may-cry-3-dante-s-awakening');
 select catalog.ext('devil-may-cry-3', 'mobygames', '18067');
-select catalog.ext('devil-may-cry-3', 'steam', '6550');
+select catalog.ext('devil-may-cry-3-special-edition', 'steam', '6550');
 select catalog.ext('devil-may-cry-3', 'vgmdb', '2176');
 
 select catalog.ext('devil-may-cry-4', 'wikidata', 'Q751936');

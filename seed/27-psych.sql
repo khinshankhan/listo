@@ -93,7 +93,7 @@ update catalog.entry set status = 'finished', description = 'The cast reunites r
 select catalog.add_entry('psych-international-pilot', 'tv', 'special', 'Psych: International Pilot', '2007', 'US', 'none', null, p_public_id => 836);
 select catalog.member('psych', 'psych-international-pilot');
 select catalog.relate('psych-international-pilot', 'alternative_version_of', 'psych-tv', p_to_unit => '1');
-update catalog.entry set status = 'finished', description = 'The longer international cut of the pilot, also included among the first-season DVD extras. The documented home-video release is in 2007; the international broadcast premiere is unverified.', length_minutes = 75 where id = catalog.id('psych-international-pilot');
+update catalog.entry set status = 'finished', description = 'The longer international cut of the pilot, also included among the first-season DVD extras.', length_minutes = 75 where id = catalog.id('psych-international-pilot');
 select catalog.add_entry('psych-100-clues-alternate-ending', 'tv', 'special', 'Psych: 100 Clues - West Coast Ending', '2013-03-27', 'US', 'none', null, p_public_id => 837);
 select catalog.member('psych', 'psych-100-clues-alternate-ending');
 select catalog.relate('psych-100-clues-alternate-ending', 'alternative_version_of', 'psych-tv', p_to_unit => '100');
