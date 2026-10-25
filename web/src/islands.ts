@@ -6,6 +6,7 @@ import type { Mount } from "./mount";
 import "./shortcuts";
 import "./search";
 import "./spoilers";
+import "./transitions";
 
 type Loader = () => Promise<Mount>;
 
