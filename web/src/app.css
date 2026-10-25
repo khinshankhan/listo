@@ -14,6 +14,35 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* thin scrollbars in the palette, wherever something scrolls. The thumb
+   keeps 3:1 on either ground, as a control should */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-foreground-muted) transparent;
+}
+
+/* Safari has no scrollbar-color yet */
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background: var(--color-foreground-muted) padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-foreground-strong);
+  }
+}
+
 /* the browser's clear button, redrawn as our x: it still clears the field
    and fires input, but in the palette instead of system blue. A 24px target
    around a 12px x, the smallest a pointer target should be. Keyboards don't
