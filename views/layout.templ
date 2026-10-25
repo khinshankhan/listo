@@ -60,7 +60,9 @@ templ Layout(head Head, tags web.Tags, chrome Chrome) {
 // sidebar's width, and only draws its edge when there's a sidebar under it.
 // A page that hosts the search itself hides it here.
 templ topBar(query string, hideSearch, sidebar bool) {
-	<header class="relative flex shrink-0 border-b border-border bg-background-2 [view-transition-name:top-bar]">
+	// its view-transition name makes it a stacking context, so it stacks as
+	// a whole: raised, or the page's positioned bits cover the search popover
+	<header class="relative z-20 flex shrink-0 border-b border-border bg-background-2 [view-transition-name:top-bar]">
 		<div class={ "flex shrink-0 items-center px-4 sm:w-sidebar sm:px-7", templ.KV("lg:border-r lg:border-border", sidebar) }>
 			@Wordmark()
 		</div>
