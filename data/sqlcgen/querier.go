@@ -29,6 +29,8 @@ type Querier interface {
 	// An entry's units in order, for the episode list and what airs next.
 	EntryUnits(ctx context.Context, entryID uuid.UUID) ([]EntryUnitsRow, error)
 	GroupByPublicID(ctx context.Context, publicID int64) (GroupByPublicIDRow, error)
+	// For the few groups the app names itself, whose public ids a reseed renumbers.
+	GroupBySlug(ctx context.Context, slug string) (GroupBySlugRow, error)
 	// Every entry under a group at any depth, with the branch it sits under (the
 	// group's direct member it was reached through), and its role and position in
 	// its own group. An entry under two branches comes back once for each.

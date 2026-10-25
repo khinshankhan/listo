@@ -22,6 +22,7 @@ type Catalog interface {
 	NodeByPublicID(ctx context.Context, publicID int64) (sqlcgen.NodeByPublicIDRow, error)
 	EntryByPublicID(ctx context.Context, publicID int64) (sqlcgen.EntryByPublicIDRow, error)
 	GroupByPublicID(ctx context.Context, publicID int64) (sqlcgen.GroupByPublicIDRow, error)
+	GroupBySlug(ctx context.Context, slug string) (sqlcgen.GroupBySlugRow, error)
 	GroupOrderings(ctx context.Context, groupID uuid.UUID) ([]sqlcgen.GroupOrderingsRow, error)
 	NodeTitles(ctx context.Context, nodeID uuid.UUID) ([]sqlcgen.NodeTitlesRow, error)
 	NodeLinks(ctx context.Context, nodeID uuid.UUID) ([]sqlcgen.NodeLinksRow, error)

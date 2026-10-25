@@ -575,6 +575,15 @@ func (fakeCatalog) GroupByPublicID(_ context.Context, id int64) (sqlcgen.GroupBy
 	return sqlcgen.GroupByPublicIDRow{}, pgx.ErrNoRows
 }
 
+func (c fakeCatalog) GroupBySlug(ctx context.Context, slug string) (sqlcgen.GroupBySlugRow, error) {
+	for _, id := range []int64{1, 2, 3, 103} {
+		if g, _ := c.GroupByPublicID(ctx, id); g.Slug == slug {
+			return sqlcgen.GroupBySlugRow(g), nil
+		}
+	}
+	return sqlcgen.GroupBySlugRow{}, pgx.ErrNoRows
+}
+
 func (fakeCatalog) GroupOrderings(_ context.Context, id uuid.UUID) ([]sqlcgen.GroupOrderingsRow, error) {
 	if id == monoSeries {
 		return monogatariOrder(), nil
@@ -856,6 +865,45 @@ func plainLinks(body string) string {
 // A page with nothing in it says so or leaves the part out: no empty list for
 // a screen reader to announce, and no controls for content that isn't there.
 // The search suggestions list is empty until the script fills it.
+// renumbered is the catalog after a reseed hands out public ids afresh: the
+// home page's guides are elsewhere, and something else has their old ids.
+type renumbered struct{ fakeCatalog }
+
+func (renumbered) GroupByPublicID(ctx context.Context, id int64) (sqlcgen.GroupByPublicIDRow, error) {
+	switch id {
+	case 2:
+		return sqlcgen.GroupByPublicIDRow{ID: uuid.MustParse("01a151f2-0000-7000-8000-0000000000e2"), PublicID: 2, Slug: "mega-man-classic",
+			Kind: "continuity", Name: "Mega Man Classic"}, nil
+	case 103:
+		return sqlcgen.GroupByPublicIDRow{}, pgx.ErrNoRows
+	}
+	return fakeCatalog{}.GroupByPublicID(ctx, id)
+}
+
+// The home page finds its guides by slug, so a reseed can't swap them out.
+func TestHomeGuidesSurviveRenumbering(t *testing.T) {
+	srv := httptest.NewServer(newHTTPServer("", &web.Bundle{Files: fstest.MapFS{}}, fakeDB{}, renumbered{}).srv.Handler)
+	t.Cleanup(srv.Close)
+	res, err := http.Get(srv.URL + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	raw, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(raw)
+	for _, w := range []string{">Steins;Gate</a></h3>", ">Monogatari</a></h3>", "alternate episode 23β"} {
+		if !strings.Contains(body, w) {
+			t.Errorf("home lacks %q", w)
+		}
+	}
+	if strings.Contains(body, "Mega Man") {
+		t.Error("home previews Mega Man, whatever has the old id now")
+	}
+}
+
 func TestEmptyPagesLeaveNoHusks(t *testing.T) {
 	srv := httptest.NewServer(newHTTPServer("", &web.Bundle{Files: fstest.MapFS{}}, fakeDB{}, fakeCatalog{}).srv.Handler)
 	t.Cleanup(srv.Close)

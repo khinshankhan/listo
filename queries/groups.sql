@@ -8,6 +8,13 @@ from catalog.node n
 join catalog.grp g on g.id = n.id
 where n.public_id = $1;
 
+-- name: GroupBySlug :one
+-- For the few groups the app names itself, whose public ids a reseed renumbers.
+select n.id, n.public_id, n.slug, g.kind, g.name, g.standing
+from catalog.node n
+join catalog.grp g on g.id = n.id
+where n.slug = $1;
+
 -- name: GroupOrderings :many
 -- A group's orderings, recommended first, one row per step.
 select o.id as ordering_id, o.kind, o.name, o.rationale, o.origin,

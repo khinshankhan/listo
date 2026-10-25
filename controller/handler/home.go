@@ -12,12 +12,12 @@ import (
 	"github.com/khinshankhan/listo/views"
 )
 
-// the guides the home page previews, by public id, and why the franchise
-// needs one
+// the guides the home page previews, by slug since a reseed renumbers public
+// ids, and why the franchise needs one
 const (
-	guideFranchise = 2
+	guideFranchise = "steins-gate"
 	guideBlurb     = "Steins;Gate 0 branches off from an episode most people never saw. Watch the alternate episode 23β first, or 0 starts in the middle of a thought."
-	guideGroup     = 103
+	guideGroup     = "monogatari"
 	guideOrdering  = "first-timer order"
 
 	// guideSteps and guideRows are how much of each guide a preview shows
@@ -60,7 +60,7 @@ func (p *Pages) Home(w http.ResponseWriter, r *http.Request) {
 
 // franchiseGuide is the featured franchise's first two continuities.
 func (p *Pages) franchiseGuide(ctx context.Context) (*views.FranchiseGuide, error) {
-	g, err := p.catalog.GroupByPublicID(ctx, guideFranchise)
+	g, err := p.catalog.GroupBySlug(ctx, guideFranchise)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -93,7 +93,7 @@ func (p *Pages) franchiseGuide(ctx context.Context) (*views.FranchiseGuide, erro
 
 // orderingGuide is the featured ordering's first few steps.
 func (p *Pages) orderingGuide(ctx context.Context) (*views.OrderingGuide, error) {
-	g, err := p.catalog.GroupByPublicID(ctx, guideGroup)
+	g, err := p.catalog.GroupBySlug(ctx, guideGroup)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}

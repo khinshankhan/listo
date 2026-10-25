@@ -42,6 +42,37 @@ func (q *Queries) GroupByPublicID(ctx context.Context, publicID int64) (GroupByP
 	return i, err
 }
 
+const groupBySlug = `-- name: GroupBySlug :one
+select n.id, n.public_id, n.slug, g.kind, g.name, g.standing
+from catalog.node n
+join catalog.grp g on g.id = n.id
+where n.slug = $1
+`
+
+type GroupBySlugRow struct {
+	ID       uuid.UUID
+	PublicID int64
+	Slug     string
+	Kind     string
+	Name     string
+	Standing *string
+}
+
+// For the few groups the app names itself, whose public ids a reseed renumbers.
+func (q *Queries) GroupBySlug(ctx context.Context, slug string) (GroupBySlugRow, error) {
+	row := q.db.QueryRow(ctx, groupBySlug, slug)
+	var i GroupBySlugRow
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.Slug,
+		&i.Kind,
+		&i.Name,
+		&i.Standing,
+	)
+	return i, err
+}
+
 const groupEntries = `-- name: GroupEntries :many
 with recursive down (branch, group_id, member_id) as (
   select ms.member_id, ms.group_id, ms.member_id
