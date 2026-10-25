@@ -203,9 +203,10 @@ select catalog.add_entry('index-apocalypse-witch-ss', 'book', 'short_story', 'A 
 select catalog.member('toaru', 'index-apocalypse-witch-ss');
 select catalog.relate('index-apocalypse-witch-ss', 'crossover_with', 'index-ln');
 update catalog.entry set status = 'finished' where id = catalog.id('index-apocalypse-witch-ss');
+-- Famitsu: the story mode tells an original story: https://www.famitsu.com/game/title/14145/reviews
 select catalog.add_entry('index-psp-game', 'game', 'full', 'A Certain Magical Index', '2011-01-27', 'JP', 'none', null, p_public_id => 553);
 select catalog.member('toaru', 'index-psp-game');
-select catalog.relate('index-psp-game', 'adaptation_of', 'index-ln');
+select catalog.relate('index-psp-game', 'spin_off_of', 'index-ln');
 update catalog.entry set status = 'finished' where id = catalog.id('index-psp-game');
 select catalog.add_entry('railgun-psp-vn', 'visual_novel', 'full', 'A Certain Scientific Railgun', '2011-12-08', 'JP', 'none', null, p_public_id => 554);
 select catalog.member('toaru', 'railgun-psp-vn');
