@@ -501,9 +501,10 @@ select catalog.add_entry('conan-game-meitantei-conan-the-board-game', 'game', 'f
 select catalog.member('detective-conan', 'conan-game-meitantei-conan-the-board-game');
 select catalog.relate('conan-game-meitantei-conan-the-board-game', 'spin_off_of', 'detective-conan-manga');
 update catalog.entry set status = 'finished' where id = catalog.id('conan-game-meitantei-conan-the-board-game');
+-- a minigame and quiz collection, story kept to a minimum: https://www.ne.jp/asahi/krk/kct/misc/conangame.htm
 select catalog.add_entry('conan-game-meitantei-conan-trick-trick-vol-1', 'game', 'full', 'Meitantei Conan: Trick Trick Vol. 1', '2003-04-17', 'JP', 'none', null, p_public_id => 250);
 select catalog.member('detective-conan', 'conan-game-meitantei-conan-trick-trick-vol-1');
-select catalog.relate('conan-game-meitantei-conan-trick-trick-vol-1', 'adaptation_of', 'detective-conan-manga');
+select catalog.relate('conan-game-meitantei-conan-trick-trick-vol-1', 'spin_off_of', 'detective-conan-manga');
 update catalog.entry set status = 'finished' where id = catalog.id('conan-game-meitantei-conan-trick-trick-vol-1');
 select catalog.add_entry('conan-game-meitantei-conan-daiei-teikoku-no-isan', 'game', 'full', 'Meitantei Conan: Daiei Teikoku no Isan', '2004-11-18', 'JP', 'none', null, p_public_id => 251);
 select catalog.member('detective-conan', 'conan-game-meitantei-conan-daiei-teikoku-no-isan');
@@ -557,9 +558,10 @@ select catalog.add_entry('detective-conan-live-action-2012', 'tv', 'special', 'D
 select catalog.member('detective-conan', 'detective-conan-live-action-2012');
 select catalog.relate('detective-conan-live-action-2012', 'adaptation_of', 'detective-conan-manga');
 update catalog.entry set status = 'finished' where id = catalog.id('detective-conan-live-action-2012');
+-- original stories, with only episode 11 drawn from the manga: https://ja.wikipedia.org/wiki/%E5%90%8D%E6%8E%A2%E5%81%B5%E3%82%B3%E3%83%8A%E3%83%B3_%28%E3%83%86%E3%83%AC%E3%83%93%E3%83%89%E3%83%A9%E3%83%9E%29
 select catalog.add_entry('detective-conan-live-action-series', 'tv', 'series', 'Detective Conan: A Challenge to Shinichi Kudo', '2011-07-07', 'JP', 'episode', 13, p_public_id => 264);
 select catalog.member('detective-conan', 'detective-conan-live-action-series');
-select catalog.relate('detective-conan-live-action-series', 'adaptation_of', 'detective-conan-manga');
+select catalog.relate('detective-conan-live-action-series', 'spin_off_of', 'detective-conan-manga');
 update catalog.entry set status = 'finished', end_date = '2011-09-29', end_precision = 'day' where id = catalog.id('detective-conan-live-action-series');
 select catalog.add_entry('magic-kaito-manga', 'manga', 'serial', 'Magic Kaito', '1987', 'JP', 'volume', null, p_public_id => 265);
 select catalog.member('detective-conan', 'magic-kaito-manga');
@@ -1114,9 +1116,10 @@ select catalog.add_entry('detective-conan-mystery-town', 'game', 'full', 'Detect
 select catalog.member('detective-conan', 'detective-conan-mystery-town');
 select catalog.relate('detective-conan-mystery-town', 'spin_off_of', 'detective-conan-manga');
 update catalog.entry set status = 'finished' where id = catalog.id('detective-conan-mystery-town');
-select catalog.add_entry('detective-conan-puzzle-cross-chain', 'game', 'full', 'Detective Conan Puzzle: Cross Chain', '2018-03-28', 'JP', 'none', null, p_public_id => 362);
+-- Cybird: original slice-of-life stories, out 2018-03-29: https://prtimes.jp/main/html/rd/p/000001299.000001661.html
+select catalog.add_entry('detective-conan-puzzle-cross-chain', 'game', 'full', 'Detective Conan Puzzle: Cross Chain', '2018-03-29', 'JP', 'none', null, p_public_id => 362);
 select catalog.member('detective-conan', 'detective-conan-puzzle-cross-chain');
-select catalog.relate('detective-conan-puzzle-cross-chain', 'adaptation_of', 'detective-conan-manga');
+select catalog.relate('detective-conan-puzzle-cross-chain', 'spin_off_of', 'detective-conan-manga');
 update catalog.entry set status = 'finished' where id = catalog.id('detective-conan-puzzle-cross-chain');
 select catalog.add_entry('detective-conan-runner-race-to-truth', 'game', 'full', 'Detective Conan Runner: Race to the Truth', '2019-04-10', 'JP', 'none', null, p_public_id => 363);
 select catalog.member('detective-conan', 'detective-conan-runner-race-to-truth');
