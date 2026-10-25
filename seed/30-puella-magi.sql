@@ -154,7 +154,8 @@ select catalog.add_entry('madoka-film-memories', 'manga', 'serial', 'Puella Magi
 select catalog.member('madoka', 'madoka-film-memories');
 select catalog.relate('madoka-film-memories', 'adaptation_of', 'madoka-tv');
 update catalog.entry set status = 'finished' where id = catalog.id('madoka-film-memories');
-select catalog.add_entry('madoka-novel', 'book', 'light_novel', 'Puella Magi Madoka Magica', '2011-08-12', 'JP', 'volume', 2, p_public_id => 933);
+-- Nitroplus: out 2011-08-14, after an advance sale at Comiket 80: https://www.nitroplus.co.jp/news/2011/2351.php
+select catalog.add_entry('madoka-novel', 'book', 'light_novel', 'Puella Magi Madoka Magica', '2011-08-14', 'JP', 'volume', 2, p_public_id => 933);
 select catalog.member('madoka', 'madoka-novel');
 select catalog.relate('madoka-novel', 'adaptation_of', 'madoka-tv', p_note => 'First sold at Comiket before the August 14 general release.');
 update catalog.entry set status = 'finished' where id = catalog.id('madoka-novel');
