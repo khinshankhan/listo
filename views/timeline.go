@@ -19,6 +19,28 @@ type Timeline struct {
 	Undated int `json:"-"`
 	// Lines say what the drawing shows, for screen readers.
 	Lines []TimelineLine `json:"-"`
+	// Outline is the drawing for a screen too narrow for it.
+	Outline []TimelinePart `json:"-"`
+}
+
+// TimelinePart is one box's works, or the loose ones when Name is "", row by
+// row.
+type TimelinePart struct {
+	Name  string
+	Items []TimelineItem
+}
+
+// TimelineItem is a work in the outline, Depth rows in from the line it
+// hangs off, which Via names, eg "side story of Devil May Cry". Spoiler is
+// whether saying so is one.
+type TimelineItem struct {
+	Name    string
+	Href    string
+	Formats string
+	Years   string
+	Via     string
+	Depth   int
+	Spoiler bool
 }
 
 // Tick is a year on the axis.
@@ -97,6 +119,21 @@ func (l TimelineLink) LabelLeft() int {
 type TimelineLine struct {
 	Text    string
 	Spoiler bool
+}
+
+// indent sets an outline item in under the row it hangs off, a guide line
+// down its left; past a few deep they line up, so a name keeps room to wrap.
+func indent(depth int) string {
+	switch depth {
+	case 0:
+		return ""
+	case 1:
+		return "border-l border-border pl-3"
+	case 2:
+		return "ml-3 border-l border-border pl-3"
+	default:
+		return "ml-6 border-l border-border pl-3"
+	}
 }
 
 // halo outlines a timeline's text in the ground colour, under the fill.

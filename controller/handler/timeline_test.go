@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -642,4 +643,45 @@ func pathEnds(t *testing.T, path string) (string, string) {
 		t.Fatalf("path %q isn't M..L", path)
 	}
 	return path[1:first], path[last+1:]
+}
+
+// On a phone the timeline is an outline: each box's works row by row, so a
+// line reads in order, with whatever hangs off a row indented under it and
+// saying what it hangs off.
+func TestTimelineOutline(t *testing.T) {
+	rows := []sqlcgen.GroupEntriesRow{
+		tlEntry(1, "Devil May Cry", "game", 2001, 1, ""),
+		tlEntry(2, "Devil May Cry", "anime", 2001, 6, ""),
+		tlEntry(3, "Devil May Cry: Volume 1", "light novel", 2002, 1, ""),
+		tlEntry(4, "Devil May Cry 2", "game", 2010, 1, ""),
+		tlEntry(5, "Visions of V", "manga", 2019, 1, ""),
+		tlEntry(6, "Visions of V", "manga", 2019, 6, ""),
+		tlEntry(7, "Railgun", "manga", 2007, 1, "Railgun"),
+		tlEntry(8, "Railgun S", "anime", 2013, 1, "Railgun"),
+	}
+	spoiler := tlRelation(5, "side_story_of", 4)
+	spoiler.Spoiler = true
+	rels := []sqlcgen.GroupRelationsRow{
+		tlRelation(2, "adaptation_of", 1),
+		tlRelation(3, "side_story_of", 1),
+		tlRelation(4, "sequel_of", 1),
+		spoiler,
+		tlRelation(6, "remaster_of", 5),
+		tlRelation(8, "sequel_of", 7),
+	}
+	want := []views.TimelinePart{
+		{Items: []views.TimelineItem{
+			{Name: "Devil May Cry", Href: "/entries/1/", Formats: "game, anime", Years: "2001"},
+			{Name: "Devil May Cry 2", Href: "/entries/4/", Formats: "game", Years: "2010", Via: "sequel of Devil May Cry"},
+			{Name: "Devil May Cry: Volume 1", Href: "/entries/3/", Formats: "light novel", Years: "2002", Via: "side story of Devil May Cry", Depth: 1},
+			{Name: "Visions of V", Href: "/entries/5/", Formats: "manga ×2", Years: "2019", Via: "side story of Devil May Cry 2", Depth: 1, Spoiler: true},
+		}},
+		{Name: "Railgun", Items: []views.TimelineItem{
+			{Name: "Railgun", Href: "/entries/7/", Formats: "manga", Years: "2007"},
+			{Name: "Railgun S", Href: "/entries/8/", Formats: "anime", Years: "2013", Via: "sequel of Railgun"},
+		}},
+	}
+	if got := timeline(rows, rels).Outline; !reflect.DeepEqual(got, want) {
+		t.Errorf("outline\n got %+v\nwant %+v", got, want)
+	}
 }

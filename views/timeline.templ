@@ -3,20 +3,27 @@ package views
 import "fmt"
 
 // TimelineSection is a group's works by year, its spoilers behind a checkbox
-// and the drawing in words for screen readers.
+// and the drawing in words for screen readers. Too narrow for the drawing, it
+// shows the outline instead.
 templ TimelineSection(t *Timeline, group string) {
 	<section id="timeline" class="timeline flex scroll-mt-6 flex-col gap-4">
 		@sectionHead("timeline", "what came out when, and what leads to what")
-		<figure class="flex flex-col gap-[14px] rounded-xl border border-border bg-background-2 px-[19px] pt-5 pb-[18px]">
-			@Island("timeline", t, "visible") {
-				@timelineDrawing(t)
-			}
-			<figcaption class="flex flex-wrap items-center gap-x-[22px] gap-y-2 px-4 text-12 leading-4 text-foreground-muted">
-				if len(t.Boxes) > 0 {
-					@mapLegend("crossover, reboot or other link", "part of "+group)
-				} else {
-					@mapLegend("crossover, reboot or other link", "")
+		<figure class="flex flex-col gap-[14px] rounded-xl border border-border bg-background-2 px-4 pt-5 pb-[18px] sm:px-[19px]">
+			// hidden, the island never loads
+			<div class="hidden sm:block">
+				@Island("timeline", t, "visible") {
+					@timelineDrawing(t)
 				}
+			</div>
+			@timelineOutline(t)
+			<figcaption class="flex flex-wrap items-center gap-x-[22px] gap-y-2 text-12 leading-4 text-foreground-muted sm:px-4">
+				<span class="hidden sm:contents">
+					if len(t.Boxes) > 0 {
+						@mapLegend("crossover, reboot or other link", "part of "+group)
+					} else {
+						@mapLegend("crossover, reboot or other link", "")
+					}
+				</span>
 				if t.Undated > 0 {
 					<span>{ count(t.Undated, "entry", "entries") } without a date left off</span>
 				}
@@ -82,6 +89,33 @@ templ timelineDrawing(t *Timeline) {
 				}
 			</g>
 		</svg>
+	</div>
+}
+
+// timelineOutline is the timeline for a phone: each box's works row by row,
+// what hangs off a row indented under it.
+templ timelineOutline(t *Timeline) {
+	<div class="flex flex-col gap-5 sm:hidden">
+		for _, part := range t.Outline {
+			<div class="flex flex-col gap-1">
+				if part.Name != "" {
+					<h3 class="text-14 leading-5 font-bold text-foreground-strong">{ part.Name }</h3>
+				}
+				<ol class="flex flex-col">
+					for _, item := range part.Items {
+						<li class={ "flex flex-col gap-[2px] py-2", indent(item.Depth) }>
+							if item.Via != "" {
+								<span class={ "text-11 leading-4 text-foreground-muted", templ.KV("timeline-spoiler", item.Spoiler) }>{ item.Via }</span>
+							}
+							<a href={ item.Href } class="self-start rounded-sm text-14 leading-5 font-semibold text-foreground-strong hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast">{ item.Name }</a>
+							if item.Formats != "" {
+								<span class="text-12 leading-4 text-foreground-muted">{ item.Formats } · { item.Years }</span>
+							}
+						</li>
+					}
+				</ol>
+			</div>
+		}
 	</div>
 }
 

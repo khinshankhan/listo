@@ -3,6 +3,7 @@ package handler
 import (
 	"cmp"
 	"fmt"
+	"maps"
 	"math"
 	"slices"
 	"strconv"
@@ -57,8 +58,11 @@ type tlWork struct {
 	branchName string
 	// attach is the work it hangs off, if any; follows when it's a sequel,
 	// which carries on that work's row
-	attach      *tlWork
-	follows     bool
+	attach  *tlWork
+	follows bool
+	// via says what it hangs off, eg "side story of Devil May Cry"
+	via         string
+	viaSpoiler  bool
 	left, right float64
 	view        views.TimelineWork
 	// lone is how many works linked to nothing this card stands for, if any
@@ -157,6 +161,7 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 		}
 		if from.attach == nil || (rel.Kind == "sequel_of" && !from.follows) {
 			from.attach, from.follows = to, rel.Kind == "sequel_of"
+			from.via, from.viaSpoiler = fmt.Sprintf("%s %s", rel.Label, called(to.entries[0])), rel.Spoiler
 		}
 	}
 
@@ -252,6 +257,7 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 			w.view.NameX, w.view.NameY = w.view.Card.X+tlPad, w.view.Card.Y+20
 		}
 		bottom := firstRow + (len(lanes)-1)*tlRow + 44
+		tl.Outline = append(tl.Outline, outline(name, laneOf))
 		if branch != 0 {
 			tl.Boxes = append(tl.Boxes, views.TimelineBox{X: 16, Y: top, W: tlWidth - 32, H: bottom - top, Name: name})
 		}
@@ -532,6 +538,54 @@ func route(l *views.TimelineLink, from views.TimelineCard, sourceX float64, to v
 	l.Path = b.String()
 }
 
+// outline lists a box's works row by row, each as deep as its row hangs.
+func outline(name string, laneOf map[*tlWork]*lane) views.TimelinePart {
+	works := slices.Collect(maps.Keys(laneOf))
+	slices.SortFunc(works, func(a, b *tlWork) int {
+		return cmp.Or(cmp.Compare(a.view.Y, b.view.Y), cmp.Compare(a.left, b.left))
+	})
+	part := views.TimelinePart{Name: name}
+	for _, w := range works {
+		item := views.TimelineItem{Name: w.view.Name, Href: w.view.Href, Via: w.via, Spoiler: w.viaSpoiler}
+		for l := laneOf[w].under; l != nil; l = l.under {
+			item.Depth++
+		}
+		if w.lone == 0 {
+			var formats []string
+			for _, e := range w.entries {
+				formats = append(formats, e.FormatLabel)
+			}
+			item.Formats = counted(formats)
+			from, to := w.entries[0].StartDate.Year(), w.entries[len(w.entries)-1].StartDate.Year()
+			item.Years = strconv.Itoa(from)
+			if to != from {
+				item.Years = fmt.Sprintf("%d to %d", from, to)
+			}
+		}
+		part.Items = append(part.Items, item)
+	}
+	return part
+}
+
+// counted lists formats once each, in the order they first come, with how
+// many when it's more than one, eg "game ×12, comic".
+func counted(formats []string) string {
+	var order []string
+	count := map[string]int{}
+	for _, f := range formats {
+		if count[f] == 0 {
+			order = append(order, f)
+		}
+		count[f]++
+	}
+	for i, f := range order {
+		if count[f] > 1 {
+			order[i] = fmt.Sprintf("%s \u00d7%d", f, count[f])
+		}
+	}
+	return strings.Join(order, ", ")
+}
+
 // place sets a work's dots, and the stretch of its row they and its name take.
 func place(w *tlWork, x func(float64) float64) {
 	// a dot a year, and the formats out that year
@@ -549,22 +603,7 @@ func place(w *tlWork, x func(float64) float64) {
 	// of yearly games reads "game ×12", not a pile of "game"s
 	type run struct{ from, to int }
 	label := func(r run) string {
-		var order []string
-		count := map[string]int{}
-		for _, fs := range formats[r.from:r.to] {
-			for _, f := range fs {
-				if count[f] == 0 {
-					order = append(order, f)
-				}
-				count[f]++
-			}
-		}
-		for i, f := range order {
-			if count[f] > 1 {
-				order[i] = fmt.Sprintf("%s \u00d7%d", f, count[f])
-			}
-		}
-		return strings.Join(order, ", ")
+		return counted(slices.Concat(formats[r.from:r.to]...))
 	}
 	// centred under its dots, but not past the edge
 	centre := func(r run) float64 {
