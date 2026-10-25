@@ -59,5 +59,6 @@ insert into catalog.id_source (source, site, url_template) values
   ('anidb',         'AniDB',       'https://anidb.net/anime/{id}'),
   ('comicvine',     'Comic Vine',  'https://comicvine.gamespot.com/wd/{id}/'),
   ('igdb',          'IGDB',        'https://www.igdb.com/games/{id}'),
-  ('vgmdb',         'VGMdb',       'https://vgmdb.net/product/{id}');
+  ('vgmdb',         'VGMdb',       'https://vgmdb.net/product/{id}'),
+  ('vgmdb_album',   'VGMdb album', 'https://vgmdb.net/album/{id}');
 
