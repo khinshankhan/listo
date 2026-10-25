@@ -13,8 +13,10 @@ type Timeline struct {
 	Boxes  []TimelineBox  `json:"boxes"`
 	Works  []TimelineWork `json:"works"`
 	Links  []TimelineLink `json:"links"`
-	// Spoilers is whether any link is one, so the page offers to show them.
+	// Spoilers is whether any link is one, so the page offers to show them;
+	// Revealed, whether the address asked to.
 	Spoilers bool `json:"-"`
+	Revealed bool `json:"-"`
 	// Undated counts the entries left off for having no date.
 	Undated int `json:"-"`
 	// Lines say what the drawing shows, for screen readers.

@@ -29,7 +29,9 @@ templ TimelineSection(t *Timeline, group string) {
 				}
 				if t.Spoilers {
 					<label class="flex cursor-pointer items-center gap-2 sm:ml-auto">
-						<input type="checkbox" class="timeline-reveal size-[14px] cursor-pointer accent-accent-9 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast"/>
+						// in step with ?spoilers=show; off, so Firefox doesn't bring back
+						// a tick the address no longer has
+						<input type="checkbox" autocomplete="off" checked?={ t.Revealed } class="timeline-reveal size-[14px] cursor-pointer accent-accent-9 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast"/>
 						show spoilers
 					</label>
 				}

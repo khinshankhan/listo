@@ -161,6 +161,12 @@ func TestCatalogPages(t *testing.T) {
 				`href="/groups/2/steins-gate?by=release">by release</a>`}},
 		{name: "an entry row's format browses that format", path: "/groups/2/steins-gate", status: http.StatusOK,
 			want: []string{`href="/entries?format=tv&amp;medium=anime"`}},
+		{name: "spoilers stay hidden unless the address asks", path: "/groups/103/monogatari", status: http.StatusOK,
+			want:     []string{`<input type="checkbox" autocomplete="off" class="timeline-reveal`},
+			dontWant: []string{`autocomplete="off" checked`}},
+		{name: "the address can show spoilers, and sorting keeps them shown", path: "/groups/103/monogatari?spoilers=show", status: http.StatusOK,
+			want: []string{`<input type="checkbox" autocomplete="off" checked class="timeline-reveal`, `href="/groups/103/monogatari?by=medium&amp;spoilers=show">by medium</a>`,
+				`href="/groups/103/monogatari?spoilers=show" aria-current="page">by release</a>`}},
 		{name: "a franchise can group by medium", path: "/groups/2/steins-gate?by=medium", status: http.StatusOK,
 			want: []string{`href="/groups/2/steins-gate?by=medium" aria-current="page">by medium</a>`}},
 		{name: "an unknown grouping is the default", path: "/groups/2/steins-gate?by=vibes", status: http.StatusOK,
@@ -1154,6 +1160,16 @@ func (fakeCatalog) GroupEntries(_ context.Context, id uuid.UUID) ([]sqlcgen.Grou
 			PositionLabel: &first, BranchPublicID: 7, BranchSlug: "steins-gate-anime", BranchType: "entry",
 		}}, nil
 	}
+	if id == monoSeries {
+		month := "month"
+		bake, kizu := time.Date(2009, 7, 1, 0, 0, 0, 0, time.UTC), time.Date(2016, 1, 8, 0, 0, 0, 0, time.UTC)
+		return []sqlcgen.GroupEntriesRow{
+			{PublicID: 104, Slug: "bakemonogatari", Title: "Bakemonogatari", Medium: "anime", MediumLabel: "anime", Format: "tv",
+				FormatLabel: "anime", StartDate: &bake, StartPrecision: &month, UnitKind: "none", BranchPublicID: 104, BranchType: "entry"},
+			{PublicID: 105, Slug: "kizumonogatari", Title: "Kizumonogatari", Medium: "anime", MediumLabel: "anime", Format: "movie",
+				FormatLabel: "film", StartDate: &kizu, StartPrecision: &month, UnitKind: "none", BranchPublicID: 105, BranchType: "entry"},
+		}, nil
+	}
 	if id != sgFranchise {
 		return nil, nil
 	}
@@ -1168,8 +1184,13 @@ func (fakeCatalog) GroupEntries(_ context.Context, id uuid.UUID) ([]sqlcgen.Grou
 	}}, nil
 }
 
+// GroupRelations has Monogatari's anime follow its film, behind a spoiler, so
+// the timeline offers to show it.
 func (fakeCatalog) GroupRelations(_ context.Context, id uuid.UUID) ([]sqlcgen.GroupRelationsRow, error) {
-	return nil, nil
+	if id != monoSeries {
+		return nil, nil
+	}
+	return []sqlcgen.GroupRelationsRow{{FromID: 104, Kind: "sequel_of", Label: "sequel of", Family: "sequence", ToID: 105, Spoiler: true}}, nil
 }
 
 func (fakeCatalog) GroupSiblings(_ context.Context, id uuid.UUID) ([]sqlcgen.GroupSiblingsRow, error) {

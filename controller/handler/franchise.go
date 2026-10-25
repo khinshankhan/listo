@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"slices"
 	"sort"
 	"strings"
@@ -22,8 +23,9 @@ var franchiseSorts = []struct{ key, label string }{
 var standingRank = map[string]int{"primary": 0, "active": 1, "concluded": 2, "disputed": 3, "abandoned": 4}
 
 // franchiseView is a franchise page and the anchors for its sections. by is
-// the ?by= grouping; anything unknown is the default.
-func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow, by string) (views.Franchise, []views.Anchor, error) {
+// the ?by= grouping; anything unknown is the default. reveal is
+// ?spoilers=show, which the sorting keeps.
+func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow, by string, reveal bool) (views.Franchise, []views.Anchor, error) {
 	canonical := GroupPath(g.PublicID, g.Slug)
 	v := views.Franchise{Name: g.Name, Standing: deref(g.Standing)}
 
@@ -53,6 +55,9 @@ func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow,
 		return v, nil, fmt.Errorf("relations: %w", err)
 	}
 	v.Timeline = timeline(rows, rels)
+	if v.Timeline != nil {
+		v.Timeline.Revealed = reveal
+	}
 
 	v.Stats = entryStats(rows)
 	if len(v.Continuities) > 0 {
@@ -72,12 +77,20 @@ func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow,
 		if len(rows) == 0 {
 			break
 		}
-		link := views.SortLink{Label: s.label, Href: canonical + "?by=" + s.key, Active: s.key == by}
-		if i == 0 {
-			link.Href = canonical
-			if s.key == "continuity" && len(v.Continuities) == 0 {
-				link.Label = "by group"
-			}
+		// the first is the plain address
+		q := url.Values{}
+		if i > 0 {
+			q.Set("by", s.key)
+		}
+		if reveal {
+			q.Set("spoilers", "show")
+		}
+		link := views.SortLink{Label: s.label, Href: canonical, Active: s.key == by}
+		if len(q) > 0 {
+			link.Href += "?" + q.Encode()
+		}
+		if i == 0 && s.key == "continuity" && len(v.Continuities) == 0 {
+			link.Label = "by group"
 		}
 		v.Sorts = append(v.Sorts, link)
 	}

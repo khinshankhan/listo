@@ -41,7 +41,7 @@ func (p *Pages) Group(w http.ResponseWriter, r *http.Request) {
 
 // groupPage renders any kind of group, with its sections in the sidebar.
 func (p *Pages) groupPage(w http.ResponseWriter, r *http.Request, g sqlcgen.GroupByPublicIDRow, canonical string) {
-	v, anchors, err := p.franchiseView(r.Context(), g, r.URL.Query().Get("by"))
+	v, anchors, err := p.franchiseView(r.Context(), g, r.URL.Query().Get("by"), r.URL.Query().Get("spoilers") == "show")
 	if err != nil {
 		p.serverError(w, r, err)
 		return
