@@ -35,4 +35,4 @@ select catalog.ext('chaos-child-angels-atonement', 'vgmdb_album', '69345');
 select catalog.ext('chaos-child-wish', 'vgmdb_album', '69346');
 select catalog.ext('robotics-notes-winter-sky-rocket', 'vgmdb_album', '33645');
 select catalog.ext('robotics-notes-day-frau', 'vgmdb_album', '84648');
-select catalog.ext('robotics-notes-home-of-our-dreams', 'vgmdb_album', '40609');
+select catalog.ext('robotics-notes-at-the-end-of-the-dream', 'vgmdb_album', '40609');

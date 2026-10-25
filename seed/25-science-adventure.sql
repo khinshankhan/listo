@@ -617,10 +617,10 @@ select catalog.add_entry('robotics-notes-maps-rain-macarons', 'book', 'short_sto
 select catalog.member('robotics-notes', 'robotics-notes-maps-rain-macarons');
 select catalog.relate('robotics-notes-maps-rain-macarons', 'side_story_of', 'robotics-notes-vn');
 update catalog.entry set status = 'finished' where id = catalog.id('robotics-notes-maps-rain-macarons');
-select catalog.add_entry('robotics-notes-home-of-our-dreams', 'audio', 'drama', 'Robotics;Notes: At the End of the Dream', '2013-09-25', 'JP', 'none', null, p_public_id => 738);
-select catalog.member('robotics-notes', 'robotics-notes-home-of-our-dreams');
-select catalog.relate('robotics-notes-home-of-our-dreams', 'sequel_of', 'robotics-notes-vn');
-update catalog.entry set status = 'finished' where id = catalog.id('robotics-notes-home-of-our-dreams');
+select catalog.add_entry('robotics-notes-at-the-end-of-the-dream', 'audio', 'drama', 'Robotics;Notes: At the End of the Dream', '2013-09-25', 'JP', 'none', null, p_public_id => 738);
+select catalog.member('robotics-notes', 'robotics-notes-at-the-end-of-the-dream');
+select catalog.relate('robotics-notes-at-the-end-of-the-dream', 'sequel_of', 'robotics-notes-vn');
+update catalog.entry set status = 'finished' where id = catalog.id('robotics-notes-at-the-end-of-the-dream');
 select catalog.add_entry('robotics-notes-day-frau', 'audio', 'drama', 'Robotics;Notes: A Day in the Life of Frau Koujiro', '2012-07-10', 'JP', 'none', null, p_public_id => 739);
 select catalog.member('robotics-notes', 'robotics-notes-day-frau');
 select catalog.relate('robotics-notes-day-frau', 'side_story_of', 'robotics-notes-vn');
