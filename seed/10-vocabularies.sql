@@ -55,5 +55,9 @@ insert into catalog.id_source (source, site, url_template) values
   ('tmdb_tv',       'TMDB',        'https://www.themoviedb.org/tv/{id}'),
   ('isbn',          'ISBN',        'https://openlibrary.org/isbn/{id}'),
   ('steam',         'Steam',       'https://store.steampowered.com/app/{id}/'),
-  ('mobygames',     'MobyGames',   'https://www.mobygames.com/game/{id}/');
+  ('mobygames',     'MobyGames',   'https://www.mobygames.com/game/{id}/'),
+  ('anidb',         'AniDB',       'https://anidb.net/anime/{id}'),
+  ('comicvine',     'Comic Vine',  'https://comicvine.gamespot.com/wd/{id}/'),
+  ('igdb',          'IGDB',        'https://www.igdb.com/games/{id}'),
+  ('vgmdb',         'VGMdb',       'https://vgmdb.net/product/{id}');
 
