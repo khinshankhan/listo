@@ -34,6 +34,13 @@
   stroke-dasharray: 1.5 4;
 }
 
+/* labels go over everything, as in the SVG fallback. xyflow lays them down
+   before the nodes, and every node is z-index 0, so without this a box's
+   border strikes through the label it crosses */
+.timeline .react-flow__edgelabel-renderer {
+  z-index: 1;
+}
+
 /* a hovered or focused card's line, before and after it, stands out; the
    rest steps back. Dim lines change colour rather than fade, so where a
    few share a trunk they don't stack up darker. */
