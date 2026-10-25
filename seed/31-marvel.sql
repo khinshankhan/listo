@@ -1575,9 +1575,10 @@ select catalog.add_entry('spider-man-2-game', 'game', 'full', 'Spider-Man 2 (200
 select catalog.member('spider-man', 'spider-man-2-game');
 select catalog.relate('spider-man-2-game', 'adaptation_of', 'spider-man-2');
 update catalog.entry set status = 'finished' where id = catalog.id('spider-man-2-game');
+-- Activision: "an all-new story exclusive to the game" after a recap: https://www.nintendoworldreport.com/pr/10810/ultimate-spider-man-ships
 select catalog.add_entry('ultimate-spider-man-game', 'game', 'full', 'Ultimate Spider-Man', '2005-09-22', 'US', 'none', null, p_public_id => 1361);
 select catalog.member('spider-man', 'ultimate-spider-man-game');
-select catalog.relate('ultimate-spider-man-game', 'adaptation_of', 'amazing-spider-man-comic');
+select catalog.relate('ultimate-spider-man-game', 'spin_off_of', 'amazing-spider-man-comic');
 update catalog.entry set status = 'finished' where id = catalog.id('ultimate-spider-man-game');
 select catalog.add_entry('spider-man-battle-for-new-york', 'game', 'full', 'Spider-Man: Battle for New York', '2006-11-14', 'AU', 'none', null, p_public_id => 1362);
 select catalog.member('spider-man', 'spider-man-battle-for-new-york');
@@ -1619,9 +1620,10 @@ select catalog.add_entry('spider-man-ultimate-power', 'game', 'full', 'Spider-Ma
 select catalog.member('spider-man', 'spider-man-ultimate-power');
 select catalog.relate('spider-man-ultimate-power', 'adaptation_of', 'amazing-spider-man-comic');
 update catalog.entry set status = 'finished' where id = catalog.id('spider-man-ultimate-power');
+-- Gameloft writes its own Sinister Six story across dimensions: https://bamsmackpow.com/2015/07/13/interview-with-gamelofts-spider-man-unlimited-team/
 select catalog.add_entry('spider-man-unlimited-game', 'game', 'full', 'Spider-Man Unlimited', '2014-09-10', null, 'none', null, p_public_id => 1372);
 select catalog.member('spider-man', 'spider-man-unlimited-game');
-select catalog.relate('spider-man-unlimited-game', 'adaptation_of', 'amazing-spider-man-comic');
+select catalog.relate('spider-man-unlimited-game', 'spin_off_of', 'amazing-spider-man-comic');
 update catalog.entry set status = 'finished' where id = catalog.id('spider-man-unlimited-game');
 select catalog.add_entry('amazing-spider-man-2-game-2014', 'game', 'full', 'The Amazing Spider-Man 2 (2014 video game)', '2014', 'CA', 'none', null, p_public_id => 1373);
 select catalog.member('spider-man', 'amazing-spider-man-2-game-2014');
