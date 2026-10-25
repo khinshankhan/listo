@@ -5,6 +5,7 @@
 import type { Mount } from "./mount";
 import "./shortcuts";
 import "./search";
+import "./scrollers";
 import "./spoilers";
 import "./transitions";
 

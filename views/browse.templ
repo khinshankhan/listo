@@ -179,8 +179,9 @@ templ cardGrid(cards []Card) {
 // can't fit them all.
 templ cardRow(title string, cards []Card) {
 	// the scroller clips, so the list pads itself by a focus ring's reach and
-	// the row steps back as far: the end cards' rings show, the covers stay put
-	<div class="-mx-1 overflow-x-auto rounded-sm pb-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast" tabindex="0" role="region" aria-label={ title + ", scrolls sideways" }>
+	// the row steps back as far: the end cards' rings show, the covers stay put.
+	// The scroll padding keeps a ring in view when focus scrolls a card in
+	<div class="-mx-1 scroll-px-1 overflow-x-auto rounded-sm pb-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast" tabindex="0" role="region" aria-label={ title + ", scrolls sideways" }>
 		<ul class="grid w-max auto-cols-[140px] grid-flow-col gap-x-[18px] px-1 sm:auto-cols-[150px]">
 			for _, c := range cards {
 				@card(c)
