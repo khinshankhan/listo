@@ -624,9 +624,10 @@ select catalog.add_entry('naruto-game-naruto-ultimate-ninja-2', 'game', 'full', 
 select catalog.member('naruto-franchise', 'naruto-game-naruto-ultimate-ninja-2');
 select catalog.relate('naruto-game-naruto-ultimate-ninja-2', 'adaptation_of', 'naruto-manga');
 update catalog.entry set status = 'finished' where id = catalog.id('naruto-game-naruto-ultimate-ninja-2');
+-- Namco Bandai: the centerpiece, Ultimate Contest, is an original storyline: https://www.siliconera.com/ultimate-interview-namco-bandai-on-naruto-ultimate-ninja-3/
 select catalog.add_entry('naruto-game-naruto-ultimate-ninja-3', 'game', 'full', 'Naruto: Ultimate Ninja 3', '2005-12-22', 'JP', 'none', null, p_public_id => 1587);
 select catalog.member('naruto-franchise', 'naruto-game-naruto-ultimate-ninja-3');
-select catalog.relate('naruto-game-naruto-ultimate-ninja-3', 'adaptation_of', 'naruto-manga');
+select catalog.relate('naruto-game-naruto-ultimate-ninja-3', 'spin_off_of', 'naruto-manga');
 update catalog.entry set status = 'finished' where id = catalog.id('naruto-game-naruto-ultimate-ninja-3');
 select catalog.add_entry('naruto-game-naruto-ultimate-ninja-heroes-2-the-phantom-fortress', 'game', 'full', 'Naruto: Ultimate Ninja Heroes 2: The Phantom Fortress', '2006-03-30', 'JP', 'none', null, p_public_id => 1588);
 select catalog.member('naruto-franchise', 'naruto-game-naruto-ultimate-ninja-heroes-2-the-phantom-fortress');
@@ -688,11 +689,13 @@ select catalog.add_entry('naruto-game-naruto-x-boruto-ultimate-ninja-storm-conne
 select catalog.member('naruto-franchise', 'naruto-game-naruto-x-boruto-ultimate-ninja-storm-connections');
 select catalog.relate('naruto-game-naruto-x-boruto-ultimate-ninja-storm-connections', 'adaptation_of', 'naruto-manga');
 update catalog.entry set status = 'finished' where id = catalog.id('naruto-game-naruto-x-boruto-ultimate-ninja-storm-connections');
+-- a card battler with versus and card-buying modes only: https://dengekionline.com/data/news/2005/10/25/ffa36bdef20e5d464c4dc18a52d330a2.html
 select catalog.add_entry('naruto-game-naruto-ultimate-ninja-card-battle', 'game', 'full', 'Naruto: Ultimate Ninja Card Battle', null, 'JP', 'none', null, p_public_id => 1603);
 select catalog.member('naruto-franchise', 'naruto-game-naruto-ultimate-ninja-card-battle');
-select catalog.relate('naruto-game-naruto-ultimate-ninja-card-battle', 'adaptation_of', 'naruto-manga');
+select catalog.relate('naruto-game-naruto-ultimate-ninja-card-battle', 'spin_off_of', 'naruto-manga');
 update catalog.entry set status = 'finished' where id = catalog.id('naruto-game-naruto-ultimate-ninja-card-battle');
-select catalog.add_entry('naruto-game-naruto-shippuden-ultimate-ninja-mission', 'game', 'full', 'Naruto Shippuden: Ultimate Ninja Mission', '2007', 'JP', 'none', null, p_public_id => 1604);
+-- developer Artdink: in arcades 2007-02, published by Bandai: https://www.artdink.co.jp/works/arcade/
+select catalog.add_entry('naruto-game-naruto-shippuden-ultimate-ninja-mission', 'game', 'full', 'Naruto Shippuden: Ultimate Ninja Mission', '2007-02', 'JP', 'none', null, p_public_id => 1604);
 select catalog.member('naruto-franchise', 'naruto-game-naruto-shippuden-ultimate-ninja-mission');
 select catalog.relate('naruto-game-naruto-shippuden-ultimate-ninja-mission', 'adaptation_of', 'naruto-manga');
 update catalog.entry set status = 'finished' where id = catalog.id('naruto-game-naruto-shippuden-ultimate-ninja-mission');
