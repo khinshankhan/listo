@@ -421,6 +421,7 @@ func TestTimelineCrowdedReleases(t *testing.T) {
 // into or out of the cards a link joins. Side stories sharing a row are each
 // reached on their own, not through the one before, and a sequel whose long
 // name starts its card before its prequel's doesn't go round the long way.
+
 func TestTimelineNothingUnderCards(t *testing.T) {
 	rows := []sqlcgen.GroupEntriesRow{
 		tlEntry(1, "Detective Conan", "manga", 1994, 1, "Index"),
@@ -443,6 +444,50 @@ func TestTimelineNothingUnderCards(t *testing.T) {
 	if a, b := workNamed(t, tl, "Short Stories"), workNamed(t, tl, "Sonoko's Case Files"); a.Y != b.Y {
 		t.Fatalf("side stories on y %d and %d, want them sharing a row", a.Y, b.Y)
 	}
+	nothingUnder(t, tl)
+}
+
+// A line down to a row further on finds a way past the cards in the rows
+// between, like a side story's long name ending at its dot over the trunk.
+func TestTimelineNothingDropsThroughCards(t *testing.T) {
+	rows := []sqlcgen.GroupEntriesRow{
+		tlEntry(1, "Devil May Cry", "game", 2001, 1, "Index"),
+		tlEntry(2, "Devil May Cry 5", "game", 2019, 1, "Index"),
+		tlEntry(3, "Devil May Cry 5: Before the Nightmare", "novel", 2019, 1, "Index"),
+		tlEntry(4, "Devil May Cry 5: Visions of V", "manga", 2019, 1, "Index"),
+	}
+	rels := []sqlcgen.GroupRelationsRow{
+		tlRelation(2, "sequel_of", 1),
+		tlRelation(3, "side_story_of", 2),
+		tlRelation(4, "side_story_of", 2),
+	}
+	nothingUnder(t, timeline(rows, rels))
+}
+
+// The long way round leaves from under its card when there's a card to its
+// left on its row.
+func TestTimelineLongWayRoundUnderCards(t *testing.T) {
+	rows := []sqlcgen.GroupEntriesRow{
+		tlEntry(1, "Madoka Magica", "anime", 2011, 1, "Index"),
+		tlEntry(2, "Oriko Magica", "manga", 2012, 1, "Index"),
+		tlEntry(3, "Wraith Arc", "anime", 2022, 1, "Index"),
+		tlEntry(4, "Rebellion", "film", 2013, 1, "Index"),
+	}
+	rels := []sqlcgen.GroupRelationsRow{
+		tlRelation(2, "spin_off_of", 1),
+		tlRelation(3, "spin_off_of", 1),
+		tlRelation(4, "sequel_of", 1),
+		tlRelation(4, "sequel_of", 3),
+	}
+	tl := timeline(rows, rels)
+	if a, b := workNamed(t, tl, "Oriko Magica"), workNamed(t, tl, "Wraith Arc"); a.Y != b.Y {
+		t.Fatalf("spin-offs on y %d and %d, want them sharing a row", a.Y, b.Y)
+	}
+	nothingUnder(t, tl)
+}
+
+func nothingUnder(t *testing.T, tl *views.Timeline) {
+	t.Helper()
 	for _, l := range tl.Links {
 		if l.LabelW > 0 && (l.LabelLeft() < 0 || l.LabelLeft()+l.LabelW > tl.Width) {
 			t.Errorf("label %q runs x %d to %d, off the %d wide drawing", l.Label, l.LabelLeft(), l.LabelLeft()+l.LabelW, tl.Width)
@@ -460,6 +505,9 @@ func TestTimelineNothingUnderCards(t *testing.T) {
 				a, b := pts[i-1], pts[i]
 				if a[1] == b[1] && a[1] > float64(c.Y) && a[1] < float64(c.Y+c.H) && min(a[0], b[0]) < float64(c.X+c.W) && max(a[0], b[0]) > float64(c.X) {
 					t.Errorf("link %d to %d runs under %s", l.Source, l.Target, w.Name)
+				}
+				if a[0] == b[0] && a[0] > float64(c.X) && a[0] < float64(c.X+c.W) && min(a[1], b[1]) < float64(c.Y+c.H) && max(a[1], b[1]) > float64(c.Y) {
+					t.Errorf("link %d to %d runs down under %s", l.Source, l.Target, w.Name)
 				}
 			}
 		}

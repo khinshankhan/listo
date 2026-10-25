@@ -306,13 +306,17 @@ func timeline(rows []sqlcgen.GroupEntriesRow, rels []sqlcgen.GroupRelationsRow) 
 		// a run in along the target's row would pass under any card there
 		// between the trunk and the target
 		clear := true
+		var others []views.TimelineCard
 		for _, w := range works {
 			c := w.view.Card
 			if w != target && w.view.Y == target.view.Y && c.X < target.view.Card.X && c.X+c.W > source.view.Card.X+tlTrunk {
 				clear = false
 			}
+			if w != source && w != target {
+				others = append(others, c)
+			}
 		}
-		route(&link, source.view.Card, sourceX, target.view.Card, targetX, clear)
+		route(&link, source.view.Card, sourceX, target.view.Card, targetX, clear, others)
 		tl.Spoilers = tl.Spoilers || link.Spoiler
 		tl.Links = append(tl.Links, link)
 		tl.Lines = append(tl.Lines, views.TimelineLine{Text: line, Spoiler: rel.Spoiler})
@@ -400,8 +404,10 @@ func (l *lane) within(top *lane) bool {
 // left of both, and so of every card between, which came out later still;
 // anything else, or one whose target starts too near the trunk, has cards
 // before it on its row or no room for its label, drops and meets the target
-// from above or below, labelled on the run across.
-func route(l *views.TimelineLink, from views.TimelineCard, sourceX float64, to views.TimelineCard, targetX float64, clear bool) {
+// from above or below, labelled on the run across. A line down that would
+// pass a card in the rows between steps aside first, in the gap under its
+// row, to the nearest place clear of them.
+func route(l *views.TimelineLink, from views.TimelineCard, sourceX float64, to views.TimelineCard, targetX float64, clear bool, others []views.TimelineCard) {
 	type pt struct{ x, y float64 }
 	top := func(c views.TimelineCard) float64 { return float64(c.Y) }
 	bottom := func(c views.TimelineCard) float64 { return float64(c.Y + c.H) }
@@ -415,6 +421,35 @@ func route(l *views.TimelineLink, from views.TimelineCard, sourceX float64, to v
 	// right-aligned on the run in, or left of the line down when it won't
 	// fit, or past the line down when that's off the edge
 	onRun := func(run, down float64) bool { return run-14-labelW > down+8 }
+	// the card a line down at x from y1 to y2 would pass, if any
+	under := func(x, y1, y2 float64) *views.TimelineCard {
+		for i, c := range others {
+			if x > float64(c.X)-4 && x < float64(c.X+c.W)+4 && min(y1, y2) < bottom(c) && max(y1, y2) > top(c) {
+				return &others[i]
+			}
+		}
+		return nil
+	}
+	// whether a run along y from x1 to x2 would pass under a card
+	blocks := func(y, x1, x2 float64) bool {
+		for _, c := range others {
+			if y > top(c) && y < bottom(c) && min(x1, x2) < float64(c.X+c.W) && max(x1, x2) > float64(c.X) {
+				return true
+			}
+		}
+		return false
+	}
+	// the nearest x to the left (dir -1) or right (dir 1) where it passes none
+	aside := func(x, y1, y2 float64, dir int) float64 {
+		for c := under(x, y1, y2); c != nil; c = under(x, y1, y2) {
+			if dir < 0 {
+				x = float64(c.X) - tlOffset
+			} else {
+				x = float64(c.X+c.W) + tlOffset
+			}
+		}
+		return x
+	}
 	offEdge := func(down float64) bool { return down-6-labelW < 0 }
 	beside := func(run, y, down float64) {
 		l.LabelEnd, l.LabelX, l.LabelY = true, int(down-6), int(y)
@@ -436,14 +471,21 @@ func route(l *views.TimelineLink, from views.TimelineCard, sourceX float64, to v
 		over := top(from) - tlOffset
 		pts = []pt{{sourceX, top(from)}, {sourceX, over}, {targetX, over}, {targetX, top(to)}}
 		l.LabelX, l.LabelY = int((sourceX+targetX)/2), int(over)
-	case l.Sequel && clear && left > trunk+tlOffset+tlRadius && (onRun(left, trunk) || !offEdge(trunk)):
+	case l.Sequel && clear && left > trunk+tlOffset+tlRadius && (onRun(left, trunk) || !offEdge(trunk)) && under(trunk, edge(from), row(to)) == nil:
 		y := row(to)
 		pts = []pt{{trunk, edge(from)}, {trunk, y}, {left, y}}
 		beside(left, y, trunk)
 	case l.Sequel && targetX < trunk:
-		gutter := max(float64(min(from.X, to.X))-tlOffset, 4)
-		y := row(to)
-		pts = []pt{{float64(from.X), row(from)}, {gutter, row(from)}, {gutter, y}, {left, y}}
+		// out its left edge, or from under it past cards to its left
+		y, out := row(to), row(from)
+		pts = []pt{{float64(from.X), out}}
+		start := float64(min(from.X, to.X)) - tlOffset
+		if blocks(out, start, float64(from.X)) {
+			out = edge(from) - turn
+			pts = []pt{{trunk, edge(from)}}
+		}
+		gutter := max(aside(start, out, y, -1), 4)
+		pts = append(pts, pt{gutter, out}, pt{gutter, y}, pt{left, y})
 		beside(left, y, gutter)
 	default:
 		x := sourceX
@@ -451,9 +493,18 @@ func route(l *views.TimelineLink, from views.TimelineCard, sourceX float64, to v
 			x = trunk
 		}
 		across := meet(to) + turn
-		pts = []pt{{x, edge(from)}, {x, across}, {targetX, across}, {targetX, meet(to)}}
+		pts = []pt{{x, edge(from)}}
+		if under(x, edge(from), across) != nil {
+			down := aside(x, edge(from), across, 1)
+			if back := aside(x, edge(from), across, -1); back > tlEdge && (x-back < down-x || down > tlWidth-tlEdge) {
+				down = back
+			}
+			pts = append(pts, pt{x, edge(from) - turn}, pt{down, edge(from) - turn})
+			x = down
+		}
+		pts = append(pts, pt{x, across}, pt{targetX, across}, pt{targetX, meet(to)})
 		if l.Sequel {
-			beside(targetX, across, trunk)
+			beside(targetX, across, x)
 		} else {
 			l.LabelX, l.LabelY = int((x+targetX)/2), int(across)
 		}
