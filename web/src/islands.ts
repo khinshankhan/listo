@@ -7,7 +7,6 @@ import "./shortcuts";
 import "./search";
 import "./scrollers";
 import "./spoilers";
-import "./transitions";
 
 type Loader = () => Promise<Mount>;
 

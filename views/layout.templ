@@ -33,6 +33,24 @@ templ Layout(head Head, tags web.Tags, chrome Chrome) {
 			for _, href := range tags.CSS {
 				<link rel="stylesheet" href={ href }/>
 			}
+			// The cross-page fade names the top bar and sidebar so they hold still,
+			// which only works on a page sitting at its top. Scrolled, the bar is a
+			// screen or more up and the fade would slide it, and the sidebar, across
+			// the page over everything; then they fade with the rest instead. Each
+			// page checks itself leaving and arriving, once a back or a #fragment
+			// has scrolled it. Inline, since pagereveal can beat a module script.
+			<script>
+				for (const type of ["pageswap", "pagereveal"]) {
+					addEventListener(type, (event) => {
+						if (!event.viewTransition) {
+							return;
+						}
+						for (const el of document.querySelectorAll('[class*="view-transition-name:"]')) {
+							el.style.viewTransitionName = scrollY === 0 ? "" : "none";
+						}
+					});
+				}
+			</script>
 			<script type="module" src={ tags.Script }></script>
 			for _, href := range tags.Preload {
 				<link rel="modulepreload" href={ href }/>

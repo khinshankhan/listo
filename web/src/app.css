@@ -76,7 +76,7 @@ input[type="search"]::-webkit-search-cancel-button:hover {
 }
 
 /* cross-fade between pages; the top bar and sidebar are named, so they hold
-   still, from the top of a page at least (transitions.ts) */
+   still, from the top of a page at least (see views/layout.templ) */
 @media (prefers-reduced-motion: no-preference) {
   @view-transition {
     navigation: auto;
