@@ -5,6 +5,9 @@ type Home struct {
 	Media     []MediumChip
 	Franchise *FranchiseGuide
 	Ordering  *OrderingGuide
+	// MapHref is the timeline the map previews, or empty when its universe
+	// isn't in the catalog
+	MapHref string
 }
 
 // MediumChip is a medium under the hero search. One without an Href has no

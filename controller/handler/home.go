@@ -19,6 +19,8 @@ const (
 	guideBlurb     = "Steins;Gate 0 branches off from an episode most people never saw. Watch the alternate episode 23β first, or 0 starts in the middle of a thought."
 	guideGroup     = "monogatari"
 	guideOrdering  = "first-timer order"
+	// the universe the hand-drawn map previews
+	mapUniverse = "science-adventure"
 
 	// guideSteps and guideRows are how much of each guide a preview shows
 	guideSteps = 5
@@ -44,6 +46,12 @@ func (p *Pages) Home(w http.ResponseWriter, r *http.Request) {
 		v.Media = append(v.Media, chip)
 	}
 
+	if g, err := p.catalog.GroupBySlug(ctx, mapUniverse); err == nil {
+		v.MapHref = GroupPath(g.PublicID, g.Slug) + "#timeline"
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		p.serverError(w, r, err)
+		return
+	}
 	if v.Franchise, err = p.franchiseGuide(ctx); err != nil {
 		p.serverError(w, r, err)
 		return

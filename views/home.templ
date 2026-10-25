@@ -38,7 +38,7 @@ templ HomePage(h Home) {
 			}
 		</section>
 		@oneList()
-		@connections()
+		@connections(h.MapHref)
 		if h.Franchise != nil || h.Ordering != nil {
 			@guides(h)
 		}
@@ -124,7 +124,7 @@ templ exampleRow(title, medium, done, progress, status string) {
 // connections is a picture of one universe's links, drawn by hand: most of
 // its works aren't in the catalog yet. On phones it scrolls sideways rather
 // than shrinking its labels to nothing.
-templ connections() {
+templ connections(href string) {
 	<section class="flex flex-col gap-[18px]" aria-labelledby="connections">
 		@sectionIntro("connections", "everything connects, eventually",
 			"These five series share a world, and the characters don't stay in their lanes. Some links turn up years later, like Robotics;Notes DaSH crossing over with Steins;Gate in 2019, a decade after Steins;Gate came out. They go on the map when they happen.")
@@ -134,6 +134,13 @@ templ connections() {
 			</div>
 			<figcaption class="flex flex-wrap gap-x-[22px] gap-y-2 px-4 text-12 leading-4 text-foreground-muted">
 				@mapLegend("crossover or shared character, drawn from the year it was made", "shared universe")
+				if href != "" {
+					<span class="sm:ml-auto">
+						@Link(LinkProps{Href: href, Class: "text-12 leading-4 font-medium text-accent-11"}) {
+							the whole Science Adventure timeline
+						}
+					</span>
+				}
 			</figcaption>
 		</figure>
 	</section>

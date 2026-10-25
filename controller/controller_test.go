@@ -337,6 +337,8 @@ func TestFrontPages(t *testing.T) {
 		{name: "home's media: browsable, or coming soon", path: "/", status: http.StatusOK,
 			want: []string{`href="/entries?medium=anime">anime</a>`, `href="/entries?medium=visual_novel">visual novel</a>`,
 				`book<span class="sr-only">, coming soon</span>`}},
+		{name: "home's map leads to the whole universe's timeline", path: "/", status: http.StatusOK,
+			want: []string{`href="/groups/1/science-adventure#timeline"`}},
 		{name: "home previews a franchise guide", path: "/", status: http.StatusOK,
 			want: []string{`<a href="/groups/2/steins-gate">Steins;Gate</a></h3>`, "<span>1 entry</span>", "alternate episode 23β",
 				">Main timeline</span>", `href="/entries/7/steins-gate-anime">Steins;Gate</a>`, ">anime · 2011</span>"}},
@@ -871,6 +873,9 @@ type renumbered struct{ fakeCatalog }
 
 func (renumbered) GroupByPublicID(ctx context.Context, id int64) (sqlcgen.GroupByPublicIDRow, error) {
 	switch id {
+	case 1:
+		return sqlcgen.GroupByPublicIDRow{ID: uuid.MustParse("01a151f2-0000-7000-8000-0000000000e1"), PublicID: 1, Slug: "mega-man",
+			Kind: "franchise", Name: "Mega Man"}, nil
 	case 2:
 		return sqlcgen.GroupByPublicIDRow{ID: uuid.MustParse("01a151f2-0000-7000-8000-0000000000e2"), PublicID: 2, Slug: "mega-man-classic",
 			Kind: "continuity", Name: "Mega Man Classic"}, nil
@@ -894,7 +899,7 @@ func TestHomeGuidesSurviveRenumbering(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := string(raw)
-	for _, w := range []string{">Steins;Gate</a></h3>", ">Monogatari</a></h3>", "alternate episode 23β"} {
+	for _, w := range []string{">Steins;Gate</a></h3>", ">Monogatari</a></h3>", "alternate episode 23β", `href="/groups/1/science-adventure#timeline"`} {
 		if !strings.Contains(body, w) {
 			t.Errorf("home lacks %q", w)
 		}
