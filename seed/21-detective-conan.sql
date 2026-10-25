@@ -425,9 +425,10 @@ select catalog.add_entry('conan-game-meitantei-conan-giwaku-no-gouka-ressha', 'g
 select catalog.member('detective-conan', 'conan-game-meitantei-conan-giwaku-no-gouka-ressha');
 select catalog.relate('conan-game-meitantei-conan-giwaku-no-gouka-ressha', 'spin_off_of', 'detective-conan-manga');
 update catalog.entry set status = 'finished' where id = catalog.id('conan-game-meitantei-conan-giwaku-no-gouka-ressha');
+-- Bandai's blurb: five all-new scenarios (全5本の完全新作シナリオ): https://mediaworld.co.jp/products/10380038001
 select catalog.add_entry('conan-game-meitantei-conan-majutsushi-no-chousenjou', 'game', 'full', 'Meitantei Conan: Majutsushi no Chousenjou!', '1999-08-05', 'JP', 'none', null, p_public_id => 231);
 select catalog.member('detective-conan', 'conan-game-meitantei-conan-majutsushi-no-chousenjou');
-select catalog.relate('conan-game-meitantei-conan-majutsushi-no-chousenjou', 'adaptation_of', 'detective-conan-manga');
+select catalog.relate('conan-game-meitantei-conan-majutsushi-no-chousenjou', 'spin_off_of', 'detective-conan-manga');
 update catalog.entry set status = 'finished' where id = catalog.id('conan-game-meitantei-conan-majutsushi-no-chousenjou');
 select catalog.add_entry('conan-game-meitantei-conan-karakuri-jiin-satsujin-jiken', 'game', 'full', 'Meitantei Conan: Karakuri Jiin Satsujin Jiken', '2000-02-25', 'JP', 'none', null, p_public_id => 232);
 select catalog.member('detective-conan', 'conan-game-meitantei-conan-karakuri-jiin-satsujin-jiken');
