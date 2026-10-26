@@ -179,6 +179,11 @@ func TestCatalogPages(t *testing.T) {
 		{name: "a franchise links its own sections", path: "/groups/2/steins-gate", status: http.StatusOK,
 			want:     []string{`<nav class="flex flex-wrap gap-x-5 gap-y-2 pt-1" aria-label="on this page"><a href="#continuities">`, `<a href="#entries">`, `<a href="#related">`},
 			dontWant: []string{"on this page</p>"}},
+		{name: "every catalog page's sidebar ends at every franchise", path: "/groups/2/steins-gate", status: http.StatusOK,
+			want: []string{`<a href="/groups">`, ">all franchises</span>"}},
+		{name: "every franchise has a page", path: "/groups", status: http.StatusOK,
+			want: []string{"franchises</h1>", ">1 franchise, and everything in each.</p>", `<a href="/groups/2/steins-gate">Steins;Gate</a>`,
+				">franchise · 14 entries</span>", `<a href="/groups" aria-current="page">`, `<link rel="canonical" href="/groups">`}},
 		{name: "a universe, not an universe", path: "/groups/1/science-adventure", status: http.StatusOK,
 			want: []string{`content="Science Adventure, a universe on listo."`}},
 		// nothing seeded under the universe itself in the fakes

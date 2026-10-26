@@ -163,6 +163,12 @@ templ sidebar(s Sidebar) {
 					for _, f := range s.Franchises {
 						@sideLink(f.Href, f.Name, f.Entries, f.Active)
 					}
+					@Link(LinkProps{Href: "/groups", Variant: LinkNone, Monochrome: true, Current: s.AllFranchises, Class: sideLinkClass(s.AllFranchises)}) {
+						<span
+							class={ "flex-1 text-14 leading-[18px] tracking-snug",
+							templ.KV("font-semibold text-accent-11", s.AllFranchises), templ.KV("font-medium text-foreground-muted", !s.AllFranchises) }
+						>all franchises</span>
+					}
 				}
 			}
 		</nav>

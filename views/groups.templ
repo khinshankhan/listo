@@ -1,0 +1,31 @@
+package views
+
+// GroupsPage is every top-level group, the sidebar's franchises and the rest.
+templ GroupsPage(groups []GroupCard) {
+	<div class="flex flex-col gap-6">
+		<header class="flex flex-col gap-3">
+			<p class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">catalog</p>
+			<h1 class="font-heading text-44 leading-12 font-semibold tracking-tight text-foreground-strong">franchises</h1>
+			<p class="text-14 leading-[18px] text-foreground-muted">{ count(len(groups), "franchise", "franchises") }, and everything in each.</p>
+		</header>
+		if len(groups) > 0 {
+			<ul class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+				for _, g := range groups {
+					<li class="flex items-center gap-[13px] rounded-[10px] border border-border bg-background-2 p-[14px]">
+						<span class="h-[52px] w-[37px] shrink-0 rounded-sm bg-placeholder" aria-hidden="true"></span>
+						<div class="flex min-w-0 flex-col gap-[3px]">
+							@Link(LinkProps{Href: g.Href, Variant: LinkNone, Class: "text-14 leading-[18px] font-semibold wrap-break-word text-foreground-strong"}) {
+								{ g.Name }
+							}
+							<span class="text-12 leading-4 text-foreground-muted">{ g.Kind + " · " + count(g.Entries, "entry", "entries") }</span>
+						</div>
+					</li>
+				}
+			</ul>
+		} else {
+			<p class="rounded-[10px] border border-dashed border-border px-[18px] py-4 text-14 text-foreground-muted">
+				Nothing to browse here yet. The catalog grows one entry at a time.
+			</p>
+		}
+	</div>
+}

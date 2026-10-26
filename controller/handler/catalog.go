@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -23,6 +24,11 @@ const (
 
 	// maxQuery caps what's searched, in characters; a title is never longer.
 	maxQuery = 200
+
+	// sidebarFranchises is how many franchises the sidebar lists, so it's
+	// the same height on every page however big the catalog gets; the rest
+	// are on /groups.
+	sidebarFranchises = 6
 )
 
 // Search serves /search?q=, fuzzy over every title in the local catalog.
@@ -162,16 +168,30 @@ func (p *Pages) chromeWith(r *http.Request, media []views.MediumLink, query stri
 		return views.Chrome{}, fmt.Errorf("top groups: %w", err)
 	}
 
-	side := &views.Sidebar{Media: media}
+	side := &views.Sidebar{Media: media, Franchises: biggest(groupCards(groups), sidebarFranchises)}
+	return views.Chrome{Query: query, Sidebar: side}, nil
+}
+
+// groupCards is the top-level groups as cards, in the order they came.
+func groupCards(groups []sqlcgen.TopGroupsRow) []views.GroupCard {
+	cards := make([]views.GroupCard, 0, len(groups))
 	for _, g := range groups {
-		side.Franchises = append(side.Franchises, views.GroupCard{
+		cards = append(cards, views.GroupCard{
 			Name:    g.Name,
 			Kind:    g.Kind,
 			Href:    GroupPath(g.PublicID, g.Slug),
 			Entries: int(g.Entries),
 		})
 	}
-	return views.Chrome{Query: query, Sidebar: side}, nil
+	return cards
+}
+
+// biggest is the n cards with the most entries, most first; a tie keeps the
+// order they came in.
+func biggest(cards []views.GroupCard, n int) []views.GroupCard {
+	out := slices.Clone(cards)
+	slices.SortStableFunc(out, func(a, b views.GroupCard) int { return b.Entries - a.Entries })
+	return out[:min(n, len(out))]
 }
 
 // clampQuery trims q and caps it at maxQuery runes, never splitting one.

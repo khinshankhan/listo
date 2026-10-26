@@ -12,6 +12,28 @@ import (
 	"github.com/khinshankhan/listo/views"
 )
 
+// Groups serves /groups, every top-level group.
+func (p *Pages) Groups(w http.ResponseWriter, r *http.Request) {
+	groups, err := p.catalog.TopGroups(r.Context())
+	if err != nil {
+		p.serverError(w, r, err)
+		return
+	}
+	chrome, err := p.chrome(r, nil, "")
+	if err != nil {
+		p.serverError(w, r, err)
+		return
+	}
+	chrome.Sidebar.AllFranchises = true
+
+	head := views.Head{
+		Title:       "franchises | listo",
+		Description: "Every franchise in the listo catalog, and how much of it there is.",
+		Canonical:   "/groups",
+	}
+	p.render(w, r, http.StatusOK, head, chrome, views.GroupsPage(groupCards(groups)))
+}
+
 // Group serves /groups/{id} and /groups/{id}/{slug}, the same way Entry does.
 func (p *Pages) Group(w http.ResponseWriter, r *http.Request) {
 	id, ok := publicID(r)

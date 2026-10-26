@@ -89,3 +89,39 @@ func TestAnchor(t *testing.T) {
 		})
 	}
 }
+
+func TestBiggest(t *testing.T) {
+	cards := func(entries ...int) []views.GroupCard {
+		out := make([]views.GroupCard, 0, len(entries))
+		for i, n := range entries {
+			out = append(out, views.GroupCard{Name: string(rune('a' + i)), Entries: n})
+		}
+		return out
+	}
+	names := func(cs []views.GroupCard) string {
+		var s string
+		for _, c := range cs {
+			s += c.Name
+		}
+		return s
+	}
+	cases := []struct {
+		name    string
+		entries []int
+		n       int
+		want    string
+	}{
+		{"none", nil, 8, ""},
+		{"fewer than the cap", []int{3, 9}, 8, "ba"},
+		{"most entries first", []int{5, 50, 20, 1}, 2, "bc"},
+		{"a tie keeps name order", []int{7, 7, 9, 7}, 3, "cab"},
+		{"exactly the cap", []int{1, 2, 3}, 3, "cba"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := names(biggest(cards(tc.entries...), tc.n)); got != tc.want {
+				t.Errorf("biggest = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

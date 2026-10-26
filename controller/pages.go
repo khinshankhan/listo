@@ -15,6 +15,7 @@ func pageRoutes(mux *http.ServeMux, pages *handler.Pages) {
 	// the id is the key, the slug a redirect away
 	mux.HandleFunc("GET /entries/{id}", pages.Entry)
 	mux.HandleFunc("GET /entries/{id}/{slug}", pages.Entry)
+	mux.HandleFunc("GET /groups", pages.Groups)
 	mux.HandleFunc("GET /groups/{id}", pages.Group)
 	mux.HandleFunc("GET /groups/{id}/{slug}", pages.Group)
 	mux.HandleFunc("GET /groups/{id}/{slug}/orderings/{ordering}", pages.Ordering)
