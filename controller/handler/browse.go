@@ -112,7 +112,7 @@ func (p *Pages) Entries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	v := views.Browse{Filters: filters, Filtered: filtered, View: view, KeepView: clean.Get("view")}
+	v := views.Browse{Filters: filters, Filtered: filtered, View: view, KeepView: clean.Get("view"), Formats: formatOptions(all)}
 	for _, bv := range browseViews {
 		v.Views = append(v.Views, views.SortLink{Label: bv.label, Href: browsePath(with(clean, "view", bv.key)), Active: bv.key == view})
 	}
@@ -260,7 +260,7 @@ func (p *Pages) browseFilters(ctx context.Context, media []views.MediumLink, for
 	}
 	formatFilter, _ := pick("format", "format", formatValues, formatLabels)
 	if len(formats) == 0 {
-		formatFilter.Options[0].Label, formatFilter.Disabled = "pick a type first", true
+		formatFilter.Options[0].Label, formatFilter.Disabled = noType, true
 	}
 	genreFilter, okGenre := pick("genre", "genre", genres, genres)
 	yearFilter, okYear := pick("year", "year", yearValues, yearValues)
@@ -288,6 +288,23 @@ func (p *Pages) browseFilters(ctx context.Context, media []views.MediumLink, for
 		args.Season = &i
 	}
 	return []views.Filter{typeFilter, formatFilter, genreFilter, yearFilter, seasonFilter}, args, true, nil
+}
+
+// noType is the format filter with no type to have formats.
+const noType = "pick a type first"
+
+// formatOptions is the format filter's options for each type, and for no
+// type at all. formats come grouped by medium.
+func formatOptions(formats []sqlcgen.CatalogMediumFormat) []views.FormatOptions {
+	out := []views.FormatOptions{{Options: []views.Option{{Label: noType}}}}
+	for i, f := range formats {
+		if i == 0 || f.Medium != formats[i-1].Medium {
+			out = append(out, views.FormatOptions{Medium: f.Medium, Options: []views.Option{{Label: "any"}}})
+		}
+		last := &out[len(out)-1]
+		last.Options = append(last.Options, views.Option{Value: f.Format, Label: f.Label})
+	}
+	return out
 }
 
 // shelves is each medium's newest entries, the media in the sidebar's order.

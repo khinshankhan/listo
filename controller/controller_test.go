@@ -443,6 +443,14 @@ func TestFrontPages(t *testing.T) {
 			want: []string{">0 entries</h2>"}},
 		{name: "without a type, formats wait for one", path: "/entries", status: http.StatusOK,
 			want: []string{`<label for="filter-format"`, `name="format" disabled`, ">pick a type first</option>"}},
+		// web/src/formats.ts swaps these in, so a type's formats are there before applying
+		{name: "every type's formats are on hand", path: "/entries", status: http.StatusOK,
+			want: []string{`<template data-formats=""><option value="">pick a type first</option></template>`,
+				`<template data-formats="anime"><option value="">any</option><option value="tv">anime</option><option value="ova">OVA</option></template>`,
+				`<template data-formats="visual_novel"><option value="">any</option><option value="full">visual novel</option></template>`}},
+		// a restored select would disagree with the formats the page was served with
+		{name: "the filters follow the address, not the browser's memory", path: "/entries?medium=anime", status: http.StatusOK,
+			want: []string{`name="medium" autocomplete="off"`, `name="format" autocomplete="off"`}},
 		{name: "a card's format browses that format", path: "/entries?genre=sci-fi", status: http.StatusOK,
 			want: []string{`href="/entries?format=tv&amp;medium=anime"`}},
 		{name: "a filter shows what it chose", path: "/entries?genre=sci-fi", status: http.StatusOK,

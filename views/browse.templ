@@ -6,7 +6,8 @@ import (
 )
 
 // BrowsePage is the catalog: filters, then shelves or the filtered grid. The
-// filters wait for "apply" rather than jumping on change.
+// filters wait for "apply" rather than jumping on change, though the formats
+// follow the type straight away.
 templ BrowsePage(b Browse) {
 	<div class="flex flex-col gap-6">
 		<header class="flex flex-wrap items-center justify-between gap-3">
@@ -28,6 +29,7 @@ templ BrowsePage(b Browse) {
 							id={ "filter-" + f.Name }
 							name={ f.Name }
 							disabled?={ f.Disabled }
+							autocomplete="off"
 							class={ "h-[38px] w-full cursor-pointer appearance-none disabled:cursor-not-allowed rounded-lg border border-border bg-background-2 pr-8 pl-[13px] text-13 leading-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast", filterClass(f) }
 						>
 							for _, o := range f.Options {
@@ -39,6 +41,14 @@ templ BrowsePage(b Browse) {
 						</svg>
 					</div>
 				</div>
+			}
+			// web/src/formats.ts swaps these in when the type changes
+			for _, fo := range b.Formats {
+				<template data-formats={ fo.Medium }>
+					for _, o := range fo.Options {
+						<option value={ o.Value }>{ o.Label }</option>
+					}
+				</template>
 			}
 			if b.KeepView != "" {
 				<input type="hidden" name="view" value={ b.KeepView }/>

@@ -16,6 +16,15 @@ type Browse struct {
 	// KeepView is the view from the address, for the form to send on.
 	View, KeepView string
 	Views          []SortLink
+	// Formats are the format filter's options for each type, and for none,
+	// so picking a type can fill it in before the form is applied.
+	Formats []FormatOptions
+}
+
+// FormatOptions is the format filter's options when Medium is the type.
+type FormatOptions struct {
+	Medium  string
+	Options []Option
 }
 
 // Filter is one dropdown; its first option is "any". Disabled is a filter
