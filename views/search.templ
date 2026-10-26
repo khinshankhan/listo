@@ -59,7 +59,7 @@ templ SearchPage(s Search) {
 				<ul class="flex flex-col border-t border-border">
 					for i, res := range s.Results {
 						<li class={ "flex items-center gap-4 p-3", templ.KV("border-b border-border-subtle", i < len(s.Results)-1) }>
-							<span class="h-14 w-10 shrink-0 rounded-sm bg-placeholder" aria-hidden="true"></span>
+							@cover(res.Cover, resultSlot)
 							<div class="flex min-w-0 flex-1 flex-col gap-1">
 								@Link(LinkProps{Href: res.Href, Variant: LinkNone, Class: "text-15 leading-[18px] font-semibold text-foreground-strong"}) {
 									{ res.Title }

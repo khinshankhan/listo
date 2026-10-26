@@ -94,7 +94,7 @@ templ BrowsePage(b Browse) {
 			</div>
 		} else {
 			if len(b.Shelves) > 0 {
-				for _, s := range b.Shelves {
+				for i, s := range b.Shelves {
 					<section class="flex flex-col gap-4" aria-labelledby={ "shelf-" + s.ID }>
 						<div class="flex items-baseline justify-between gap-3">
 							<h2 id={ "shelf-" + s.ID } class="text-20 leading-6 font-semibold tracking-[-0.025em] text-foreground-strong">{ s.Title }</h2>
@@ -103,7 +103,7 @@ templ BrowsePage(b Browse) {
 							}
 						</div>
 						if b.View == "cards" {
-							@cardRow(s.Title, s.Cards)
+							@cardRow(s.Title, s.Cards, i == 0)
 						} else {
 							@entryView(b.View, s.Cards[:min(len(s.Cards), listShelf)])
 						}
@@ -137,7 +137,7 @@ templ entryList(cards []Card, covers bool) {
 		for _, c := range cards {
 			if covers {
 				<li class="flex items-center gap-4 border-b border-border-subtle px-3 py-[11px]">
-					<span class="h-[46px] w-[33px] shrink-0 rounded-sm bg-placeholder" aria-hidden="true"></span>
+					@cover(c.Cover, rowSlot)
 					<span class="flex min-w-0 flex-col gap-1">
 						@Link(LinkProps{Href: c.Href, Variant: LinkNone, Class: "text-14 leading-[18px] font-semibold wrap-break-word text-foreground-strong"}) {
 							{ c.Title }
@@ -180,8 +180,8 @@ templ formatLink(label, href, class string) {
 // cardGrid is entries as covers, coverCols across.
 templ cardGrid(cards []Card) {
 	<ul class={ "grid grid-cols-[repeat(var(--cols),minmax(0,1fr))] gap-x-[18px] gap-y-6", coverCols }>
-		for _, c := range cards {
-			@card(c)
+		for i, c := range cards {
+			@card(c, i < aboveFold)
 		}
 	</ul>
 }
@@ -190,7 +190,7 @@ templ cardGrid(cards []Card) {
 // scrolling sideways past the screen. It runs on into the page's margin, so
 // the next cover shows past the content's edge and the row reads as one that
 // scrolls. On a phone the covers keep one size, for a wider peek.
-templ cardRow(title string, cards []Card) {
+templ cardRow(title string, cards []Card, first bool) {
 	// the scroller clips, so the list pads itself by a focus ring's reach and
 	// the row steps back as far: the end cards' rings show, the covers stay put.
 	// On the right it steps out over the page's margin and pads that back, so
@@ -198,17 +198,18 @@ templ cardRow(title string, cards []Card) {
 	// keeps a ring there when focus scrolls a card in
 	<div class="-mx-1 -mr-4 scroll-px-1 scroll-pr-5 overflow-x-auto rounded-sm pb-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast sm:-mr-10 sm:scroll-pr-11" tabindex="0" role="region" aria-label={ title + ", scrolls sideways" }>
 		<ul class={ "grid w-max auto-cols-[140px] grid-flow-col gap-x-[18px] px-1 pr-4 sm:pr-10 @min-[480px]:auto-cols-[calc((100cqw-(var(--cols)-1)*18px)/var(--cols))]", coverCols }>
-			for _, c := range cards {
-				@card(c)
+			for i, c := range cards {
+				@card(c, first && i < aboveFold)
 			}
 		</ul>
 	</div>
 }
 
-// card is one entry's cover, title and what it is.
-templ card(c Card) {
+// card is one entry's cover, title and what it is. Eager covers are the
+// ones in view as the page opens.
+templ card(c Card, eager bool) {
 	<li class="flex min-w-0 flex-col gap-[10px]">
-		@cover(c.Cover, cardSlot)
+		@cover(c.Cover, cardSlot(eager))
 		<span class="flex flex-col gap-1">
 			@Link(LinkProps{Href: c.Href, Variant: LinkNone, Class: "text-14 leading-[19px] font-semibold tracking-[-0.012em] wrap-break-word text-foreground-strong"}) {
 				{ c.Title }

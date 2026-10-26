@@ -122,7 +122,7 @@ templ position(pos Position, more bool) {
 // note on why it's here.
 templ stepRow(st Step, aside string) {
 	<div class="flex items-start gap-[14px]">
-		<span class={ "h-[58px] w-[41px] shrink-0 rounded-sm bg-placeholder", templ.KV("opacity-60", st.Skip) } aria-hidden="true"></span>
+		@cover(st.Cover, stepSlot(st.Skip))
 		<div class="flex min-w-0 flex-1 flex-col gap-[5px]">
 			<div class="flex flex-wrap items-center gap-x-[9px] gap-y-1">
 				if st.Skip {

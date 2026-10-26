@@ -56,6 +56,13 @@ func (p *Pages) Search(w http.ResponseWriter, r *http.Request) {
 		}
 		v.Searched = true
 		v.Results = resultsFor(hits)
+		for i, h := range hits {
+			if h.Type == "entry" {
+				v.Results[i].Cover = coverOf(p.store, deref(h.MediumLabel), h.Title, h.StartDate, h.CoverKey, h.CoverWidth, h.CoverHeight, h.CoverFit)
+			} else {
+				v.Results[i].Cover = views.Cover{Medium: deref(h.GroupKind), Title: h.Title}
+			}
+		}
 
 		if len(hits) == 0 {
 			near, err := p.catalog.TitleSuggestions(ctx, sqlcgen.TitleSuggestionsParams{Q: q, AtLeast: nearTitle, MaxResults: suggestions})

@@ -53,7 +53,7 @@ type httpServer struct {
 
 func newHTTPServer(addr string, bundle *web.Bundle, db handler.Pinger, catalog handler.Catalog, store media.Store) *httpServer {
 	api := handler.NewAPI(db, catalog)
-	pages := handler.NewPages(bundle.Tags, catalog)
+	pages := handler.NewPages(bundle.Tags, catalog, store)
 
 	// first listed is outermost
 	// NOTE: BlackHole wraps the mux directly, it reads the mux's routes

@@ -19,7 +19,7 @@ func TestOrderingsKeepTheirShape(t *testing.T) {
 			Medium: "anime", Format: "tv", FormatLabel: "anime"}
 	}
 
-	got := orderings([]sqlcgen.GroupOrderingsRow{
+	got := orderings(nil, []sqlcgen.GroupOrderingsRow{
 		row(first, "start here", 1, 1, 1, 1, "Series", nil),
 		// position 2 forks: one film, or two recap films in order
 		row(first, "start here", 2, 1, 1, 2, "Film", &arc),
@@ -32,7 +32,8 @@ func TestOrderingsKeepTheirShape(t *testing.T) {
 	}, "/groups/9/g")
 
 	step := func(id, title string) views.Step {
-		return views.Step{Title: title, Href: "/entries/" + id + "/s", Medium: "anime", FormatHref: "/entries?format=tv&medium=anime"}
+		return views.Step{Title: title, Href: "/entries/" + id + "/s", Medium: "anime", FormatHref: "/entries?format=tv&medium=anime",
+			Cover: views.Cover{Medium: "anime", Title: title}}
 	}
 	want := []views.Ordering{
 		{ID: first, Kind: "recommended", Name: "start here", Href: "/groups/9/g/orderings/" + first.String() + "/start-here", Positions: []views.Position{

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/khinshankhan/listo/data/sqlcgen"
+	"github.com/khinshankhan/listo/media"
 	"github.com/khinshankhan/listo/views"
 )
 
@@ -94,13 +95,13 @@ func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow,
 		}
 		v.Sorts = append(v.Sorts, link)
 	}
-	v.Sections = entrySections(rows, by, g.Name)
+	v.Sections = entrySections(p.store, rows, by, g.Name)
 
 	steps, err := p.catalog.GroupOrderings(ctx, g.ID)
 	if err != nil {
 		return v, fmt.Errorf("orderings: %w", err)
 	}
-	v.Orderings = orderings(steps, canonical)
+	v.Orderings = orderings(p.store, steps, canonical)
 	if len(v.Orderings) > 0 {
 		v.StartHere = "#start-here"
 	}
@@ -201,7 +202,7 @@ func continuityCards(rows []sqlcgen.GroupEntriesRow) []views.ContinuityCard {
 
 // entrySections groups the entries for the page. Rows arrive in release
 // order, which each section keeps.
-func entrySections(rows []sqlcgen.GroupEntriesRow, by, franchise string) []views.EntrySection {
+func entrySections(store media.Store, rows []sqlcgen.GroupEntriesRow, by, franchise string) []views.EntrySection {
 	type section struct {
 		views.EntrySection
 		seen       map[int64]bool
@@ -221,7 +222,7 @@ func entrySections(rows []sqlcgen.GroupEntriesRow, by, franchise string) []views
 		}
 		if !got.seen[r.PublicID] {
 			got.seen[r.PublicID] = true
-			got.Rows = append(got.Rows, entryRow(r))
+			got.Rows = append(got.Rows, entryRow(store, r))
 		}
 	}
 
@@ -275,7 +276,7 @@ func entrySections(rows []sqlcgen.GroupEntriesRow, by, franchise string) []views
 	return out
 }
 
-func entryRow(r sqlcgen.GroupEntriesRow) views.EntryRow {
+func entryRow(store media.Store, r sqlcgen.GroupEntriesRow) views.EntryRow {
 	var detail []string
 	if r.StartDate != nil && r.StartPrecision != nil {
 		detail = append(detail, when(r.Medium, r.Format, *r.StartDate, *r.StartPrecision))
@@ -292,6 +293,7 @@ func entryRow(r sqlcgen.GroupEntriesRow) views.EntryRow {
 		Medium:     r.FormatLabel,
 		FormatHref: formatPath(r.Medium, r.Format),
 		Detail:     strings.Join(detail, " · "),
+		Cover:      coverOf(store, r.MediumLabel, r.Title, r.StartDate, r.CoverKey, r.CoverWidth, r.CoverHeight, r.CoverFit),
 	}
 }
 

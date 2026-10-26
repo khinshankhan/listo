@@ -176,6 +176,20 @@ func TestCatalogPages(t *testing.T) {
 		dontWant []string
 		once     []string
 	}{
+		{name: "a cover over its stand-in, every variant offered", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
+			want: []string{`<span class="font-mono text-[max(8px,7cqi)] leading-none @max-[72px]:hidden">2011</span>`,
+				`class="absolute inset-0 size-full transition-opacity duration-300 motion-reduce:transition-none object-cover object-[50%_30%]"`,
+				`src="/media/` + sgCover + `-320.jpg" srcset="/media/` + sgCover + `-160.jpg 160w, /media/` + sgCover + `-320.jpg 320w, /media/` + sgCover + `-600.jpg 600w"`,
+				// the top of the page, so it loads straight away
+				`sizes="210px" width="600" height="840" alt="" decoding="async" data-cover>`}},
+		{name: "no cover, just the stand-in", path: "/entries/8/steins-gate-movie", status: http.StatusOK,
+			want:     []string{`@max-[72px]:hidden">Steins;Gate: The Movie - Load Region of Déjà Vu</span>`, `@max-[72px]:hidden">2013</span>`},
+			dontWant: []string{"<img"}},
+		{name: "list rows wait to be scrolled to", path: "/entries?medium=anime&view=list", status: http.StatusOK,
+			want: []string{`<span class="@container relative block shrink-0 overflow-hidden bg-placeholder h-[46px] w-[33px] rounded-sm">`,
+				`sizes="33px" width="600" height="840" alt="" loading="lazy" decoding="async" data-cover>`}},
+		{name: "the first row of covers loads straight away", path: "/entries?medium=anime", status: http.StatusOK,
+			want: []string{`sizes="(min-width: 960px) 200px, (min-width: 640px) 25vw, (min-width: 480px) 33vw, 50vw" width="600" height="840" alt="" decoding="async" data-cover>`}},
 		{name: "canonical", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
 			want: []string{"Steins;Gate</h1>",
 				`<link rel="canonical" href="/entries/7/steins-gate-anime">`,
@@ -618,6 +632,7 @@ func (fakeCatalog) EntryByPublicID(_ context.Context, id int64) (sqlcgen.EntryBy
 			ID: sgAnime, PublicID: 7, Slug: "steins-gate-anime", Medium: "anime", MediumLabel: "anime",
 			Format: "tv", FormatLabel: "anime", Country: &jp, Title: "Steins;Gate", StartDate: &start,
 			StartPrecision: &month, UnitKind: "episode", UnitTotal: &total,
+			CoverKey: &sgCover, CoverWidth: &sgCoverWidth, CoverHeight: &sgCoverHeight, CoverFit: &sgCoverFit,
 		}, nil
 	case 8:
 		start := time.Date(2013, 4, 20, 0, 0, 0, 0, time.UTC)
@@ -886,13 +901,21 @@ func (fakeCatalog) MediumCounts(context.Context) ([]sqlcgen.MediumCountsRow, err
 
 // browseRows is the fake catalog as browse sees it: the anime dated to the
 // month and tagged sci-fi, the VN only to the year.
+// Steins;Gate's anime has a cover, 600x840; everything else is a stand-in.
+var (
+	sgCover                     = "cover/3f/a1/" + strings.Repeat("3fa1", 16)
+	sgCoverWidth, sgCoverHeight = int32(600), int32(840)
+	sgCoverFit                  = "cover"
+)
+
 func browseRows() []sqlcgen.BrowseShelvesRow {
 	month, year, total := "month", "year", int32(24)
 	anime := time.Date(2011, 4, 1, 0, 0, 0, 0, time.UTC)
 	vn := time.Date(2009, 1, 1, 0, 0, 0, 0, time.UTC)
 	return []sqlcgen.BrowseShelvesRow{
 		{PublicID: 7, Slug: "steins-gate-anime", Title: "Steins;Gate", Medium: "anime", MediumLabel: "anime", Format: "tv",
-			FormatLabel: "anime", StartDate: &anime, StartPrecision: &month, UnitKind: "episode", UnitTotal: &total},
+			FormatLabel: "anime", StartDate: &anime, StartPrecision: &month, UnitKind: "episode", UnitTotal: &total,
+			CoverKey: &sgCover, CoverWidth: &sgCoverWidth, CoverHeight: &sgCoverHeight, CoverFit: &sgCoverFit},
 		{PublicID: 6, Slug: "steins-gate-vn", Title: "Steins;Gate", Medium: "visual_novel", MediumLabel: "visual novel",
 			Format: "full", FormatLabel: "visual novel", StartDate: &vn, StartPrecision: &year, UnitKind: "none"},
 	}
@@ -931,7 +954,8 @@ func (fakeCatalog) BrowseEntries(_ context.Context, arg sqlcgen.BrowseEntriesPar
 		}
 		out = append(out, sqlcgen.BrowseEntriesRow{PublicID: r.PublicID, Slug: r.Slug, Title: r.Title, Medium: r.Medium,
 			MediumLabel: r.MediumLabel, Format: r.Format, FormatLabel: r.FormatLabel, StartDate: r.StartDate,
-			StartPrecision: r.StartPrecision, UnitKind: r.UnitKind, UnitTotal: r.UnitTotal, Total: int32(len(matches))})
+			StartPrecision: r.StartPrecision, UnitKind: r.UnitKind, UnitTotal: r.UnitTotal, Total: int32(len(matches)),
+			CoverKey: r.CoverKey, CoverWidth: r.CoverWidth, CoverHeight: r.CoverHeight, CoverFit: r.CoverFit})
 	}
 	return out, nil
 }

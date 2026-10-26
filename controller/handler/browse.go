@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/khinshankhan/listo/data/sqlcgen"
+	"github.com/khinshankhan/listo/media"
 	"github.com/khinshankhan/listo/views"
 )
 
@@ -129,7 +130,7 @@ func (p *Pages) Entries(w http.ResponseWriter, r *http.Request) {
 		}
 		v.Cards = []views.Card{}
 		for _, e := range rows {
-			v.Cards = append(v.Cards, card(pagedCard(e)))
+			v.Cards = append(v.Cards, card(p.store, pagedCard(e)))
 			v.Total = int(e.Total)
 		}
 		v.Page, v.Pages = page, max(1, (v.Total+browsePage-1)/browsePage)
@@ -315,7 +316,7 @@ func (p *Pages) shelves(ctx context.Context, media []views.MediumLink, view stri
 	}
 	byMedium := map[string][]views.Card{}
 	for _, e := range rows {
-		byMedium[e.Medium] = append(byMedium[e.Medium], card(e))
+		byMedium[e.Medium] = append(byMedium[e.Medium], card(p.store, e))
 	}
 	var out []views.Shelf
 	for _, m := range media[1:] {
@@ -334,12 +335,13 @@ func (p *Pages) shelves(ctx context.Context, media []views.MediumLink, view stri
 func pagedCard(e sqlcgen.BrowseEntriesRow) sqlcgen.BrowseShelvesRow {
 	return sqlcgen.BrowseShelvesRow{PublicID: e.PublicID, Slug: e.Slug, Title: e.Title, Medium: e.Medium, MediumLabel: e.MediumLabel,
 		Format: e.Format, FormatLabel: e.FormatLabel, StartDate: e.StartDate, StartPrecision: e.StartPrecision,
-		UnitKind: e.UnitKind, UnitTotal: e.UnitTotal}
+		UnitKind: e.UnitKind, UnitTotal: e.UnitTotal,
+		CoverKey: e.CoverKey, CoverWidth: e.CoverWidth, CoverHeight: e.CoverHeight, CoverFit: e.CoverFit}
 }
 
 // card is an entry for browsing: its format, and the rest of its meta eg
 // "spring 2011 · 24 episodes".
-func card(e sqlcgen.BrowseShelvesRow) views.Card {
+func card(store media.Store, e sqlcgen.BrowseShelvesRow) views.Card {
 	var meta []string
 	if e.StartDate != nil && e.StartPrecision != nil {
 		meta = append(meta, when(e.Medium, e.Format, *e.StartDate, *e.StartPrecision))
@@ -347,11 +349,7 @@ func card(e sqlcgen.BrowseShelvesRow) views.Card {
 	if e.UnitTotal != nil && e.UnitKind != "none" {
 		meta = append(meta, plural(int(*e.UnitTotal), e.UnitKind, e.UnitKind+"s"))
 	}
-	c := views.Card{Title: e.Title, Href: EntryPath(e.PublicID, e.Slug), Format: e.FormatLabel,
-		FormatHref: formatPath(e.Medium, e.Format), Meta: strings.Join(meta, " · ")}
-	c.Cover = views.Cover{Medium: e.MediumLabel, Title: e.Title}
-	if e.StartDate != nil {
-		c.Cover.Year = e.StartDate.Format("2006")
-	}
-	return c
+	return views.Card{Title: e.Title, Href: EntryPath(e.PublicID, e.Slug), Format: e.FormatLabel,
+		FormatHref: formatPath(e.Medium, e.Format), Meta: strings.Join(meta, " · "),
+		Cover: coverOf(store, e.MediumLabel, e.Title, e.StartDate, e.CoverKey, e.CoverWidth, e.CoverHeight, e.CoverFit)}
 }

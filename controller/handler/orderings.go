@@ -44,7 +44,7 @@ func (p *Pages) Ordering(w http.ResponseWriter, r *http.Request) {
 		p.serverError(w, r, err)
 		return
 	}
-	all := orderings(rows, group)
+	all := orderings(p.store, rows, group)
 	at := -1
 	for i, o := range all {
 		if o.ID == orderingID {

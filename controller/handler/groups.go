@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/khinshankhan/listo/data/sqlcgen"
+	"github.com/khinshankhan/listo/media"
 	"github.com/khinshankhan/listo/views"
 )
 
@@ -89,7 +90,7 @@ func (p *Pages) groupPage(w http.ResponseWriter, r *http.Request, g sqlcgen.Grou
 // steps. Rows arrive sorted by ordering, position, branch, step.
 // orderings folds a group's ordering rows into paths. group is the group's
 // page, which each ordering's lives under.
-func orderings(rows []sqlcgen.GroupOrderingsRow, group string) []views.Ordering {
+func orderings(store media.Store, rows []sqlcgen.GroupOrderingsRow, group string) []views.Ordering {
 	var out []views.Ordering
 	var section string
 	for i, row := range rows {
@@ -131,6 +132,7 @@ func orderings(rows []sqlcgen.GroupOrderingsRow, group string) []views.Ordering 
 			FormatHref: formatPath(row.Medium, row.Format),
 			Detail:     stepDetail(row),
 			Skip:       row.Necessity == "skip_first_time",
+			Cover:      coverOf(store, row.FormatLabel, row.Title, row.StartDate, row.CoverKey, row.CoverWidth, row.CoverHeight, row.CoverFit),
 		}
 		if row.Necessity != "required" {
 			step.Necessity = necessity(row.Necessity)

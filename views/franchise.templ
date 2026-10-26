@@ -115,7 +115,7 @@ templ FranchisePage(f Franchise) {
 				<ul class="flex flex-col">
 					for i, row := range sec.Rows {
 						<li class={ "flex items-center gap-4 px-3 py-[11px]", templ.KV("border-b border-border-subtle", i < len(sec.Rows)-1) }>
-							<span class="h-[46px] w-[33px] shrink-0 rounded-sm bg-placeholder" aria-hidden="true"></span>
+							@cover(row.Cover, rowSlot)
 							<div class="flex min-w-0 flex-1 flex-col gap-1">
 								<div class="flex flex-wrap items-baseline gap-x-[9px] gap-y-1">
 									if row.Position != "" {

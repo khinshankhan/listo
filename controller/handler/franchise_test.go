@@ -42,12 +42,17 @@ func TestFranchiseGrouping(t *testing.T) {
 	}
 
 	vnRow := views.EntryRow{Title: "Steins;Gate", Href: "/entries/6/vn", Role: "source material", Medium: "visual novel",
-		FormatHref: "/entries?format=full&medium=visual_novel", Detail: "2009"}
+		FormatHref: "/entries?format=full&medium=visual_novel", Detail: "2009",
+		Cover: views.Cover{Medium: "visual novel", Title: "Steins;Gate", Year: "2009"}}
 	animeRow := views.EntryRow{Title: "Steins;Gate", Href: "/entries/7/anime", Role: "adaptation of the VN", Medium: "anime",
-		FormatHref: "/entries?format=tv&medium=anime", Detail: "spring 2011 · 24 episodes"}
-	filmRow := views.EntryRow{Title: "The Movie", Href: "/entries/8/film", Medium: "film", FormatHref: "/entries?format=movie&medium=anime", Detail: "2013"}
-	zeroRow := views.EntryRow{Title: "Steins;Gate 0", Href: "/entries/11/zero", Medium: "anime", FormatHref: "/entries?format=tv&medium=anime", Detail: "spring 2018"}
-	looseRow := views.EntryRow{Title: "Loose", Href: "/entries/20/loose", Medium: "anime", FormatHref: "/entries?format=tv&medium=anime"}
+		FormatHref: "/entries?format=tv&medium=anime", Detail: "spring 2011 · 24 episodes",
+		Cover: views.Cover{Medium: "anime", Title: "Steins;Gate", Year: "2011"}}
+	filmRow := views.EntryRow{Title: "The Movie", Href: "/entries/8/film", Medium: "film", FormatHref: "/entries?format=movie&medium=anime", Detail: "2013",
+		Cover: views.Cover{Medium: "anime", Title: "The Movie", Year: "2013"}}
+	zeroRow := views.EntryRow{Title: "Steins;Gate 0", Href: "/entries/11/zero", Medium: "anime", FormatHref: "/entries?format=tv&medium=anime", Detail: "spring 2018",
+		Cover: views.Cover{Medium: "anime", Title: "Steins;Gate 0", Year: "2018"}}
+	looseRow := views.EntryRow{Title: "Loose", Href: "/entries/20/loose", Medium: "anime", FormatHref: "/entries?format=tv&medium=anime",
+		Cover: views.Cover{Medium: "anime", Title: "Loose"}}
 
 	cases := []struct {
 		by   string
@@ -71,7 +76,7 @@ func TestFranchiseGrouping(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.by, func(t *testing.T) {
-			if got := entrySections(rows, tc.by, "Steins;Gate"); !reflect.DeepEqual(got, tc.want) {
+			if got := entrySections(nil, rows, tc.by, "Steins;Gate"); !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("got\n%+v\nwant\n%+v", got, tc.want)
 			}
 		})

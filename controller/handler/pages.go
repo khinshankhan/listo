@@ -6,6 +6,7 @@ import (
 	"github.com/a-h/templ"
 	"github.com/khinshankhan/logstox/fields"
 
+	"github.com/khinshankhan/listo/media"
 	"github.com/khinshankhan/listo/platform/logx"
 	"github.com/khinshankhan/listo/views"
 	"github.com/khinshankhan/listo/web"
@@ -15,10 +16,12 @@ import (
 type Pages struct {
 	tags    web.Tags
 	catalog Catalog
+	// store only names images, for their URLs; it never reads them
+	store media.Store
 }
 
-func NewPages(tags web.Tags, catalog Catalog) *Pages {
-	return &Pages{tags: tags, catalog: catalog}
+func NewPages(tags web.Tags, catalog Catalog, store media.Store) *Pages {
+	return &Pages{tags: tags, catalog: catalog, store: store}
 }
 
 func (p *Pages) NotFound(w http.ResponseWriter, r *http.Request) {

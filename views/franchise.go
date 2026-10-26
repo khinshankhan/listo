@@ -61,6 +61,7 @@ type EntrySection struct {
 // which FormatHref browses.
 type EntryRow struct {
 	Position, Title, Href, Role, Medium, FormatHref, Detail string
+	Cover                                                   Cover
 }
 
 // SiblingCard is a group beside this one under the same parent.

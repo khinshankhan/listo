@@ -123,6 +123,7 @@ type Step struct {
 	Title, Href, Units, Necessity, Note string
 	Medium, FormatHref, Detail          string
 	Skip                                bool
+	Cover                               Cover
 }
 
 // SiteLink is a jump-out link to another site's page for the same work.
@@ -204,6 +205,8 @@ type Suggestion struct {
 type Result struct {
 	Title, Href, Meta, Matched            string
 	MatchedAs, Medium, Detail, FormatHref string
+	// Cover is only for the search page; the top bar's suggestions have none
+	Cover Cover
 }
 
 // count is "1 entry", "36 entries".

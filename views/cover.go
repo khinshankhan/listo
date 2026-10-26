@@ -25,10 +25,11 @@ type coverSlot struct {
 }
 
 // imgFit is how an image fills its slot. Titles and faces sit high, so a
-// crop keeps the top.
+// crop keeps the top. A letterboxed one paints its own bars, or the
+// stand-in's words would show around it.
 func (c CoverImage) imgFit() string {
 	if c.Contain {
-		return "object-contain"
+		return "object-contain bg-placeholder"
 	}
 	return "object-cover object-[50%_30%]"
 }
@@ -36,7 +37,29 @@ func (c CoverImage) imgFit() string {
 var (
 	// the entry page's rail; the top of the page, so never lazy
 	entrySlot = coverSlot{Class: "aspect-[5/7] w-[210px] rounded-md", Sizes: "210px"}
-	// browse's grid and shelves, coverCols across
-	cardSlot = coverSlot{Class: "aspect-[5/7] w-full rounded-[9px]",
-		Sizes: "(min-width: 960px) 200px, (min-width: 640px) 25vw, (min-width: 480px) 33vw, 50vw", Lazy: true}
+	// a list row's thumbnail, in browse and on a franchise
+	rowSlot = coverSlot{Class: "h-[46px] w-[33px] rounded-sm", Sizes: "33px", Lazy: true}
+	// a search result's
+	resultSlot = coverSlot{Class: "h-14 w-10 rounded-sm", Sizes: "40px", Lazy: true}
 )
+
+// aboveFold is how many covers of the first row load straight away: the
+// widest grid's row, give or take.
+const aboveFold = 8
+
+// cardSlot is browse's grid and shelves, coverCols across; only the first
+// row loads before it's scrolled to.
+func cardSlot(eager bool) coverSlot {
+	return coverSlot{Class: "aspect-[5/7] w-full rounded-[9px]",
+		Sizes: "(min-width: 960px) 200px, (min-width: 640px) 25vw, (min-width: 480px) 33vw, 50vw", Lazy: !eager}
+}
+
+// stepSlot is an ordering step's thumbnail, faded with the step when it's
+// one to skip.
+func stepSlot(skip bool) coverSlot {
+	s := coverSlot{Class: "h-[58px] w-[41px] rounded-sm", Sizes: "41px", Lazy: true}
+	if skip {
+		s.Class += " opacity-60"
+	}
+	return s
+}

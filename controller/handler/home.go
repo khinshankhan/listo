@@ -113,7 +113,7 @@ func (p *Pages) orderingGuide(ctx context.Context) (*views.OrderingGuide, error)
 		return nil, fmt.Errorf("guide orderings: %w", err)
 	}
 
-	for _, o := range orderings(rows, GroupPath(g.PublicID, g.Slug)) {
+	for _, o := range orderings(p.store, rows, GroupPath(g.PublicID, g.Slug)) {
 		if o.Name != guideOrdering {
 			continue
 		}
