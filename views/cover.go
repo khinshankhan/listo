@@ -45,6 +45,24 @@ var (
 	relatedSlot = coverSlot{Class: "h-[52px] w-[37px] rounded-sm", Sizes: "37px", Lazy: true}
 )
 
+// guideSlots are a guide's stacked covers, the first in front.
+var guideSlots = [3]coverSlot{
+	{Class: "absolute top-0 left-[30px] h-20 w-14 rounded-sm border-2 border-background-2", Sizes: "56px", Lazy: true},
+	{Class: "absolute top-1 left-[15px] h-20 w-14 rounded-sm border-2 border-background-2", Sizes: "56px", Lazy: true},
+	{Class: "absolute top-2 left-0 h-20 w-14 rounded-sm border-2 border-background-2", Sizes: "56px", Lazy: true},
+}
+
+// stackOrder paints a guide's covers back to front.
+var stackOrder = []int{2, 1, 0}
+
+// coverAt is covers[i], or a blank stand-in past the end.
+func coverAt(covers []Cover, i int) Cover {
+	if i < len(covers) {
+		return covers[i]
+	}
+	return Cover{}
+}
+
 // aboveFold is how many covers of the first row load straight away: the
 // widest grid's row, give or take.
 const aboveFold = 8

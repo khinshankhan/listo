@@ -22,6 +22,8 @@ type FranchiseGuide struct {
 	Name, Href, Blurb string
 	Stats             []string
 	Continuities      []GuideColumn
+	// Covers are the first few entries', stacked by the name
+	Covers []Cover
 }
 
 // GuideColumn is one continuity's first few entries.
@@ -42,6 +44,8 @@ type OrderingGuide struct {
 	Stats      []string
 	Steps      []GuideStep
 	Total      int
+	// Covers are the first few steps', stacked by the name
+	Covers []Cover
 }
 
 // GuideStep is one step of a preview. Necessity is "required",

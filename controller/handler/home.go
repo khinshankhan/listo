@@ -25,6 +25,8 @@ const (
 	// guideSteps and guideRows are how much of each guide a preview shows
 	guideSteps = 5
 	guideRows  = 3
+	// guideCovers is how many covers stack by a guide's name
+	guideCovers = 3
 )
 
 // Home is what listo is, the search, and a preview of the guides. A guide
@@ -93,6 +95,9 @@ func (p *Pages) franchiseGuide(ctx context.Context) (*views.FranchiseGuide, erro
 			}
 			seen[r.PublicID] = true
 			col.Rows = append(col.Rows, views.GuideRow{Title: r.Title, Href: EntryPath(r.PublicID, r.Slug), Meta: withYear(r.FormatLabel, r.StartDate)})
+			if len(guide.Covers) < guideCovers {
+				guide.Covers = append(guide.Covers, coverOf(p.store, r.MediumLabel, r.Title, r.StartDate, r.CoverKey, r.CoverWidth, r.CoverHeight, r.CoverFit))
+			}
 		}
 		guide.Continuities = append(guide.Continuities, col)
 	}
@@ -134,6 +139,9 @@ func (p *Pages) orderingGuide(ctx context.Context) (*views.OrderingGuide, error)
 				need = "required"
 			}
 			guide.Steps = append(guide.Steps, views.GuideStep{Number: pos.Ordinal, Title: st.Title, Href: st.Href, Note: st.Note, Necessity: need})
+			if len(guide.Covers) < guideCovers {
+				guide.Covers = append(guide.Covers, st.Cover)
+			}
 		}
 		return guide, nil
 	}

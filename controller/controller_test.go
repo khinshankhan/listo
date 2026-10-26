@@ -445,6 +445,13 @@ func TestFrontPages(t *testing.T) {
 		{name: "home previews a franchise guide", path: "/", status: http.StatusOK,
 			want: []string{`<a href="/groups/2/steins-gate">Steins;Gate</a></h3>`, "<span>1 entry</span>", "alternate episode 23β",
 				">Main timeline</span>", `href="/entries/7/steins-gate-anime">Steins;Gate</a>`, ">anime · 2011</span>"}},
+		// one entry, so one cover in front and two blanks behind it
+		{name: "a guide stacks its first covers by its name", path: "/", status: http.StatusOK,
+			want: []string{`<span class="@container relative block shrink-0 overflow-hidden bg-placeholder absolute top-2 left-0 h-20 w-14 rounded-sm border-2 border-background-2">`,
+				`<span class="@container relative block shrink-0 overflow-hidden bg-placeholder absolute top-0 left-[30px] h-20 w-14 rounded-sm border-2 border-background-2"><span class="flex h-full flex-col justify-between`,
+				`src="/media/` + sgCover + `-320.jpg"`,
+				// painted last, so it sits on top
+				`sizes="56px" width="600" height="840" alt="" loading="lazy" decoding="async" data-cover></span></span><div class="flex flex-col gap-[7px]">`}},
 		{name: "home previews an ordering guide", path: "/", status: http.StatusOK,
 			want: []string{`<a href="/groups/103/monogatari/orderings/01a151f2-0000-7000-8000-00000000f103/first-timer-order">Monogatari</a></h3>`,
 				"<span>6 steps</span>", "<span>68 episodes</span>", `href="/entries/104/bakemonogatari">Bakemonogatari</a>`,
@@ -1287,6 +1294,7 @@ func (fakeCatalog) GroupEntries(_ context.Context, id uuid.UUID) ([]sqlcgen.Grou
 		FormatLabel: anime, StartDate: &start, StartPrecision: &month, UnitKind: "episode", UnitTotal: &total, Role: &role,
 		BranchPublicID: 3, BranchSlug: "steins-gate-main", BranchType: "group", BranchName: &main, BranchKind: &continuity,
 		BranchStanding: &primary,
+		CoverKey:       &sgCover, CoverWidth: &sgCoverWidth, CoverHeight: &sgCoverHeight, CoverFit: &sgCoverFit,
 	}}, nil
 }
 

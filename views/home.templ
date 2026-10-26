@@ -229,7 +229,7 @@ templ guides(h Home) {
 		<ul class="grid grid-cols-1 gap-4 md:grid-cols-2">
 			if f := h.Franchise; f != nil {
 				<li class="flex flex-col gap-4 rounded-xl border border-border bg-background-2 p-5">
-					@guideHead("franchise", f.Name, f.Href, f.Stats)
+					@guideHead("franchise", f.Name, f.Href, f.Stats, f.Covers)
 					if f.Blurb != "" {
 						<p class="text-14 leading-[21px] text-foreground-muted">{ f.Blurb }</p>
 					}
@@ -258,7 +258,7 @@ templ guides(h Home) {
 			}
 			if o := h.Ordering; o != nil {
 				<li class="flex flex-col gap-4 rounded-xl border border-border bg-background-2 p-5">
-					@guideHead("ordering", o.Name, o.Href, o.Stats)
+					@guideHead("ordering", o.Name, o.Href, o.Stats, o.Covers)
 					<ol class="flex flex-col border-t border-border-subtle">
 						for _, st := range o.Steps {
 							<li class="flex items-center gap-3 border-b border-border-subtle py-[9px]">
@@ -292,13 +292,14 @@ templ guides(h Home) {
 	</section>
 }
 
-// guideHead is a guide card's stacked covers, kind, linked name and stats.
-templ guideHead(kind, name, href string, stats []string) {
+// guideHead is a guide card's stacked covers, the first three entries' with
+// the first in front, then its kind, linked name and stats.
+templ guideHead(kind, name, href string, stats []string, covers []Cover) {
 	<div class="flex gap-4">
 		<span class="relative h-[92px] w-[86px] shrink-0" aria-hidden="true">
-			<span class="absolute top-2 left-0 h-20 w-14 rounded-sm border-2 border-background-2 bg-placeholder"></span>
-			<span class="absolute top-1 left-[15px] h-20 w-14 rounded-sm border-2 border-background-2 bg-placeholder"></span>
-			<span class="absolute top-0 left-[30px] h-20 w-14 rounded-sm border-2 border-background-2 bg-placeholder"></span>
+			for _, i := range stackOrder {
+				@cover(coverAt(covers, i), guideSlots[i])
+			}
 		</span>
 		<div class="flex flex-col gap-[7px]">
 			<p class="font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">{ kind }</p>
