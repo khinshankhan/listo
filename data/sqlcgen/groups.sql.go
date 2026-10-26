@@ -87,7 +87,8 @@ select n.public_id, n.slug, e.title, e.medium, m.label as medium_label, e.format
        mf.label as format_label, e.start_date, e.start_precision, e.unit_kind, e.unit_total,
        ms.role, ms.position_label,
        b.public_id as branch_public_id, b.slug as branch_slug, b.type as branch_type,
-       bg.name as branch_name, bg.kind as branch_kind, bg.standing as branch_standing
+       bg.name as branch_name, bg.kind as branch_kind, bg.standing as branch_standing,
+       cover.storage_key as cover_key, cover.width as cover_width, cover.height as cover_height, cover.fit as cover_fit
 from down
 join catalog.entry e on e.id = down.member_id
 join catalog.node n on n.id = e.id
@@ -96,6 +97,13 @@ join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
 join catalog.membership ms on ms.group_id = down.group_id and ms.member_id = down.member_id
 join catalog.node b on b.id = down.branch
 left join catalog.grp bg on bg.id = b.id
+left join catalog.entry_image cover on cover.id = (
+  select i.id
+  from catalog.entry_image i
+  where i.entry_id = e.id and i.kind = 'cover'
+  order by i.is_canon desc, i.width desc, i.id
+  limit 1
+)
 where not down.looped
 order by e.start_date nulls last, e.title
 `
@@ -120,11 +128,16 @@ type GroupEntriesRow struct {
 	BranchName     *string
 	BranchKind     *string
 	BranchStanding *string
+	CoverKey       *string
+	CoverWidth     *int32
+	CoverHeight    *int32
+	CoverFit       *string
 }
 
 // Every entry under a group at any depth, with the branch it sits under (the
-// group's direct member it was reached through), and its role and position in
-// its own group. An entry under two branches comes back once for each.
+// group's direct member it was reached through), its role and position in
+// its own group, and its cover. An entry under two branches comes back once
+// for each.
 func (q *Queries) GroupEntries(ctx context.Context, groupID uuid.UUID) ([]GroupEntriesRow, error) {
 	rows, err := q.db.Query(ctx, groupEntries, groupID)
 	if err != nil {
@@ -154,6 +167,10 @@ func (q *Queries) GroupEntries(ctx context.Context, groupID uuid.UUID) ([]GroupE
 			&i.BranchName,
 			&i.BranchKind,
 			&i.BranchStanding,
+			&i.CoverKey,
+			&i.CoverWidth,
+			&i.CoverHeight,
+			&i.CoverFit,
 		); err != nil {
 			return nil, err
 		}
@@ -171,7 +188,8 @@ select o.id as ordering_id, o.kind, o.name, o.rationale, o.origin,
        n.public_id, n.slug, e.title, e.medium, e.format, mf.label as format_label,
        e.start_date, e.start_precision, e.unit_kind, e.unit_total,
        uf.label as unit_from, ut.label as unit_to, uf.ordinal as from_ordinal, ut.ordinal as to_ordinal,
-       oi.necessity, oi.note
+       oi.necessity, oi.note,
+       cover.storage_key as cover_key, cover.width as cover_width, cover.height as cover_height, cover.fit as cover_fit
 from catalog.ordering o
 join catalog.ordering_item oi on oi.ordering_id = o.id
 join catalog.entry e on e.id = oi.entry_id
@@ -179,6 +197,13 @@ join catalog.node n on n.id = e.id
 join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
 left join catalog.unit uf on uf.id = oi.unit_from
 left join catalog.unit ut on ut.id = oi.unit_to
+left join catalog.entry_image cover on cover.id = (
+  select i.id
+  from catalog.entry_image i
+  where i.entry_id = e.id and i.kind = 'cover'
+  order by i.is_canon desc, i.width desc, i.id
+  limit 1
+)
 where o.group_id = $1
 order by case o.kind when 'recommended' then 0 when 'release' then 1 else 2 end,
          o.name, oi.position, oi.branch, oi.step
@@ -210,9 +235,14 @@ type GroupOrderingsRow struct {
 	ToOrdinal      *int32
 	Necessity      string
 	Note           *string
+	CoverKey       *string
+	CoverWidth     *int32
+	CoverHeight    *int32
+	CoverFit       *string
 }
 
-// A group's orderings, recommended first, one row per step.
+// A group's orderings, recommended first, one row per step, each with its
+// entry's cover.
 func (q *Queries) GroupOrderings(ctx context.Context, groupID uuid.UUID) ([]GroupOrderingsRow, error) {
 	rows, err := q.db.Query(ctx, groupOrderings, groupID)
 	if err != nil {
@@ -248,6 +278,10 @@ func (q *Queries) GroupOrderings(ctx context.Context, groupID uuid.UUID) ([]Grou
 			&i.ToOrdinal,
 			&i.Necessity,
 			&i.Note,
+			&i.CoverKey,
+			&i.CoverWidth,
+			&i.CoverHeight,
+			&i.CoverFit,
 		); err != nil {
 			return nil, err
 		}

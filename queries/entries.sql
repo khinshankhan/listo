@@ -1,14 +1,22 @@
 -- name: EntryByPublicID :one
--- An entry by public id, with its medium and format labels. The caller
--- checks the slug.
+-- An entry by public id, with its medium and format labels and its cover:
+-- the canon one, else the widest. The caller checks the slug.
 select n.id, n.public_id, n.slug, e.medium, m.label as medium_label, e.format,
        mf.label as format_label, e.country, e.title, e.description, e.status,
        e.start_date, e.start_precision, e.end_date, e.end_precision,
-       e.unit_kind, e.unit_total, e.unit_available, e.unit_minutes, e.length_minutes, e.source_type
+       e.unit_kind, e.unit_total, e.unit_available, e.unit_minutes, e.length_minutes, e.source_type,
+       cover.storage_key as cover_key, cover.width as cover_width, cover.height as cover_height, cover.fit as cover_fit
 from catalog.node n
 join catalog.entry e on e.id = n.id
 join catalog.medium m on m.medium = e.medium
 join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
+left join catalog.entry_image cover on cover.id = (
+  select i.id
+  from catalog.entry_image i
+  where i.entry_id = e.id and i.kind = 'cover'
+  order by i.is_canon desc, i.width desc, i.id
+  limit 1
+)
 where n.public_id = $1;
 
 -- name: NodeTitles :many

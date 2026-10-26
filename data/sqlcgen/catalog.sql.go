@@ -13,11 +13,19 @@ import (
 const browseEntries = `-- name: BrowseEntries :many
 select n.public_id, n.slug, e.title, e.medium, m.label as medium_label, e.format, mf.label as format_label,
        e.start_date, e.start_precision, e.unit_kind, e.unit_total,
+       cover.storage_key as cover_key, cover.width as cover_width, cover.height as cover_height, cover.fit as cover_fit,
        count(*) over ()::int as total
 from catalog.entry e
 join catalog.node n on n.id = e.id
 join catalog.medium m on m.medium = e.medium
 join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
+left join catalog.entry_image cover on cover.id = (
+  select i.id
+  from catalog.entry_image i
+  where i.entry_id = e.id and i.kind = 'cover'
+  order by i.is_canon desc, i.width desc, i.id
+  limit 1
+)
 where ($1::text is null or e.medium = $1::text)
   and ($2::text is null or e.format = $2::text)
   and ($3::text is null or exists (
@@ -54,13 +62,17 @@ type BrowseEntriesRow struct {
 	StartPrecision *string
 	UnitKind       string
 	UnitTotal      *int32
+	CoverKey       *string
+	CoverWidth     *int32
+	CoverHeight    *int32
+	CoverFit       *string
 	Total          int32
 }
 
 // A page of the entries the filters let through, newest first, each row
-// carrying how many match in all. A format is only ever asked for with its
-// medium. A season is 0 for winter to 3 for fall, and
-// only matches entries dated to the month.
+// carrying its cover and how many match in all. A format is only ever asked
+// for with its medium. A season is 0 for winter to 3 for fall, and only
+// matches entries dated to the month.
 func (q *Queries) BrowseEntries(ctx context.Context, arg BrowseEntriesParams) ([]BrowseEntriesRow, error) {
 	rows, err := q.db.Query(ctx, browseEntries,
 		arg.Medium,
@@ -90,6 +102,10 @@ func (q *Queries) BrowseEntries(ctx context.Context, arg BrowseEntriesParams) ([
 			&i.StartPrecision,
 			&i.UnitKind,
 			&i.UnitTotal,
+			&i.CoverKey,
+			&i.CoverWidth,
+			&i.CoverHeight,
+			&i.CoverFit,
 			&i.Total,
 		); err != nil {
 			return nil, err
@@ -161,10 +177,11 @@ func (q *Queries) BrowseGenres(ctx context.Context) ([]string, error) {
 }
 
 const browseShelves = `-- name: BrowseShelves :many
-select public_id, slug, title, medium, medium_label, format, format_label,
-       start_date, start_precision, unit_kind, unit_total
+select shelf.public_id, shelf.slug, shelf.title, shelf.medium, shelf.medium_label, shelf.format, shelf.format_label,
+       shelf.start_date, shelf.start_precision, shelf.unit_kind, shelf.unit_total,
+       cover.storage_key as cover_key, cover.width as cover_width, cover.height as cover_height, cover.fit as cover_fit
 from (
-  select n.public_id, n.slug, e.title, e.medium, m.label as medium_label, e.format, mf.label as format_label,
+  select e.id, n.public_id, n.slug, e.title, e.medium, m.label as medium_label, e.format, mf.label as format_label,
          e.start_date, e.start_precision, e.unit_kind, e.unit_total,
          row_number() over (partition by e.medium order by e.start_date desc nulls last, e.title, n.public_id) as rank
   from catalog.entry e
@@ -172,8 +189,15 @@ from (
   join catalog.medium m on m.medium = e.medium
   join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
 ) shelf
-where rank <= $1::int
-order by medium, rank
+left join catalog.entry_image cover on cover.id = (
+  select i.id
+  from catalog.entry_image i
+  where i.entry_id = shelf.id and i.kind = 'cover'
+  order by i.is_canon desc, i.width desc, i.id
+  limit 1
+)
+where shelf.rank <= $1::int
+order by shelf.medium, shelf.rank
 `
 
 type BrowseShelvesRow struct {
@@ -188,9 +212,14 @@ type BrowseShelvesRow struct {
 	StartPrecision *string
 	UnitKind       string
 	UnitTotal      *int32
+	CoverKey       *string
+	CoverWidth     *int32
+	CoverHeight    *int32
+	CoverFit       *string
 }
 
-// Each medium's newest entries, at most per_shelf apiece.
+// Each medium's newest entries, at most per_shelf apiece, with a cover each
+// when there is one.
 func (q *Queries) BrowseShelves(ctx context.Context, perShelf int32) ([]BrowseShelvesRow, error) {
 	rows, err := q.db.Query(ctx, browseShelves, perShelf)
 	if err != nil {
@@ -212,6 +241,10 @@ func (q *Queries) BrowseShelves(ctx context.Context, perShelf int32) ([]BrowseSh
 			&i.StartPrecision,
 			&i.UnitKind,
 			&i.UnitTotal,
+			&i.CoverKey,
+			&i.CoverWidth,
+			&i.CoverHeight,
+			&i.CoverFit,
 		); err != nil {
 			return nil, err
 		}
@@ -334,6 +367,7 @@ select n.public_id, n.slug, n.type,
        hit.matched::text as matched, hit.matched_kind::text as matched_kind,
        g.kind as group_kind, e.medium, m.label as medium_label, e.format, mf.label as format_label,
        e.start_date, e.start_precision, e.unit_kind, e.unit_total,
+       cover.storage_key as cover_key, cover.width as cover_width, cover.height as cover_height, cover.fit as cover_fit,
        hit.score::float8 as score
 from (
   select distinct on (t.node_id) t.node_id, t.title as matched, t.kind as matched_kind,
@@ -349,6 +383,13 @@ left join catalog.entry e on e.id = n.id
 left join catalog.grp g on g.id = n.id
 left join catalog.medium m on m.medium = e.medium
 left join catalog.medium_format mf on mf.medium = e.medium and mf.format = e.format
+left join catalog.entry_image cover on cover.id = (
+  select i.id
+  from catalog.entry_image i
+  where i.entry_id = e.id and i.kind = 'cover'
+  order by i.is_canon desc, i.width desc, i.id
+  limit 1
+)
 where $2::text is null or e.medium = $2::text
 order by hit.score desc, title, e.start_date nulls first, n.public_id
 limit $3::int
@@ -376,11 +417,16 @@ type SearchNodesRow struct {
 	StartPrecision *string
 	UnitKind       *string
 	UnitTotal      *int32
+	CoverKey       *string
+	CoverWidth     *int32
+	CoverHeight    *int32
+	CoverFit       *string
 	Score          float64
 }
 
 // Fuzzy title search over entries and groups, one hit per node by its best
-// matching title. Ties go a group before its entries, then oldest first.
+// matching title, an entry with its cover. Ties go a group before its
+// entries, then oldest first.
 // a medium narrows before the limit, so its hits aren't crowded out
 func (q *Queries) SearchNodes(ctx context.Context, arg SearchNodesParams) ([]SearchNodesRow, error) {
 	rows, err := q.db.Query(ctx, searchNodes, arg.Q, arg.Medium, arg.MaxResults)
@@ -407,6 +453,10 @@ func (q *Queries) SearchNodes(ctx context.Context, arg SearchNodesParams) ([]Sea
 			&i.StartPrecision,
 			&i.UnitKind,
 			&i.UnitTotal,
+			&i.CoverKey,
+			&i.CoverWidth,
+			&i.CoverHeight,
+			&i.CoverFit,
 			&i.Score,
 		); err != nil {
 			return nil, err

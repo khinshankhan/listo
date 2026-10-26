@@ -12,21 +12,22 @@ import (
 
 type Querier interface {
 	// A page of the entries the filters let through, newest first, each row
-	// carrying how many match in all. A format is only ever asked for with its
-	// medium. A season is 0 for winter to 3 for fall, and
-	// only matches entries dated to the month.
+	// carrying its cover and how many match in all. A format is only ever asked
+	// for with its medium. A season is 0 for winter to 3 for fall, and only
+	// matches entries dated to the month.
 	BrowseEntries(ctx context.Context, arg BrowseEntriesParams) ([]BrowseEntriesRow, error)
 	// Every medium's formats some entry has, for the filter, so it can follow
 	// the type without asking again.
 	BrowseFormats(ctx context.Context) ([]CatalogMediumFormat, error)
 	// Genres some entry has, for the filter.
 	BrowseGenres(ctx context.Context) ([]string, error)
-	// Each medium's newest entries, at most per_shelf apiece.
+	// Each medium's newest entries, at most per_shelf apiece, with a cover each
+	// when there is one.
 	BrowseShelves(ctx context.Context, perShelf int32) ([]BrowseShelvesRow, error)
 	// Years some entry started in, newest first, for the filter.
 	BrowseYears(ctx context.Context) ([]int32, error)
-	// An entry by public id, with its medium and format labels. The caller
-	// checks the slug.
+	// An entry by public id, with its medium and format labels and its cover:
+	// the canon one, else the widest. The caller checks the slug.
 	EntryByPublicID(ctx context.Context, publicID int64) (EntryByPublicIDRow, error)
 	// Who made an entry, by role then name.
 	EntryCompanies(ctx context.Context, entryID uuid.UUID) ([]EntryCompaniesRow, error)
@@ -36,10 +37,12 @@ type Querier interface {
 	// For the few groups the app names itself, whose public ids a reseed renumbers.
 	GroupBySlug(ctx context.Context, slug string) (GroupBySlugRow, error)
 	// Every entry under a group at any depth, with the branch it sits under (the
-	// group's direct member it was reached through), and its role and position in
-	// its own group. An entry under two branches comes back once for each.
+	// group's direct member it was reached through), its role and position in
+	// its own group, and its cover. An entry under two branches comes back once
+	// for each.
 	GroupEntries(ctx context.Context, groupID uuid.UUID) ([]GroupEntriesRow, error)
-	// A group's orderings, recommended first, one row per step.
+	// A group's orderings, recommended first, one row per step, each with its
+	// entry's cover.
 	GroupOrderings(ctx context.Context, groupID uuid.UUID) ([]GroupOrderingsRow, error)
 	// The relations between entries under a group at any depth, for its timeline.
 	GroupRelations(ctx context.Context, groupID uuid.UUID) ([]GroupRelationsRow, error)
@@ -65,7 +68,8 @@ type Querier interface {
 	// have no medium.
 	SearchMedia(ctx context.Context, q_ string) ([]SearchMediaRow, error)
 	// Fuzzy title search over entries and groups, one hit per node by its best
-	// matching title. Ties go a group before its entries, then oldest first.
+	// matching title, an entry with its cover. Ties go a group before its
+	// entries, then oldest first.
 	// a medium narrows before the limit, so its hits aren't crowded out
 	SearchNodes(ctx context.Context, arg SearchNodesParams) ([]SearchNodesRow, error)
 	// Titles near a query that found nothing, closest first, scored both ways
