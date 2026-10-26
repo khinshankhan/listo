@@ -9,9 +9,10 @@
 @source "../../views";
 
 /* always reserve the scrollbar, so pages don't shift sideways between short
-   and long ones */
+   and long ones; and land a #fragment below the sticky top bar */
 html {
   scrollbar-gutter: stable;
+  scroll-padding-top: var(--spacing-topbar);
 }
 
 /* thin scrollbars in the palette, wherever something scrolls. The thumb
@@ -75,8 +76,8 @@ input[type="search"]::-webkit-search-cancel-button:hover {
   display: none;
 }
 
-/* cross-fade between pages; the top bar and sidebar are named, so they hold
-   still, from the top of a page at least (see views/layout.templ) */
+/* cross-fade between pages; the top bar and sidebar are named and sticky,
+   so they hold still */
 @media (prefers-reduced-motion: no-preference) {
   @view-transition {
     navigation: auto;

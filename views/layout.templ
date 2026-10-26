@@ -33,24 +33,6 @@ templ Layout(head Head, tags web.Tags, chrome Chrome) {
 			for _, href := range tags.CSS {
 				<link rel="stylesheet" href={ href }/>
 			}
-			// The cross-page fade names the top bar and sidebar so they hold still,
-			// which only works on a page sitting at its top. Scrolled, the bar is a
-			// screen or more up and the fade would slide it, and the sidebar, across
-			// the page over everything; then they fade with the rest instead. Each
-			// page checks itself leaving and arriving, once a back or a #fragment
-			// has scrolled it. Inline, since pagereveal can beat a module script.
-			<script>
-				for (const type of ["pageswap", "pagereveal"]) {
-					addEventListener(type, (event) => {
-						if (!event.viewTransition) {
-							return;
-						}
-						for (const el of document.querySelectorAll('[class*="view-transition-name:"]')) {
-							el.style.viewTransitionName = scrollY === 0 ? "" : "none";
-						}
-					});
-				}
-			</script>
 			<script type="module" src={ tags.Script }></script>
 			for _, href := range tags.Preload {
 				<link rel="modulepreload" href={ href }/>
@@ -74,17 +56,19 @@ templ Layout(head Head, tags web.Tags, chrome Chrome) {
 	</html>
 }
 
-// topBar is the wordmark corner, browse and search. The corner matches the
-// sidebar's width, and only draws its edge when there's a sidebar under it.
-// A page that hosts the search itself hides it here.
+// topBar is the wordmark corner, browse and search, one height on every page
+// whatever it holds. The corner matches the sidebar's width, and only draws
+// its edge when there's a sidebar under it. A page that hosts the search
+// itself hides it here.
 templ topBar(query string, hideSearch, sidebar bool) {
-	// its view-transition name makes it a stacking context, so it stacks as
-	// a whole: raised, or the page's positioned bits cover the search popover
-	<header class="relative z-20 flex shrink-0 border-b border-border bg-background-2 [view-transition-name:top-bar]">
+	// stuck to the top, so the cross-page fade always finds it in place. Its
+	// view-transition name makes it a stacking context, so it stacks as a
+	// whole: raised, or the page's positioned bits cover the search popover
+	<header class="sticky top-0 z-20 flex h-topbar shrink-0 border-b border-border bg-background-2 [view-transition-name:top-bar]">
 		<div class={ "flex shrink-0 items-center px-4 sm:w-sidebar sm:px-7", templ.KV("lg:border-r lg:border-border", sidebar) }>
 			@Wordmark()
 		</div>
-		<div class="flex min-w-0 flex-1 items-center justify-between gap-[22px] py-[14px] pr-4 sm:px-10">
+		<div class="flex min-w-0 flex-1 items-center justify-between gap-[22px] pr-4 sm:px-10">
 			// min-w-0 down the row, so the search shrinks on a 320px screen
 			<div class="flex min-w-0 flex-1 items-center gap-[14px] sm:gap-[22px]">
 				@Link(LinkProps{Href: "/entries", Variant: LinkNav, Class: "text-14 leading-[18px] font-semibold text-accent-11"}) {
@@ -160,9 +144,10 @@ templ searchPanel(hero bool) {
 	</div>
 }
 
-// sidebar is the catalog nav, hidden on small screens.
+// sidebar is the catalog nav, hidden on small screens. It holds still under
+// the top bar and scrolls on its own when it's taller than the screen.
 templ sidebar(s Sidebar) {
-	<aside class="hidden w-sidebar shrink-0 flex-col border-r border-border bg-background-2 px-5 pt-4 pb-6 lg:flex [view-transition-name:sidebar]">
+	<aside class="sticky top-topbar hidden h-[calc(100dvh-var(--spacing-topbar))] w-sidebar shrink-0 flex-col self-start overflow-y-auto overscroll-contain border-r border-border bg-background-2 px-5 pt-4 pb-6 lg:flex [scrollbar-gutter:stable] [view-transition-name:sidebar]">
 		<nav class="flex flex-col gap-7" aria-label="catalog">
 			@sideSection("catalog") {
 				for _, m := range s.Media {
