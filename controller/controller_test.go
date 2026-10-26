@@ -182,6 +182,9 @@ func TestCatalogPages(t *testing.T) {
 				`src="/media/` + sgCover + `-320.jpg" srcset="/media/` + sgCover + `-160.jpg 160w, /media/` + sgCover + `-320.jpg 320w, /media/` + sgCover + `-600.jpg 600w"`,
 				// the top of the page, so it loads straight away
 				`sizes="210px" width="600" height="840" alt="" decoding="async" data-cover>`}},
+		{name: "related works bring their covers", path: "/entries/7/steins-gate-anime", status: http.StatusOK,
+			want: []string{`<span class="@container relative block shrink-0 overflow-hidden bg-placeholder h-[52px] w-[37px] rounded-sm">`,
+				`sizes="37px" width="600" height="840" alt="" loading="lazy" decoding="async" data-cover>`}},
 		{name: "no cover, just the stand-in", path: "/entries/8/steins-gate-movie", status: http.StatusOK,
 			want:     []string{`@max-[72px]:hidden">Steins;Gate: The Movie - Load Region of Déjà Vu</span>`, `@max-[72px]:hidden">2013</span>`},
 			dontWant: []string{"<img"}},
@@ -777,7 +780,8 @@ func (fakeCatalog) NodeRelations(_ context.Context, id uuid.UUID) ([]sqlcgen.Nod
 		note, ep23 := "branches off episode 23", "Ep. 23"
 		return []sqlcgen.NodeRelationsRow{
 			{Reading: "adaptation of", PublicID: 6, Slug: "steins-gate-vn", Type: "entry",
-				Title: "Steins;Gate", MediumLabel: &vn, StartDate: &year},
+				Title: "Steins;Gate", MediumLabel: &vn, StartDate: &year,
+				CoverKey: &sgCover, CoverWidth: &sgCoverWidth, CoverHeight: &sgCoverHeight, CoverFit: &sgCoverFit},
 			{Reading: "prequel of", PublicID: 11, Slug: "steins-gate-0-anime", Type: "entry",
 				Title: "Steins;Gate 0", Note: &note, MyUnit: &ep23},
 		}, nil

@@ -41,6 +41,8 @@ var (
 	rowSlot = coverSlot{Class: "h-[46px] w-[33px] rounded-sm", Sizes: "33px", Lazy: true}
 	// a search result's
 	resultSlot = coverSlot{Class: "h-14 w-10 rounded-sm", Sizes: "40px", Lazy: true}
+	// a related work's card, under an entry or a franchise
+	relatedSlot = coverSlot{Class: "h-[52px] w-[37px] rounded-sm", Sizes: "37px", Lazy: true}
 )
 
 // aboveFold is how many covers of the first row load straight away: the

@@ -67,7 +67,8 @@ type Querier interface {
 	NodeGroups(ctx context.Context, memberID uuid.UUID) ([]NodeGroupsRow, error)
 	// Jump-out links: only ids are stored, URLs come from the id_source vocabulary.
 	NodeLinks(ctx context.Context, nodeID uuid.UUID) ([]NodeLinksRow, error)
-	// A node's relations, labelled and anchored from its own side.
+	// A node's relations, labelled and anchored from its own side, an entry with
+	// its cover.
 	// NOTE: spoilers are left out until there's UI to hide them.
 	NodeRelations(ctx context.Context, nodeID uuid.UUID) ([]NodeRelationsRow, error)
 	NodeTags(ctx context.Context, nodeID uuid.UUID) ([]NodeTagsRow, error)

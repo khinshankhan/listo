@@ -71,6 +71,7 @@ type Title struct {
 // eg "at Ep. 23".
 type Related struct {
 	Reading, Title, Href, Meta, Anchor, Note string
+	Cover                                    Cover
 }
 
 // GroupRef is a group a node sits in, nearest first.

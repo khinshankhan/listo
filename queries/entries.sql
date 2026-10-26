@@ -36,14 +36,16 @@ where x.node_id = $1
 order by s.site, x.source;
 
 -- name: NodeRelations :many
--- A node's relations, labelled and anchored from its own side.
+-- A node's relations, labelled and anchored from its own side, an entry with
+-- its cover.
 -- NOTE: spoilers are left out until there's UI to hide them.
 select (case when r.from_node = sqlc.arg(node_id)::uuid then rk.label
              else coalesce(rk.inverse_label, rk.label) end)::text as reading,
        rk.family, o.public_id, o.slug, o.type,
        coalesce(e.title, g.name)::text as title,
        m.label as medium_label, e.start_date, r.note,
-       mine.label as my_unit, theirs.label as their_unit
+       mine.label as my_unit, theirs.label as their_unit,
+       cover.storage_key as cover_key, cover.width as cover_width, cover.height as cover_height, cover.fit as cover_fit
 from catalog.relation r
 join catalog.relation_kind rk on rk.kind = r.kind
 join catalog.node o on o.id = case when r.from_node = sqlc.arg(node_id)::uuid then r.to_node else r.from_node end
@@ -52,6 +54,13 @@ left join catalog.grp g on g.id = o.id
 left join catalog.medium m on m.medium = e.medium
 left join catalog.unit mine on mine.id = case when r.from_node = sqlc.arg(node_id)::uuid then r.from_unit else r.to_unit end
 left join catalog.unit theirs on theirs.id = case when r.from_node = sqlc.arg(node_id)::uuid then r.to_unit else r.from_unit end
+left join catalog.entry_image cover on cover.id = (
+  select i.id
+  from catalog.entry_image i
+  where i.entry_id = e.id and i.kind = 'cover'
+  order by i.is_canon desc, i.width desc, i.id
+  limit 1
+)
 where sqlc.arg(node_id)::uuid in (r.from_node, r.to_node)
   and not r.spoiler
 order by rk.family, reading, e.start_date nulls last, coalesce(e.title, g.name);

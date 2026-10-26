@@ -128,7 +128,7 @@ templ factsCard(facts []Fact) {
 // relationCard is one related work and how it relates.
 templ relationCard(r Related) {
 	<li class="flex items-center gap-[13px] rounded-[10px] border border-border bg-background-2 p-[14px]">
-		<span class="h-[52px] w-[37px] shrink-0 rounded-sm bg-placeholder" aria-hidden="true"></span>
+		@cover(r.Cover, relatedSlot)
 		<div class="flex min-w-0 flex-col gap-[3px]">
 			@Link(LinkProps{Href: r.Href, Variant: LinkNone, Class: "text-14 leading-[18px] font-semibold text-foreground-strong"}) {
 				{ r.Title }

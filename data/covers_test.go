@@ -3,6 +3,7 @@ package data_test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -147,6 +148,25 @@ func TestCoverQueries(t *testing.T) {
 		}
 		if len(rows) != len(want) {
 			t.Fatalf("%d rows, want %d", len(rows), len(want))
+		}
+		for _, r := range rows {
+			check(t, r.PublicID, r.CoverKey)
+		}
+	})
+	t.Run("relations", func(t *testing.T) {
+		// relation kinds allow letters and underscores only
+		kind := "test_sequel_" + strings.Map(func(r rune) rune { return 'a' + (r - '0') }, run)
+		exec(`insert into catalog.relation_kind (kind, label, inverse_label, is_symmetric, family)
+		      values ($1, 'sequel of', 'prequel of', false, 'sequence')`, kind)
+		for _, other := range []uuid.UUID{canon, widest, banner} {
+			exec(`insert into catalog.relation (from_node, kind, to_node) values ($1, $2, $3)`, other, kind, group)
+		}
+		rows, err := q.NodeRelations(ctx, group)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rows) != 3 {
+			t.Fatalf("%d rows, want 3", len(rows))
 		}
 		for _, r := range rows {
 			check(t, r.PublicID, r.CoverKey)

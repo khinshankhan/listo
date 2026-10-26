@@ -176,9 +176,11 @@ func (p *Pages) nodeParts(ctx context.Context, id uuid.UUID, country string) (no
 			Meta:    "group",
 			Anchor:  anchor(rel.MyUnit, rel.TheirUnit),
 			Note:    deref(rel.Note),
+			Cover:   views.Cover{Medium: "group", Title: rel.Title},
 		}
 		if rel.Type == "entry" {
 			related.Meta = withYear(deref(rel.MediumLabel), rel.StartDate)
+			related.Cover = coverOf(p.store, deref(rel.MediumLabel), rel.Title, rel.StartDate, rel.CoverKey, rel.CoverWidth, rel.CoverHeight, rel.CoverFit)
 		}
 		parts.relations = append(parts.relations, related)
 	}
