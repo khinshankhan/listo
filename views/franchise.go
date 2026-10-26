@@ -27,6 +27,8 @@ type Franchise struct {
 	Titles    []Title
 	Relations []Related
 	Links     []SiteLink
+	// OnPage links to the page's own sections.
+	OnPage []Anchor
 }
 
 // Crumb is one step of a breadcrumb. The page itself has no Href.

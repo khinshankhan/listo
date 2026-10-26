@@ -147,17 +147,14 @@ func searchIconSize(hero bool) string {
 	return "15"
 }
 
-// Sidebar is the catalog nav: media, then franchises.
+// Sidebar is the catalog nav: media, then franchises. It's the
+// same on every page; only which link is current changes.
 type Sidebar struct {
 	Media      []MediumLink
 	Franchises []GroupCard
-	// OnPage links to the current page's sections.
-	OnPage []Anchor
-	// Orderings are the current group's orderings.
-	Orderings []OrderingLink
 }
 
-// OrderingLink is an ordering in the sidebar; Meta is its kind and origin.
+// OrderingLink is one of a group's orderings; Meta is its kind and origin.
 type OrderingLink struct {
 	Name, Meta, Href string
 	Active           bool

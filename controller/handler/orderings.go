@@ -83,14 +83,6 @@ func (p *Pages) Ordering(w http.ResponseWriter, r *http.Request) {
 	for i := range chrome.Sidebar.Franchises {
 		chrome.Sidebar.Franchises[i].Active = here[chrome.Sidebar.Franchises[i].Href]
 	}
-	for _, other := range all {
-		chrome.Sidebar.Orderings = append(chrome.Sidebar.Orderings, views.OrderingLink{
-			Name:   other.Name,
-			Meta:   other.Kind + " · " + origin(other.Origin),
-			Href:   other.Href,
-			Active: other.Href == o.Href,
-		})
-	}
 
 	head := views.Head{
 		Title:       fmt.Sprintf("%s, %s | listo", o.Name, g.Name),
@@ -133,6 +125,17 @@ func orderingView(o views.Ordering, all []views.Ordering, rows []sqlcgen.GroupOr
 		v.Stats = append(v.Stats, s)
 	}
 
+	// one ordering has nothing to switch to
+	if len(all) > 1 {
+		for _, other := range all {
+			v.Orderings = append(v.Orderings, views.OrderingLink{
+				Name:   other.Name,
+				Meta:   other.Kind + " · " + origin(other.Origin),
+				Href:   other.Href,
+				Active: other.Href == o.Href,
+			})
+		}
+	}
 	v.Alternative = alternative(o, all)
 	return v
 }

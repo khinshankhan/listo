@@ -35,6 +35,15 @@ templ FranchisePage(f Franchise) {
 					}
 				}
 			</div>
+			if len(f.OnPage) > 1 {
+				<nav class="flex flex-wrap gap-x-5 gap-y-2 pt-1" aria-label="on this page">
+					for _, a := range f.OnPage {
+						@Link(LinkProps{Href: a.Href, Variant: LinkNav, Class: "text-13 leading-5 font-medium text-foreground-strong"}) {
+							{ a.Label }
+						}
+					}
+				</nav>
+			}
 		</header>
 		if len(f.Continuities) > 0 {
 			<section id="continuities" class="flex scroll-mt-6 flex-col gap-4">

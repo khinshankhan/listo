@@ -39,9 +39,9 @@ func (p *Pages) Group(w http.ResponseWriter, r *http.Request) {
 	p.groupPage(w, r, g, canonical)
 }
 
-// groupPage renders any kind of group, with its sections in the sidebar.
+// groupPage renders any kind of group.
 func (p *Pages) groupPage(w http.ResponseWriter, r *http.Request, g sqlcgen.GroupByPublicIDRow, canonical string) {
-	v, anchors, err := p.franchiseView(r.Context(), g, r.URL.Query().Get("by"), r.URL.Query().Get("spoilers") == "show")
+	v, err := p.franchiseView(r.Context(), g, r.URL.Query().Get("by"), r.URL.Query().Get("spoilers") == "show")
 	if err != nil {
 		p.serverError(w, r, err)
 		return
@@ -51,7 +51,6 @@ func (p *Pages) groupPage(w http.ResponseWriter, r *http.Request, g sqlcgen.Grou
 		p.serverError(w, r, err)
 		return
 	}
-	chrome.Sidebar.OnPage = anchors
 	for i := range chrome.Sidebar.Franchises {
 		chrome.Sidebar.Franchises[i].Active = chrome.Sidebar.Franchises[i].Href == canonical
 	}

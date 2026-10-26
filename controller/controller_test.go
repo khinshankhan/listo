@@ -175,8 +175,10 @@ func TestCatalogPages(t *testing.T) {
 			want: []string{`href="#start-here">`, `id="start-here"`, ">recommended order</h2>"}},
 		{name: "what sits beside it", path: "/groups/2/steins-gate", status: http.StatusOK,
 			want: []string{`id="related"`, `href="/groups/5/robotics-notes">Robotics;Notes</a>`, "franchise · 2 entries", ">same universe</span>"}},
-		{name: "the sidebar knows the page's sections", path: "/groups/2/steins-gate", status: http.StatusOK,
-			want: []string{"on this page</p>", `href="#continuities">`, `href="#entries">`, `href="#related">`}},
+		// the sidebar is the same on every page, so a page's sections are its own
+		{name: "a franchise links its own sections", path: "/groups/2/steins-gate", status: http.StatusOK,
+			want:     []string{`<nav class="flex flex-wrap gap-x-5 gap-y-2 pt-1" aria-label="on this page"><a href="#continuities">`, `<a href="#entries">`, `<a href="#related">`},
+			dontWant: []string{"on this page</p>"}},
 		{name: "a universe, not an universe", path: "/groups/1/science-adventure", status: http.StatusOK,
 			want: []string{`content="Science Adventure, a universe on listo."`}},
 		// nothing seeded under the universe itself in the fakes
@@ -220,8 +222,8 @@ func TestCatalogPages(t *testing.T) {
 		{name: "and the others point first-timers back", path: "/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f002/release-order", status: http.StatusOK,
 			want: []string{"watching for the first time?", `href="/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f001/first-timer-order">view first-timer order</a>`,
 				">auto-seeded</span>"}},
-		{name: "the sidebar lists the group's orderings", path: "/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f002/release-order", status: http.StatusOK,
-			want: []string{"orderings</p>", ">recommended · staff</span>", `href="/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f002/release-order" aria-current="page"`,
+		{name: "an ordering switches to its group's others", path: "/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f002/release-order", status: http.StatusOK,
+			want: []string{`<nav class="pt-1" aria-label="orderings">`, ">recommended · staff</span>", `href="/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f002/release-order" aria-current="page"`,
 				`href="/groups/2/steins-gate" aria-current="page"`}},
 		{name: "an ordering follows its group's slug", path: "/groups/2/wrong/orderings/01a151f2-0000-7000-8000-00000000f001/first-timer-order", status: http.StatusMovedPermanently,
 			location: "/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f001/first-timer-order"},

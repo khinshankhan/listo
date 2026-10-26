@@ -29,6 +29,20 @@ templ OrderingPage(o OrderingDetail) {
 					<p class="max-w-[760px] text-14 leading-[23px] text-foreground-muted">{ o.Rationale }</p>
 				</div>
 			}
+			if len(o.Orderings) > 0 {
+				<nav class="pt-1" aria-label="orderings">
+					<ul class="flex flex-wrap gap-2">
+						for _, other := range o.Orderings {
+							<li>
+								@Link(LinkProps{Href: other.Href, Variant: LinkNone, Current: other.Active, Class: orderingLinkClass(other.Active)}) {
+									<span class="block text-13 leading-4">{ other.Name }</span>
+									<span class="block font-mono text-[10px] leading-3 font-normal uppercase">{ other.Meta }</span>
+								}
+							</li>
+						}
+					</ul>
+				</nav>
+			}
 		</header>
 		<div class="flex flex-col gap-[18px] pt-1">
 			<ol class="flex flex-col gap-[18px]">

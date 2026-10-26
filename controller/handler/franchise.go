@@ -22,23 +22,23 @@ var franchiseSorts = []struct{ key, label string }{
 // standingRank orders continuities: the one to start with first
 var standingRank = map[string]int{"primary": 0, "active": 1, "concluded": 2, "disputed": 3, "abandoned": 4}
 
-// franchiseView is a franchise page and the anchors for its sections. by is
+// franchiseView is a franchise page, with links to its own sections. by is
 // the ?by= grouping; anything unknown is the default. reveal is
 // ?spoilers=show, which the sorting keeps.
-func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow, by string, reveal bool) (views.Franchise, []views.Anchor, error) {
+func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow, by string, reveal bool) (views.Franchise, error) {
 	canonical := GroupPath(g.PublicID, g.Slug)
 	v := views.Franchise{Name: g.Name, Standing: deref(g.Standing)}
 
 	parts, err := p.nodeParts(ctx, g.ID, "")
 	if err != nil {
-		return v, nil, err
+		return v, err
 	}
 	v.Native, v.NativeLang = parts.native, parts.nativeLang
 	v.Titles, v.Relations, v.Links = parts.titles, parts.relations, parts.links
 
 	parents, err := p.catalog.NodeGroups(ctx, g.ID)
 	if err != nil {
-		return v, nil, fmt.Errorf("groups: %w", err)
+		return v, fmt.Errorf("groups: %w", err)
 	}
 	for i := len(parents) - 1; i >= 0; i-- {
 		v.Trail = append(v.Trail, views.Crumb{Kind: parents[i].Kind, Name: parents[i].Name, Href: GroupPath(parents[i].PublicID, parents[i].Slug)})
@@ -47,12 +47,12 @@ func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow,
 
 	rows, err := p.catalog.GroupEntries(ctx, g.ID)
 	if err != nil {
-		return v, nil, fmt.Errorf("entries: %w", err)
+		return v, fmt.Errorf("entries: %w", err)
 	}
 	v.Continuities = continuityCards(rows)
 	rels, err := p.catalog.GroupRelations(ctx, g.ID)
 	if err != nil {
-		return v, nil, fmt.Errorf("relations: %w", err)
+		return v, fmt.Errorf("relations: %w", err)
 	}
 	v.Timeline = timeline(rows, rels)
 	if v.Timeline != nil {
@@ -98,7 +98,7 @@ func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow,
 
 	steps, err := p.catalog.GroupOrderings(ctx, g.ID)
 	if err != nil {
-		return v, nil, fmt.Errorf("orderings: %w", err)
+		return v, fmt.Errorf("orderings: %w", err)
 	}
 	v.Orderings = orderings(steps, canonical)
 	if len(v.Orderings) > 0 {
@@ -107,7 +107,7 @@ func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow,
 
 	siblings, err := p.catalog.GroupSiblings(ctx, g.ID)
 	if err != nil {
-		return v, nil, fmt.Errorf("siblings: %w", err)
+		return v, fmt.Errorf("siblings: %w", err)
 	}
 	if len(siblings) > 0 && len(parents) > 0 {
 		parent := parents[0]
@@ -125,21 +125,20 @@ func (p *Pages) franchiseView(ctx context.Context, g sqlcgen.GroupByPublicIDRow,
 		}
 	}
 
-	var anchors []views.Anchor
 	if len(v.Continuities) > 0 {
-		anchors = append(anchors, views.Anchor{Label: "continuities", Href: "#continuities"})
+		v.OnPage = append(v.OnPage, views.Anchor{Label: "continuities", Href: "#continuities"})
 	}
 	if v.Timeline != nil {
-		anchors = append(anchors, views.Anchor{Label: "timeline", Href: "#timeline"})
+		v.OnPage = append(v.OnPage, views.Anchor{Label: "timeline", Href: "#timeline"})
 	}
-	anchors = append(anchors, views.Anchor{Label: "entries", Href: "#entries"})
+	v.OnPage = append(v.OnPage, views.Anchor{Label: "entries", Href: "#entries"})
 	if len(v.Orderings) > 0 {
-		anchors = append(anchors, views.Anchor{Label: "start here", Href: "#start-here"})
+		v.OnPage = append(v.OnPage, views.Anchor{Label: "start here", Href: "#start-here"})
 	}
 	if len(v.Siblings) > 0 {
-		anchors = append(anchors, views.Anchor{Label: "related", Href: "#related"})
+		v.OnPage = append(v.OnPage, views.Anchor{Label: "related", Href: "#related"})
 	}
-	return v, anchors, nil
+	return v, nil
 }
 
 // entryStats is "6 entries", "2 media": each entry once, however many

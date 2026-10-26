@@ -165,35 +165,6 @@ templ sidebar(s Sidebar) {
 					}
 				}
 			}
-			if len(s.Orderings) > 0 {
-				<div class="flex flex-col gap-[9px]">
-					<p class="pl-2.5 font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">orderings</p>
-					<ul class="flex flex-col gap-px">
-						for _, o := range s.Orderings {
-							<li>
-								@Link(LinkProps{Href: o.Href, Variant: LinkNone, Current: o.Active, Class: orderingLinkClass(o.Active)}) {
-									<span class="block text-13 leading-4">{ o.Name }</span>
-									<span class="block font-mono text-[10px] leading-3 font-normal uppercase">{ o.Meta }</span>
-								}
-							</li>
-						}
-					</ul>
-				</div>
-			}
-			if len(s.OnPage) > 0 {
-				<div class="flex flex-col gap-[9px]">
-					<p class="pl-2.5 font-mono text-11 leading-[14px] tracking-wide text-foreground-muted uppercase">on this page</p>
-					<ul class="flex flex-col gap-px">
-						for _, a := range s.OnPage {
-							<li>
-								@Link(LinkProps{Href: a.Href, Variant: LinkNone, Class: "block rounded-lg px-2.5 py-1.5 text-13 leading-4 font-medium text-foreground-strong hover:bg-background-1"}) {
-									{ a.Label }
-								}
-							</li>
-						}
-					</ul>
-				</div>
-			}
 		</nav>
 	</aside>
 }
