@@ -374,11 +374,17 @@ func TestBrowseQueries(t *testing.T) {
 		if len(rows) != 1 || rows[0].Title != "ova" {
 			t.Errorf("got %+v, want just the ova", rows)
 		}
-		formats, err := q.BrowseFormats(ctx, medium)
+		all, err := q.BrowseFormats(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := []sqlcgen.BrowseFormatsRow{{Format: "ova", Label: "OVA"}, {Format: "tv", Label: "tv"}}
+		var formats []sqlcgen.CatalogMediumFormat
+		for _, f := range all {
+			if f.Medium == medium {
+				formats = append(formats, f)
+			}
+		}
+		want := []sqlcgen.CatalogMediumFormat{{Medium: medium, Format: "ova", Label: "OVA"}, {Medium: medium, Format: "tv", Label: "tv"}}
 		if !slices.Equal(formats, want) {
 			t.Errorf("formats = %+v, want %+v", formats, want)
 		}

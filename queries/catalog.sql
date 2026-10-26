@@ -137,12 +137,12 @@ where t.kind = 'genre'
 order by t.name;
 
 -- name: BrowseFormats :many
--- A medium's formats some entry has, for the filter.
-select mf.format, mf.label
+-- Every medium's formats some entry has, for the filter, so it can follow
+-- the type without asking again.
+select mf.medium, mf.format, mf.label
 from catalog.medium_format mf
-where mf.medium = $1
-  and exists (select 1 from catalog.entry e where e.medium = mf.medium and e.format = mf.format)
-order by mf.label;
+where exists (select 1 from catalog.entry e where e.medium = mf.medium and e.format = mf.format)
+order by mf.medium, mf.label;
 
 -- name: BrowseYears :many
 -- Years some entry started in, newest first, for the filter.

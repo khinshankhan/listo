@@ -16,8 +16,9 @@ type Querier interface {
 	// medium. A season is 0 for winter to 3 for fall, and
 	// only matches entries dated to the month.
 	BrowseEntries(ctx context.Context, arg BrowseEntriesParams) ([]BrowseEntriesRow, error)
-	// A medium's formats some entry has, for the filter.
-	BrowseFormats(ctx context.Context, medium string) ([]BrowseFormatsRow, error)
+	// Every medium's formats some entry has, for the filter, so it can follow
+	// the type without asking again.
+	BrowseFormats(ctx context.Context) ([]CatalogMediumFormat, error)
 	// Genres some entry has, for the filter.
 	BrowseGenres(ctx context.Context) ([]string, error)
 	// Each medium's newest entries, at most per_shelf apiece.

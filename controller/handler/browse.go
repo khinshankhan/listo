@@ -76,22 +76,25 @@ func (p *Pages) Entries(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	var formats []sqlcgen.BrowseFormatsRow
-	if m := clean.Get("medium"); m != "" {
-		var err error
-		if formats, err = p.catalog.BrowseFormats(ctx, m); err != nil {
-			p.serverError(w, r, err)
-			return
+	medium := clean.Get("medium")
+	all, err := p.catalog.BrowseFormats(ctx)
+	if err != nil {
+		p.serverError(w, r, err)
+		return
+	}
+	var formats []sqlcgen.CatalogMediumFormat
+	for _, f := range all {
+		if f.Medium == medium {
+			formats = append(formats, f)
 		}
 	}
 	// one left over from another type in the form, or with no type at all
-	if f := clean.Get("format"); f != "" && !slices.ContainsFunc(formats, func(row sqlcgen.BrowseFormatsRow) bool { return row.Format == f }) {
+	if f := clean.Get("format"); f != "" && !slices.ContainsFunc(formats, func(row sqlcgen.CatalogMediumFormat) bool { return row.Format == f }) {
 		clean.Del("format")
 		http.Redirect(w, r, browsePath(clean), http.StatusFound)
 		return
 	}
 
-	medium := clean.Get("medium")
 	media, err := p.mediumLinks(r, &medium)
 	if err != nil {
 		p.serverError(w, r, err)
@@ -218,7 +221,7 @@ func with(values url.Values, key, value string) url.Values {
 // browseFilters is the form's dropdowns with the chosen values selected, and
 // the query those values make. ok is false when a value isn't on offer.
 // formats are the chosen medium's; with none chosen, there are none to pick.
-func (p *Pages) browseFilters(ctx context.Context, media []views.MediumLink, formats []sqlcgen.BrowseFormatsRow, chosen url.Values) ([]views.Filter, sqlcgen.BrowseEntriesParams, bool, error) {
+func (p *Pages) browseFilters(ctx context.Context, media []views.MediumLink, formats []sqlcgen.CatalogMediumFormat, chosen url.Values) ([]views.Filter, sqlcgen.BrowseEntriesParams, bool, error) {
 	var args sqlcgen.BrowseEntriesParams
 	pick := func(name, label string, values, labels []string) (views.Filter, bool) {
 		f := views.Filter{Name: name, Label: label, Options: []views.Option{{Label: "any", Selected: !chosen.Has(name)}}}

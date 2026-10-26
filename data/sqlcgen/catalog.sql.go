@@ -103,29 +103,24 @@ func (q *Queries) BrowseEntries(ctx context.Context, arg BrowseEntriesParams) ([
 }
 
 const browseFormats = `-- name: BrowseFormats :many
-select mf.format, mf.label
+select mf.medium, mf.format, mf.label
 from catalog.medium_format mf
-where mf.medium = $1
-  and exists (select 1 from catalog.entry e where e.medium = mf.medium and e.format = mf.format)
-order by mf.label
+where exists (select 1 from catalog.entry e where e.medium = mf.medium and e.format = mf.format)
+order by mf.medium, mf.label
 `
 
-type BrowseFormatsRow struct {
-	Format string
-	Label  string
-}
-
-// A medium's formats some entry has, for the filter.
-func (q *Queries) BrowseFormats(ctx context.Context, medium string) ([]BrowseFormatsRow, error) {
-	rows, err := q.db.Query(ctx, browseFormats, medium)
+// Every medium's formats some entry has, for the filter, so it can follow
+// the type without asking again.
+func (q *Queries) BrowseFormats(ctx context.Context) ([]CatalogMediumFormat, error) {
+	rows, err := q.db.Query(ctx, browseFormats)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []BrowseFormatsRow{}
+	items := []CatalogMediumFormat{}
 	for rows.Next() {
-		var i BrowseFormatsRow
-		if err := rows.Scan(&i.Format, &i.Label); err != nil {
+		var i CatalogMediumFormat
+		if err := rows.Scan(&i.Medium, &i.Format, &i.Label); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

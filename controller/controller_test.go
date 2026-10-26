@@ -875,11 +875,11 @@ func (fakeCatalog) BrowseGenres(context.Context) ([]string, error) {
 
 func (fakeCatalog) BrowseYears(context.Context) ([]int32, error) { return []int32{2011, 2009}, nil }
 
-func (fakeCatalog) BrowseFormats(_ context.Context, medium string) ([]sqlcgen.BrowseFormatsRow, error) {
-	return map[string][]sqlcgen.BrowseFormatsRow{
-		"anime":        {{Format: "tv", Label: "anime"}, {Format: "ova", Label: "OVA"}},
-		"visual_novel": {{Format: "full", Label: "visual novel"}},
-	}[medium], nil
+func (fakeCatalog) BrowseFormats(context.Context) ([]sqlcgen.CatalogMediumFormat, error) {
+	return []sqlcgen.CatalogMediumFormat{
+		{Medium: "anime", Format: "tv", Label: "anime"}, {Medium: "anime", Format: "ova", Label: "OVA"},
+		{Medium: "visual_novel", Format: "full", Label: "visual novel"},
+	}, nil
 }
 
 func (fakeCatalog) NodeTags(_ context.Context, id uuid.UUID) ([]sqlcgen.NodeTagsRow, error) {
