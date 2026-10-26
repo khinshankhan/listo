@@ -23,10 +23,17 @@ const (
 
 	// EnvDev marks a development server: nothing it sends is cached.
 	EnvDev = "LISTO_DEV"
+
+	// EnvStorageURL is where images live, eg file:///var/lib/listo/media.
+	EnvStorageURL = "LISTO_STORAGE_URL"
 )
 
 // DefaultAddr is where the server listens without EnvAddr.
 const DefaultAddr = "127.0.0.1:8080"
+
+// DefaultStorageURL keeps images next to the dev database, relative to the
+// working directory.
+const DefaultStorageURL = "file://var/media"
 
 // Addr returns the configured listen address.
 func Addr() string {
@@ -39,6 +46,14 @@ func Addr() string {
 // DatabaseURL returns the configured connection string, which may be empty.
 func DatabaseURL() string {
 	return strings.TrimSpace(os.Getenv(EnvDatabaseURL))
+}
+
+// StorageURL returns the configured image store.
+func StorageURL() string {
+	if v := strings.TrimSpace(os.Getenv(EnvStorageURL)); v != "" {
+		return v
+	}
+	return DefaultStorageURL
 }
 
 // JSONLogs reports whether logs should be JSON.
