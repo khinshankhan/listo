@@ -14,12 +14,12 @@ import (
 	"github.com/khinshankhan/listo/views"
 )
 
-// perShelf is how many entries each medium's shelf holds: a row across a wide
-// screen.
-const perShelf = 12
+// perShelf is how many entries each medium's shelf holds: more than the
+// widest row of covers, so every shelf has more to scroll to.
+const perShelf = 24
 
-// browsePage is how many entries a page of results holds. It divides by most
-// column counts the grid lands on, so the last row is usually full.
+// browsePage is how many entries a page of results holds. Every column count
+// the covers take divides it, so the last row is always full.
 const browsePage = 48
 
 // viewCookie remembers how someone likes to browse.

@@ -58,6 +58,11 @@ type Card struct {
 	Title, Href, Format, FormatHref, Meta string
 }
 
+// coverCols is how many covers sit across the page, by its width, in a shelf
+// and the grid alike: whole covers, so a row ends on one, and always a count
+// that divides a page of results, so a page ends on a full row.
+const coverCols = "[--cols:2] @min-[480px]:[--cols:3] @min-[640px]:[--cols:4] @min-[960px]:[--cols:6] @min-[1300px]:[--cols:8] @min-[2000px]:[--cols:12]"
+
 // filterClass greys a select still on "any", following the pick before the
 // form is applied.
 const filterClass = "text-foreground-muted has-[option:checked:not([value=''])]:font-medium has-[option:checked:not([value=''])]:text-foreground-strong"
