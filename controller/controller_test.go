@@ -543,13 +543,13 @@ func TestFrontPages(t *testing.T) {
 		{name: "the shelves are one page", path: "/entries?page=2", status: http.StatusNotFound},
 		{name: "cards by default, and the switch says so", path: "/entries", status: http.StatusOK,
 			want: []string{`aria-label="view"`, `<a href="/entries?view=cards" aria-current="page">cards</a>`,
-				`<a href="/entries?view=list">list</a>`, `<a href="/entries?view=text">text only</a>`, "aspect-[172/250]"}},
+				`<a href="/entries?view=list">list</a>`, `<a href="/entries?view=text">text only</a>`, "aspect-[5/7]"}},
 		{name: "a list keeps small covers", path: "/entries?genre=sci-fi&view=list", status: http.StatusOK,
 			want:     []string{"h-[46px] w-[33px]", `<input type="hidden" name="view" value="list">`, `aria-current="page">list</a>`},
-			dontWant: []string{"aspect-[172/250]"}},
+			dontWant: []string{"aspect-[5/7]"}},
 		{name: "text only has no covers at all", path: "/entries?view=text", status: http.StatusOK,
 			want:     []string{`aria-current="page">text only</a>`, `<a href="/entries?medium=anime&amp;view=text">view all`},
-			dontWant: []string{"aspect-[172/250]", "h-[46px] w-[33px]"}},
+			dontWant: []string{"aspect-[5/7]", "h-[46px] w-[33px]"}},
 		{name: "a view that isn't one", path: "/entries?view=gallery", status: http.StatusNotFound},
 		{name: "a year nobody started in", path: "/entries?year=1890", status: http.StatusNotFound},
 		{name: "a season that isn't one", path: "/entries?season=monsoon", status: http.StatusNotFound},
@@ -1103,7 +1103,7 @@ func TestBrowseRemembersTheView(t *testing.T) {
 	}
 
 	res, body := get("/entries", picked)
-	if !strings.Contains(body, `aria-current="page">text only</a>`) || strings.Contains(body, "aspect-[172/250]") {
+	if !strings.Contains(body, `aria-current="page">text only</a>`) || strings.Contains(body, "aspect-[5/7]") {
 		t.Errorf("a plain visit didn't remember text only")
 	}
 	if cc, vary := res.Header.Get("Cache-Control"), res.Header.Get("Vary"); !strings.HasPrefix(cc, "private") || !strings.Contains(vary, "Cookie") {

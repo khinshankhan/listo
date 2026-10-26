@@ -31,7 +31,7 @@ templ EntryPage(e Entry) {
 						@nextUnit(*e.Next)
 					</div>
 				}
-				@cover(e.Medium, e.Title, e.Year)
+				@cover(e.Cover, entrySlot)
 				@factsCard(e.Facts)
 				if len(e.Links) > 0 {
 					<ul class="flex flex-col rounded-[10px] border border-border bg-background-2" aria-label="elsewhere">
@@ -278,16 +278,6 @@ templ linksPanel(links []SiteLink) {
 			}
 		}
 	}
-}
-
-// cover is a text placeholder until cover images are cached.
-templ cover(medium, title, year string) {
-	<div class="flex h-[296px] w-[210px] shrink-0 flex-col justify-between rounded-md bg-placeholder p-4" aria-hidden="true">
-		// muted is under 4.5:1 on the placeholder, so plain foreground here
-		<span class="font-mono text-11 tracking-wide text-foreground uppercase">{ medium }</span>
-		<span class="text-18 leading-snug font-semibold text-foreground">{ title }</span>
-		<span class="font-mono text-12 text-foreground">{ year }</span>
-	</div>
 }
 
 // panel is one titled section of a page: a mono eyebrow over a raised list.

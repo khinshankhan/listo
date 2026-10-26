@@ -208,7 +208,7 @@ templ cardRow(title string, cards []Card) {
 // card is one entry's cover, title and what it is.
 templ card(c Card) {
 	<li class="flex min-w-0 flex-col gap-[10px]">
-		<span class="aspect-[172/250] rounded-[9px] bg-placeholder" aria-hidden="true"></span>
+		@cover(c.Cover, cardSlot)
 		<span class="flex flex-col gap-1">
 			@Link(LinkProps{Href: c.Href, Variant: LinkNone, Class: "text-14 leading-[19px] font-semibold tracking-[-0.012em] wrap-break-word text-foreground-strong"}) {
 				{ c.Title }

@@ -117,6 +117,7 @@ func (p *Pages) entryView(ctx context.Context, e sqlcgen.EntryByPublicIDRow) (vi
 	if e.EndDate != nil && e.EndPrecision != nil {
 		v.Facts = append(v.Facts, views.Fact{Label: "ended", Value: released(*e.EndDate, *e.EndPrecision)})
 	}
+	v.Cover = views.Cover{Medium: e.MediumLabel, Title: e.Title, Year: v.Year}
 	country := deref(e.Country)
 	if country != "" {
 		v.Facts = append(v.Facts, views.Fact{Label: "country", Value: country})

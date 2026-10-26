@@ -56,6 +56,7 @@ const listShelf = 6
 // Meta, when and how long, eg "2011 · 24 episodes".
 type Card struct {
 	Title, Href, Format, FormatHref, Meta string
+	Cover                                 Cover
 }
 
 // coverCols is how many covers sit across the page, by its width, in a shelf

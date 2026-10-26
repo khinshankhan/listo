@@ -347,6 +347,11 @@ func card(e sqlcgen.BrowseShelvesRow) views.Card {
 	if e.UnitTotal != nil && e.UnitKind != "none" {
 		meta = append(meta, plural(int(*e.UnitTotal), e.UnitKind, e.UnitKind+"s"))
 	}
-	return views.Card{Title: e.Title, Href: EntryPath(e.PublicID, e.Slug), Format: e.FormatLabel,
+	c := views.Card{Title: e.Title, Href: EntryPath(e.PublicID, e.Slug), Format: e.FormatLabel,
 		FormatHref: formatPath(e.Medium, e.Format), Meta: strings.Join(meta, " · ")}
+	c.Cover = views.Cover{Medium: e.MediumLabel, Title: e.Title}
+	if e.StartDate != nil {
+		c.Cover.Year = e.StartDate.Format("2006")
+	}
+	return c
 }

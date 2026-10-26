@@ -8,6 +8,7 @@ import "./search";
 import "./scrollers";
 import "./spoilers";
 import "./formats";
+import "./covers";
 
 type Loader = () => Promise<Mount>;
 

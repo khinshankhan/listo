@@ -18,6 +18,7 @@ type Head struct {
 // repeat the medium.
 type Entry struct {
 	Title, Medium, Format, Year string
+	Cover                       Cover
 	// MediumHref browses the entry's medium, for the breadcrumb.
 	MediumHref string
 	// Eyebrow is the line over the title: medium, format, when. The format

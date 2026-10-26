@@ -1,0 +1,33 @@
+package views
+
+import "fmt"
+
+// cover is a cover slot: the stand-in, sized by the slot through container
+// units, and the image over it. Under 72px there's only room for the medium.
+// The title sits beside every cover, so it's decoration to a screen reader.
+templ cover(c Cover, slot coverSlot) {
+	<span class={ "@container relative block shrink-0 overflow-hidden bg-placeholder", slot.Class }>
+		// muted is under 4.5:1 on the placeholder, so plain foreground here
+		<span class="flex h-full flex-col justify-between p-[9cqi] text-foreground @max-[72px]:items-center @max-[72px]:justify-center @max-[72px]:p-0" aria-hidden="true">
+			<span class="font-mono text-[max(8px,7cqi)] leading-none tracking-[0.09em] uppercase @max-[72px]:text-center @max-[72px]:text-[8px] @max-[72px]:tracking-[0.02em] @max-[72px]:wrap-anywhere">{ c.Medium }</span>
+			<span class="line-clamp-5 text-[max(9px,11.5cqi)] leading-[1.12] font-semibold tracking-[-0.02em] wrap-anywhere @max-[72px]:hidden">{ c.Title }</span>
+			<span class="font-mono text-[max(8px,7cqi)] leading-none @max-[72px]:hidden">{ c.Year }</span>
+		</span>
+		if c.Image != nil {
+			<img
+				class={ "absolute inset-0 size-full transition-opacity duration-300 motion-reduce:transition-none", c.Image.imgFit() }
+				src={ c.Image.Src }
+				srcset={ c.Image.Srcset }
+				sizes={ slot.Sizes }
+				width={ fmt.Sprint(c.Image.Width) }
+				height={ fmt.Sprint(c.Image.Height) }
+				alt=""
+				if slot.Lazy {
+					loading="lazy"
+				}
+				decoding="async"
+				data-cover
+			/>
+		}
+	</span>
+}

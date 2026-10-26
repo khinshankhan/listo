@@ -164,3 +164,9 @@ input[type="search"]::-webkit-search-cancel-button:hover {
   outline: 2px solid var(--color-stark-contrast);
   outline-offset: 2px;
 }
+
+/* a cover waits under its stand-in until it's loaded; covers.ts sets the
+   class, so without it covers just appear */
+.covers-fade img[data-cover]:not([data-loaded]) {
+  opacity: 0;
+}
