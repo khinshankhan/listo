@@ -166,6 +166,28 @@ create table catalog.entry_company (
 );
 create index on catalog.entry_company (company_id);
 
+-- Images are stored by key, never path or URL, so moving storage rewrites no
+-- rows. Variants derive from the key and width; nothing is ever cropped, fit
+-- says how the image sits in its slot.
+create table catalog.entry_image (
+  id          uuid primary key default uuidv7(),
+  entry_id    uuid not null references catalog.entry on delete cascade,
+  kind        text not null check (kind in ('cover', 'banner', 'art', 'screenshot')),
+  storage_key text not null,               -- base key; variants derive from width
+  width       int not null check (width > 0),
+  height      int not null check (height > 0),
+  fit         text not null check (fit in ('cover', 'contain')),
+  focal_x     numeric check (focal_x between 0 and 100),
+  focal_y     numeric check (focal_y between 0 and 100),
+  is_canon    boolean not null default false,
+  source      text not null default 'staff',
+  source_url  text,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  unique (entry_id, storage_key)
+);
+create unique index entry_image_one_canon on catalog.entry_image (entry_id, kind) where is_canon;
+
 -- Graph
 
 create table catalog.relation (

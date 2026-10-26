@@ -61,6 +61,9 @@ func TestSchemaRejectsBadWrites(t *testing.T) {
 	exec(`insert into catalog.entry_company (entry_id, company_id, role) values ($1, $2, 'studio')`, first, studio)
 	account := id(`insert into tracking.account (username) values ($1) returning id`, "test-"+run)
 	exec(`insert into tracking.list_entry (account_id, entry_id, status) values ($1, $2, 'current')`, account, tracked)
+	const canonCover = `insert into catalog.entry_image (entry_id, kind, storage_key, width, height, fit, is_canon)
+	                    values ($1, 'cover', $2, 460, 644, 'cover', true)`
+	exec(canonCover, first, "cover/aa/aa/aaaa")
 
 	// a symmetric edge is stored smaller id first; this is the other way round
 	hi, lo := first, second
@@ -126,6 +129,15 @@ func TestSchemaRejectsBadWrites(t *testing.T) {
 		{"p. a company is credited once per role",
 			`insert into catalog.entry_company (entry_id, company_id, role) values ($1, $2, 'studio')`,
 			[]any{first, studio}, "23505", "entry_company_pkey"},
+		{"q. an entry has one canon cover",
+			canonCover,
+			[]any{first, "cover/bb/bb/bbbb"}, "23505", "entry_image_one_canon"},
+		{"r. a focal point is a percent",
+			`update catalog.entry_image set focal_x = 101 where entry_id = $1`,
+			[]any{first}, "23514", "entry_image_focal_x_check"},
+		{"s. an image fits its slot one of two ways",
+			`update catalog.entry_image set fit = 'stretch' where entry_id = $1`,
+			[]any{first}, "23514", "entry_image_fit_check"},
 	}
 
 	for _, tc := range cases {

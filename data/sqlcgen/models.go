@@ -44,6 +44,23 @@ type CatalogEntryCompany struct {
 	Role      string
 }
 
+type CatalogEntryImage struct {
+	ID         uuid.UUID
+	EntryID    uuid.UUID
+	Kind       string
+	StorageKey string
+	Width      int32
+	Height     int32
+	Fit        string
+	FocalX     pgtype.Numeric
+	FocalY     pgtype.Numeric
+	IsCanon    bool
+	Source     string
+	SourceUrl  *string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
 type CatalogExternalID struct {
 	Source     string
 	ExternalID string
