@@ -71,6 +71,72 @@ input[type="search"]::-webkit-search-cancel-button:hover {
   }
 }
 
+/* a select's list drawn like the search suggestions, where the browser lets
+   it be styled; elsewhere it stays the system's. The field keeps its own
+   chevron, and the pick shows in the accent rather than a checkmark */
+@supports (appearance: base-select) {
+  select,
+  select::picker(select) {
+    appearance: base-select;
+  }
+
+  /* the styleable field is a flex box, which tops its text rather than
+     centring it the way the system one does */
+  select {
+    align-items: center;
+  }
+
+  select::picker-icon {
+    display: none;
+  }
+
+  select::picker(select) {
+    max-height: min(320px, 50dvh);
+    margin-block: 4px;
+    padding-block: 4px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-background-2);
+    box-shadow: var(--shadow-sm);
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-foreground-muted) transparent;
+  }
+
+  option {
+    padding: 8px 12px;
+    font-weight: 400;
+    color: var(--color-foreground-strong);
+    cursor: pointer;
+  }
+
+  option::checkmark {
+    display: none;
+  }
+
+  option:hover {
+    background: var(--color-background-1);
+  }
+
+  option:focus-visible {
+    outline: none;
+    background: var(--color-accent-3);
+    box-shadow: inset 3px 0 0 var(--color-accent-9);
+  }
+
+  option:checked {
+    font-weight: 600;
+    color: var(--color-accent-11);
+  }
+
+  /* forced colours drop the tint, so the focused row gets a ring instead */
+  @media (forced-colors: active) {
+    option:focus-visible {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+    }
+  }
+}
+
 /* a timeline's spoilers stay hidden until asked for */
 .timeline:not(:has(.timeline-reveal:checked)) .timeline-spoiler {
   display: none;
