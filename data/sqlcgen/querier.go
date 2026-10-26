@@ -11,6 +11,9 @@ import (
 )
 
 type Querier interface {
+	// Records an image of an entry, not canon yet. The same image twice is a
+	// no-op, zero rows.
+	AddEntryImage(ctx context.Context, arg AddEntryImageParams) (int64, error)
 	// A page of the entries the filters let through, newest first, each row
 	// carrying its cover and how many match in all. A format is only ever asked
 	// for with its medium. A season is 0 for winter to 3 for fall, and only
@@ -26,11 +29,17 @@ type Querier interface {
 	BrowseShelves(ctx context.Context, perShelf int32) ([]BrowseShelvesRow, error)
 	// Years some entry started in, newest first, for the filter.
 	BrowseYears(ctx context.Context) ([]int32, error)
+	// An entry's canon image of a kind, to weigh a new one against.
+	CanonImage(ctx context.Context, arg CanonImageParams) (CanonImageRow, error)
+	// Unseats an entry's canon image of a kind, before another takes its place.
+	ClearCanonImage(ctx context.Context, arg ClearCanonImageParams) error
 	// An entry by public id, with its medium and format labels and its cover:
 	// the canon one, else the widest. The caller checks the slug.
 	EntryByPublicID(ctx context.Context, publicID int64) (EntryByPublicIDRow, error)
 	// Who made an entry, by role then name.
 	EntryCompanies(ctx context.Context, entryID uuid.UUID) ([]EntryCompaniesRow, error)
+	// An entry's id by slug, for tools that name entries the way seeds do.
+	EntryIDBySlug(ctx context.Context, slug string) (uuid.UUID, error)
 	// An entry's units in order, for the episode list and what airs next.
 	EntryUnits(ctx context.Context, entryID uuid.UUID) ([]EntryUnitsRow, error)
 	GroupByPublicID(ctx context.Context, publicID int64) (GroupByPublicIDRow, error)
@@ -72,6 +81,8 @@ type Querier interface {
 	// entries, then oldest first.
 	// a medium narrows before the limit, so its hits aren't crowded out
 	SearchNodes(ctx context.Context, arg SearchNodesParams) ([]SearchNodesRow, error)
+	// Makes one image its entry's canon; clear the old one first.
+	SetCanonImage(ctx context.Context, arg SetCanonImageParams) error
 	// Titles near a query that found nothing, closest first, scored both ways
 	// round: the query within a title, and a title within the query. It scans
 	// every title, which is fine while the catalog is small and it only runs on

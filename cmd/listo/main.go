@@ -33,6 +33,8 @@ func run(ctx context.Context, args []string) error {
 	switch cmd := args[0]; cmd {
 	case "serve":
 		return controller.RunHTTPServer(ctx)
+	case "image":
+		return imageCmd(ctx, args[1:])
 	case "version":
 		fmt.Fprintln(os.Stdout, platform.Version("listo").String())
 		return nil
@@ -50,6 +52,10 @@ func usage() {
 
 usage:
   listo serve           run the web server
+  listo image add <entry slug> <file|url> [--kind cover] [--source x --source-url y]
+                        store an image and record it against an entry
+  listo image import <manifest.tsv>
+                        add every image a manifest lists; a rerun is harmless
   listo help            this message
   listo version         display build info
 
