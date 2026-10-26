@@ -147,7 +147,7 @@ templ searchPanel(hero bool) {
 // sidebar is the catalog nav, hidden on small screens. It holds still under
 // the top bar and scrolls on its own when it's taller than the screen.
 templ sidebar(s Sidebar) {
-	<aside class="sticky top-topbar hidden h-[calc(100dvh-var(--spacing-topbar))] w-sidebar shrink-0 flex-col self-start overflow-y-auto overscroll-contain border-r border-border bg-background-2 px-5 pt-4 pb-6 lg:flex [scrollbar-gutter:stable] [view-transition-name:sidebar]">
+	<aside class="sticky top-topbar hidden h-[calc(100dvh-var(--spacing-topbar))] w-sidebar shrink-0 flex-col self-start overflow-y-auto border-r border-border bg-background-2 px-5 pt-4 pb-6 lg:flex [scrollbar-gutter:stable] [view-transition-name:sidebar]">
 		<nav class="flex flex-col gap-7" aria-label="catalog">
 			@sideSection("catalog") {
 				for _, m := range s.Media {
