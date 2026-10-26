@@ -18,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/khinshankhan/listo/data/sqlcgen"
+	"github.com/khinshankhan/listo/media"
 	"github.com/khinshankhan/listo/web"
 )
 
@@ -26,9 +27,9 @@ func TestRoutes(t *testing.T) {
 		Files: fstest.MapFS{"assets/app-abc.css": {Data: []byte("body{}")}},
 		Tags:  web.Tags{CSS: []string{"/assets/app-abc.css"}, Script: "/assets/islands-abc.js"},
 	}
-	up := httptest.NewServer(newHTTPServer("", bundle, fakeDB{}, fakeCatalog{}).srv.Handler)
+	up := httptest.NewServer(newHTTPServer("", bundle, fakeDB{}, fakeCatalog{}, testStore(t)).srv.Handler)
 	t.Cleanup(up.Close)
-	down := httptest.NewServer(newHTTPServer("", bundle, fakeDB{err: errors.New("connection refused")}, fakeCatalog{}).srv.Handler)
+	down := httptest.NewServer(newHTTPServer("", bundle, fakeDB{err: errors.New("connection refused")}, fakeCatalog{}, testStore(t)).srv.Handler)
 	t.Cleanup(down.Close)
 
 	cases := []struct {
@@ -87,6 +88,68 @@ func TestRoutes(t *testing.T) {
 	}
 }
 
+// testStore is an empty image store of the test's own.
+func testStore(t *testing.T) media.Store {
+	t.Helper()
+	return media.NewFileStore(t.TempDir(), "/media/")
+}
+
+func TestMedia(t *testing.T) {
+	store := testStore(t)
+	hash := strings.Repeat("3fa1", 16)
+	variant := "cover/3f/a1/" + hash + "-320.jpg"
+	orig := "cover/3f/a1/" + hash + "-orig.png"
+	for _, key := range []string{variant, orig} {
+		if err := store.Put(context.Background(), key, strings.NewReader("pixels of "+key), ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	srv := httptest.NewServer(newHTTPServer("", &web.Bundle{Files: fstest.MapFS{}}, fakeDB{}, fakeCatalog{}, store).srv.Handler)
+	t.Cleanup(srv.Close)
+
+	cases := []struct {
+		name   string
+		path   string
+		status int
+		header map[string]string
+		body   string
+	}{
+		{"a variant, cached forever", "/media/" + variant, http.StatusOK, map[string]string{
+			"Content-Type":           "image/jpeg",
+			"Cache-Control":          "public, max-age=31536000, immutable",
+			"X-Content-Type-Options": "nosniff",
+		}, "pixels of " + variant},
+		{"originals stay private", "/media/" + orig, http.StatusNotFound, nil, ""},
+		{"a key that isn't there", "/media/cover/3f/a1/" + hash + "-160.jpg", http.StatusNotFound, nil, ""},
+		{"a key that isn't a key", "/media/cover/../../etc/passwd", http.StatusNotFound, nil, ""},
+		{"no listing", "/media/cover/", http.StatusNotFound, nil, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := http.Get(srv.URL + tc.path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer res.Body.Close()
+			raw, err := io.ReadAll(res.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res.StatusCode != tc.status {
+				t.Errorf("status = %d, want %d", res.StatusCode, tc.status)
+			}
+			for k, v := range tc.header {
+				if got := res.Header.Get(k); got != v {
+					t.Errorf("%s = %q, want %q", k, got, v)
+				}
+			}
+			if tc.body != "" && string(raw) != tc.body {
+				t.Errorf("body = %q, want %q", raw, tc.body)
+			}
+		})
+	}
+}
+
 // fakeDB stands in for the pool; the API only pings it so far.
 type fakeDB struct{ err error }
 
@@ -96,7 +159,7 @@ func (f fakeDB) Ping(context.Context) error {
 
 func TestCatalogPages(t *testing.T) {
 	bundle := &web.Bundle{Files: fstest.MapFS{}}
-	srv := httptest.NewServer(newHTTPServer("", bundle, fakeDB{}, fakeCatalog{}).srv.Handler)
+	srv := httptest.NewServer(newHTTPServer("", bundle, fakeDB{}, fakeCatalog{}, testStore(t)).srv.Handler)
 	t.Cleanup(srv.Close)
 
 	// redirects are the point here, so don't follow them
@@ -342,7 +405,7 @@ func TestCatalogPages(t *testing.T) {
 
 func TestFrontPages(t *testing.T) {
 	bundle := &web.Bundle{Files: fstest.MapFS{}}
-	srv := httptest.NewServer(newHTTPServer("", bundle, fakeDB{}, fakeCatalog{}).srv.Handler)
+	srv := httptest.NewServer(newHTTPServer("", bundle, fakeDB{}, fakeCatalog{}, testStore(t)).srv.Handler)
 	t.Cleanup(srv.Close)
 
 	cases := []struct {
@@ -938,7 +1001,7 @@ func (renumbered) GroupByPublicID(ctx context.Context, id int64) (sqlcgen.GroupB
 
 // The home page finds its guides by slug, so a reseed can't swap them out.
 func TestHomeGuidesSurviveRenumbering(t *testing.T) {
-	srv := httptest.NewServer(newHTTPServer("", &web.Bundle{Files: fstest.MapFS{}}, fakeDB{}, renumbered{}).srv.Handler)
+	srv := httptest.NewServer(newHTTPServer("", &web.Bundle{Files: fstest.MapFS{}}, fakeDB{}, renumbered{}, testStore(t)).srv.Handler)
 	t.Cleanup(srv.Close)
 	res, err := http.Get(srv.URL + "/")
 	if err != nil {
@@ -961,7 +1024,7 @@ func TestHomeGuidesSurviveRenumbering(t *testing.T) {
 }
 
 func TestEmptyPagesLeaveNoHusks(t *testing.T) {
-	srv := httptest.NewServer(newHTTPServer("", &web.Bundle{Files: fstest.MapFS{}}, fakeDB{}, fakeCatalog{}).srv.Handler)
+	srv := httptest.NewServer(newHTTPServer("", &web.Bundle{Files: fstest.MapFS{}}, fakeDB{}, fakeCatalog{}, testStore(t)).srv.Handler)
 	t.Cleanup(srv.Close)
 	emptyList := regexp.MustCompile(`<(ul|ol|dl)([^>]*)>\s*</(ul|ol|dl)>`)
 	cases := []struct {
@@ -1005,7 +1068,7 @@ func TestEmptyPagesLeaveNoHusks(t *testing.T) {
 // A view picked once sticks, from a cookie, so browse pages can't be shared
 // out of a cache.
 func TestBrowseRemembersTheView(t *testing.T) {
-	srv := httptest.NewServer(newHTTPServer("", &web.Bundle{Files: fstest.MapFS{}}, fakeDB{}, fakeCatalog{}).srv.Handler)
+	srv := httptest.NewServer(newHTTPServer("", &web.Bundle{Files: fstest.MapFS{}}, fakeDB{}, fakeCatalog{}, testStore(t)).srv.Handler)
 	t.Cleanup(srv.Close)
 	get := func(path string, cookie *http.Cookie) (*http.Response, string) {
 		t.Helper()
@@ -1059,7 +1122,7 @@ func TestBrowseRemembersTheView(t *testing.T) {
 // A landmark inside main reads as a page region it isn't, so the sidebar is
 // the only aside on any page.
 func TestOneAsidePerPage(t *testing.T) {
-	srv := httptest.NewServer(newHTTPServer("", &web.Bundle{Files: fstest.MapFS{}}, fakeDB{}, fakeCatalog{}).srv.Handler)
+	srv := httptest.NewServer(newHTTPServer("", &web.Bundle{Files: fstest.MapFS{}}, fakeDB{}, fakeCatalog{}, testStore(t)).srv.Handler)
 	t.Cleanup(srv.Close)
 	for _, path := range []string{"/", "/search?q=steins", "/search?q=nothing", "/entries", "/entries/7/steins-gate-anime",
 		"/groups/2/steins-gate", "/groups/3/steins-gate-main", "/groups/2/steins-gate/orderings/01a151f2-0000-7000-8000-00000000f001/first-timer-order",
@@ -1082,7 +1145,7 @@ func TestOneAsidePerPage(t *testing.T) {
 }
 
 func TestSearchAPI(t *testing.T) {
-	srv := httptest.NewServer(newHTTPServer("", &web.Bundle{Files: fstest.MapFS{}}, fakeDB{}, fakeCatalog{}).srv.Handler)
+	srv := httptest.NewServer(newHTTPServer("", &web.Bundle{Files: fstest.MapFS{}}, fakeDB{}, fakeCatalog{}, testStore(t)).srv.Handler)
 	t.Cleanup(srv.Close)
 
 	type hit struct {

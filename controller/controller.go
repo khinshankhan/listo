@@ -11,6 +11,7 @@ import (
 	"github.com/khinshankhan/listo/controller/middleware"
 	"github.com/khinshankhan/listo/data"
 	"github.com/khinshankhan/listo/data/sqlcgen"
+	"github.com/khinshankhan/listo/media"
 	"github.com/khinshankhan/listo/platform/config"
 	"github.com/khinshankhan/listo/platform/logx"
 	"github.com/khinshankhan/listo/web"
@@ -33,7 +34,12 @@ func RunHTTPServer(ctx context.Context) error {
 	}
 	defer db.Close()
 
-	s := newHTTPServer(config.Addr(), bundle, db, sqlcgen.New(db))
+	store, err := media.Open(config.StorageURL())
+	if err != nil {
+		return err
+	}
+
+	s := newHTTPServer(config.Addr(), bundle, db, sqlcgen.New(db), store)
 	// so a rebuild shows on the next click, not a minute later
 	if config.Dev() {
 		s.srv.Handler = middleware.NoStore(s.srv.Handler)
@@ -45,7 +51,7 @@ type httpServer struct {
 	srv *http.Server
 }
 
-func newHTTPServer(addr string, bundle *web.Bundle, db handler.Pinger, catalog handler.Catalog) *httpServer {
+func newHTTPServer(addr string, bundle *web.Bundle, db handler.Pinger, catalog handler.Catalog, store media.Store) *httpServer {
 	api := handler.NewAPI(db, catalog)
 	pages := handler.NewPages(bundle.Tags, catalog)
 
@@ -54,7 +60,7 @@ func newHTTPServer(addr string, bundle *web.Bundle, db handler.Pinger, catalog h
 	root := middleware.Chain(
 		middleware.Recover,
 		middleware.BlackHole(http.HandlerFunc(pages.NotFound), "/api"),
-	)(routes(bundle, api, pages))
+	)(routes(bundle, store, api, pages))
 
 	return &httpServer{
 		srv: &http.Server{
@@ -97,11 +103,12 @@ func (s *httpServer) run(ctx context.Context) error {
 }
 
 // routes wires up each router; anything unrouted falls to the blackhole.
-func routes(bundle *web.Bundle, api *handler.API, pages *handler.Pages) *http.ServeMux {
+func routes(bundle *web.Bundle, store media.Store, api *handler.API, pages *handler.Pages) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	apiRoutes(mux, api)
 	mux.Handle("GET /assets/", handler.Assets(bundle.Files))
+	mux.Handle("GET /media/{key...}", handler.Media(store))
 	mux.HandleFunc("GET /favicon.svg", handler.Favicon)
 	// browsers ask for this by name when a page doesn't say
 	mux.Handle("GET /favicon.ico", http.RedirectHandler("/favicon.svg", http.StatusMovedPermanently))
