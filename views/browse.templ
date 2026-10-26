@@ -30,7 +30,7 @@ templ BrowsePage(b Browse) {
 							name={ f.Name }
 							disabled?={ f.Disabled }
 							autocomplete="off"
-							class={ "h-[38px] w-full cursor-pointer appearance-none disabled:cursor-not-allowed rounded-lg border border-border bg-background-2 pr-8 pl-[13px] text-13 leading-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast", filterClass(f) }
+							class={ "h-[38px] w-full cursor-pointer appearance-none disabled:cursor-not-allowed rounded-lg border border-border bg-background-2 pr-8 pl-[13px] text-13 leading-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stark-contrast", filterClass }
 						>
 							for _, o := range f.Options {
 								<option value={ o.Value } selected?={ o.Selected }>{ o.Label }</option>

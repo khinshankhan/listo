@@ -58,12 +58,6 @@ type Card struct {
 	Title, Href, Format, FormatHref, Meta string
 }
 
-// filterClass greys a select still on "any".
-func filterClass(f Filter) string {
-	for _, o := range f.Options {
-		if o.Selected && o.Value != "" {
-			return "font-medium text-foreground-strong"
-		}
-	}
-	return "text-foreground-muted"
-}
+// filterClass greys a select still on "any", following the pick before the
+// form is applied.
+const filterClass = "text-foreground-muted has-[option:checked:not([value=''])]:font-medium has-[option:checked:not([value=''])]:text-foreground-strong"
