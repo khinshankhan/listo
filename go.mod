@@ -13,6 +13,7 @@ require (
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/khinshankhan/logstox v0.1.0
 	github.com/khinshankhan/logstox/backend/zapx v0.1.1
+	golang.org/x/image v0.46.0
 )
 
 require (
