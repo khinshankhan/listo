@@ -90,9 +90,11 @@ func Import(ctx context.Context, store Store, r io.Reader, kind string) (Image, 
 	return img, nil
 }
 
-// variantWidths are the widths each kind is shrunk to, smallest first.
+// variantWidths are the widths each kind is shrunk to, smallest first. The
+// widest cover slot is 210px, so 640 covers it at 3x and no screen needs the
+// original.
 var variantWidths = map[string][]int{
-	KindCover:      {160, 320},
+	KindCover:      {160, 320, 640},
 	KindBanner:     {640, 1280, 1920},
 	KindArt:        {640, 1280},
 	KindScreenshot: {640, 1280},
