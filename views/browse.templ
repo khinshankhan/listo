@@ -138,7 +138,7 @@ templ entryList(cards []Card, covers bool) {
 			if covers {
 				<li class="flex items-center gap-4 border-b border-border-subtle px-3 py-[11px]">
 					@cover(c.Cover, rowSlot)
-					<span class="flex min-w-0 flex-col gap-1">
+					<span class="flex min-w-0 flex-col gap-[7px]">
 						@Link(LinkProps{Href: c.Href, Variant: LinkNone, Class: "text-14 leading-[18px] font-semibold wrap-break-word text-foreground-strong"}) {
 							{ c.Title }
 						}
@@ -146,7 +146,7 @@ templ entryList(cards []Card, covers bool) {
 					</span>
 				</li>
 			} else {
-				<li class="flex flex-col gap-1 border-b border-border-subtle px-3 py-2.5 sm:flex-row sm:items-baseline sm:gap-4">
+				<li class="flex flex-col gap-[7px] border-b border-border-subtle px-3 py-2.5 sm:flex-row sm:items-baseline sm:gap-4">
 					@Link(LinkProps{Href: c.Href, Variant: LinkNone, Class: "text-14 leading-[18px] font-semibold wrap-break-word text-foreground-strong"}) {
 						{ c.Title }
 					}
@@ -170,9 +170,10 @@ templ cardMeta(c Card, class string) {
 
 // formatLink is a format, quiet like the text around it until pointed at,
 // leading to everything else in it. LinkNone brings the focus ring and the
-// hover colour.
+// hover colour. It's 24px tall to tap, however small the text, and gives the
+// extra back as margin so the line keeps its height.
 templ formatLink(label, href, class string) {
-	@Link(LinkProps{Href: href, Variant: LinkNone, Class: strings.TrimSpace("underline-offset-2 hover:underline " + class)}) {
+	@Link(LinkProps{Href: href, Variant: LinkNone, Class: strings.TrimSpace("inline-flex min-h-6 items-center my-[calc((1lh-1.5rem)/2)] underline-offset-2 hover:underline " + class)}) {
 		{ label }
 	}
 }
@@ -210,7 +211,9 @@ templ cardRow(title string, cards []Card, first bool) {
 templ card(c Card, eager bool) {
 	<li class="flex min-w-0 flex-col gap-[10px]">
 		@cover(c.Cover, cardSlot(eager))
-		<span class="flex flex-col gap-1">
+		// 7px keeps the title and the format link under it far enough apart to
+		// tap either
+		<span class="flex flex-col gap-[7px]">
 			@Link(LinkProps{Href: c.Href, Variant: LinkNone, Class: "text-14 leading-[19px] font-semibold tracking-[-0.012em] wrap-break-word text-foreground-strong"}) {
 				{ c.Title }
 			}
